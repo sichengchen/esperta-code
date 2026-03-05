@@ -478,6 +478,15 @@ export class Database {
     } as unknown as StepExecution;
   }
 
+  listChildWorkItems(parentWorkItemId: string): WorkItem[] {
+    const rows = this.db
+      .query(
+        "SELECT * FROM work_items WHERE parent_work_item_id = ?1 ORDER BY priority ASC, created_at ASC"
+      )
+      .all(parentWorkItemId) as Record<string, unknown>[];
+    return rows.map((row) => this.rowToWorkItem(row));
+  }
+
   // Concurrency helpers
   countRunningItems(): number {
     const row = this.db

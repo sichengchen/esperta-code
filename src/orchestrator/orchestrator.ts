@@ -10,6 +10,7 @@ import type { OrchestrationState, WorkItem } from "../domain/types.ts";
 
 const MAX_RETRY_BACKOFF_MS = 300000;
 const DEFAULT_MAX_RETRIES = 3;
+const TERMINAL_STATES: OrchestrationState[] = ["completed", "failed", "cancelled"];
 
 export class Orchestrator {
   private db: Database;
@@ -55,7 +56,11 @@ export class Orchestrator {
 
     const available = this.maxConcurrent - running;
     const queued = this.db.listWorkItemsByState(projectId, "queued");
-    const toDispatch = queued.slice(0, available);
+
+    // Filter out items with non-terminal blockers
+    const eligible = queued.filter((wi) => this.areBlockersResolved(wi));
+
+    const toDispatch = eligible.slice(0, available);
     const dispatched: string[] = [];
 
     for (const wi of toDispatch) {
@@ -64,6 +69,63 @@ export class Orchestrator {
     }
 
     return dispatched;
+  }
+
+  checkParentCompletion(parentWorkItemId: string): void {
+    const parent = this.db.getWorkItem(parentWorkItemId);
+    if (!parent) return;
+
+    // Only check parents that are in decompose_review state
+    if (parent.orchestration_state !== "decompose_review") return;
+
+    const children = this.db.listChildWorkItems(parentWorkItemId);
+    if (children.length === 0) return;
+
+    // All children must be in "completed" state
+    const allCompleted = children.every(
+      (child) => child.orchestration_state === "completed"
+    );
+
+    if (allCompleted) {
+      this.db.updateWorkItemOrchestrationState(parent.id, "completed");
+      this.db.appendHistory({
+        id: newId(),
+        project_id: parent.project_id,
+        work_item_id: parent.id,
+        run_id: null,
+        event_type: "parent.auto_completed",
+        payload: {
+          child_count: children.length,
+          child_ids: children.map((c) => c.id),
+        },
+      });
+    }
+  }
+
+  cancelWorkItem(workItemId: string): void {
+    const wi = this.db.getWorkItem(workItemId);
+    if (!wi) return;
+    this.transition(wi, "cancelled");
+  }
+
+  computeRetryDelay(attempt: number): number {
+    const baseDelay = 10000 * Math.pow(2, attempt - 1);
+    const delay = Math.min(baseDelay, MAX_RETRY_BACKOFF_MS);
+    const jitter = Math.random() * 2000;
+    return delay + jitter;
+  }
+
+  private areBlockersResolved(wi: WorkItem): boolean {
+    if (wi.blocker_ids.length === 0) return true;
+
+    for (const blockerId of wi.blocker_ids) {
+      const blocker = this.db.getWorkItem(blockerId);
+      if (!blocker) continue; // unknown blocker, treat as resolved
+      if (!TERMINAL_STATES.includes(blocker.orchestration_state)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private async executeWorkItem(
@@ -103,7 +165,19 @@ export class Orchestrator {
       payload: { attempt, agent_adapter: this.repoConfig.agent.adapter },
     });
 
-    const executor = new PipelineExecutor(this.db, this.adapters);
+    const executor = new PipelineExecutor(
+      this.db,
+      this.adapters,
+      {
+        approval_policy: this.repoConfig.agent.approval_policy,
+        timeout_ms: this.repoConfig.agent.timeout_ms,
+        max_turns: this.repoConfig.agent.max_turns,
+      },
+      {
+        before_run: this.repoConfig.hooks.before_run,
+        after_run: this.repoConfig.hooks.after_run,
+      }
+    );
     const result = await executor.execute({
       runId,
       workDir,
@@ -126,7 +200,7 @@ export class Orchestrator {
       },
       onBuiltin: async (name) => {
         if (name === "publish") {
-          return true; // Publish handled externally
+          return true;
         }
         return false;
       },
@@ -142,7 +216,6 @@ export class Orchestrator {
         event_type: "run.completed",
         payload: { result: "succeeded" },
       });
-      // Refresh wi state since transition may have changed it
       const updatedWi = this.db.getWorkItem(wi.id)!;
       this.transition(updatedWi, "completed");
     } else {
@@ -171,19 +244,6 @@ export class Orchestrator {
         this.transition(updatedWi, "failed");
       }
     }
-  }
-
-  cancelWorkItem(workItemId: string): void {
-    const wi = this.db.getWorkItem(workItemId);
-    if (!wi) return;
-    this.transition(wi, "cancelled");
-  }
-
-  computeRetryDelay(attempt: number): number {
-    const baseDelay = 10000 * Math.pow(2, attempt - 1);
-    const delay = Math.min(baseDelay, MAX_RETRY_BACKOFF_MS);
-    const jitter = Math.random() * 2000;
-    return delay + jitter;
   }
 
   private transition(wi: WorkItem, to: OrchestrationState): void {

@@ -3,7 +3,7 @@ import type { OrchestrationState } from "../domain/types.ts";
 const TRANSITIONS: Record<OrchestrationState, OrchestrationState[]> = {
   unclaimed: ["decomposing", "spec_drafting", "queued", "cancelled"],
   decomposing: ["decompose_review", "cancelled"],
-  decompose_review: ["spec_drafting", "queued", "cancelled"],
+  decompose_review: ["spec_drafting", "queued", "completed", "cancelled"],
   spec_drafting: ["spec_review", "cancelled"],
   spec_review: ["queued", "cancelled"],
   queued: ["running", "cancelled"],
