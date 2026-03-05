@@ -228,7 +228,7 @@ specs:
   approval_required: true
 ```
 
-When enabled, new issues go through `spec_drafting` -> `spec_review` before execution. Feliz drafts Given/When/Then scenarios and posts them to Linear for approval.
+When enabled, new issues go through `spec_drafting` -> `spec_review` before execution. Feliz drafts specs containing system design (data models, APIs, component interactions) and behavioral cases (Given/When/Then scenarios), then posts them to Linear for approval.
 
 ## Enabling feature decomposition
 

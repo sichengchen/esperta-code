@@ -29,7 +29,7 @@ No context switching. No prompting. Linear is your interface — Feliz is the en
 
 **Persistent context** — History, memory, and scratchpad layers ensure agents learn from prior runs. Conventions and decisions accumulate in the repo, not in ephemeral chat.
 
-**Spec-driven development** *(optional)* — Feliz drafts behavior specs with Given/When/Then scenarios before coding. Approve in Linear, then the agent implements against the spec.
+**Spec-driven development** *(optional)* — Feliz drafts specs (system design + behavioral cases) before coding. Approve in Linear, then the agent implements against the spec.
 
 **Feature decomposition** — Describe a large feature in one issue. Feliz breaks it into sub-issues with dependencies, creates them in Linear, and works through them in order.
 

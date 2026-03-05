@@ -125,7 +125,7 @@ Shell commands that run at specific points in the work item lifecycle. All comma
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `specs.enabled` | boolean | `false` | Enable spec-driven development. When `false`, Feliz skips all spec-related states and artifacts. |
+| `specs.enabled` | boolean | `false` | Enable spec-driven development. Specs are system design documents with behavioral cases (Given/When/Then). When `false`, Feliz skips all spec-related states and artifacts. |
 | `specs.directory` | string | `specs` | Directory in repo root where spec files are stored. |
 | `specs.approval_required` | boolean | `true` | Whether spec drafts need human approval (`@feliz approve`) before execution. |
 
