@@ -5,6 +5,17 @@ import { newId } from "../id.ts";
 import { existsSync } from "fs";
 import { join } from "path";
 
+export interface AgentConfig {
+  approval_policy: "auto" | "gated" | "suggest";
+  timeout_ms: number;
+  max_turns: number;
+}
+
+export interface HooksConfig {
+  before_run?: string;
+  after_run?: string;
+}
+
 export interface ExecuteParams {
   runId: string;
   workDir: string;
@@ -22,10 +33,23 @@ export interface ExecuteResult {
 export class PipelineExecutor {
   private db: Database;
   private adapters: Record<string, AgentAdapter>;
+  private agentConfig: AgentConfig;
+  private hooks: HooksConfig;
 
-  constructor(db: Database, adapters: Record<string, AgentAdapter>) {
+  constructor(
+    db: Database,
+    adapters: Record<string, AgentAdapter>,
+    agentConfig?: AgentConfig,
+    hooks?: HooksConfig
+  ) {
     this.db = db;
     this.adapters = adapters;
+    this.agentConfig = agentConfig ?? {
+      approval_policy: "auto",
+      timeout_ms: 600000,
+      max_turns: 20,
+    };
+    this.hooks = hooks ?? {};
   }
 
   async execute(params: ExecuteParams): Promise<ExecuteResult> {
@@ -57,8 +81,12 @@ export class PipelineExecutor {
 
             let agentResult: { status: string; exitCode: number; stdout: string } | null = null;
 
+            // Run before_run hook
+            if (this.hooks.before_run) {
+              runHook(this.hooks.before_run, params.workDir);
+            }
+
             if (step.builtin) {
-              // Handle builtin steps
               const builtinSuccess = params.onBuiltin
                 ? await params.onBuiltin(step.builtin)
                 : true;
@@ -70,12 +98,16 @@ export class PipelineExecutor {
                 builtinSuccess ? null : `Builtin "${step.builtin}" failed`
               );
 
+              // Run after_run hook
+              if (this.hooks.after_run) {
+                runHook(this.hooks.after_run, params.workDir);
+              }
+
               if (builtinSuccess) {
                 stepSucceeded = true;
                 break;
               }
             } else if (step.agent) {
-              // Run agent
               const adapter = this.adapters[step.agent];
               if (!adapter) {
                 this.db.updateStepResult(
@@ -96,13 +128,18 @@ export class PipelineExecutor {
                 runId: params.runId,
                 workDir: params.workDir,
                 prompt,
-                timeout_ms: 600000,
-                maxTurns: 20,
-                approvalPolicy: "auto",
+                timeout_ms: this.agentConfig.timeout_ms,
+                maxTurns: this.agentConfig.max_turns,
+                approvalPolicy: this.agentConfig.approval_policy,
                 env: {},
               });
 
               agentResult = result;
+
+              // Run after_run hook
+              if (this.hooks.after_run) {
+                runHook(this.hooks.after_run, params.workDir);
+              }
 
               if (result.status === "failed" || result.status === "timed_out") {
                 this.db.updateStepResult(
@@ -111,8 +148,12 @@ export class PipelineExecutor {
                   result.exitCode,
                   `Agent ${result.status}`
                 );
-                if (attempt < maxAttempts) continue; // retry
-                // Fall through to evaluate success condition
+                if (attempt < maxAttempts) continue;
+              }
+            } else {
+              // No agent, no builtin — just evaluate success condition
+              if (this.hooks.after_run) {
+                runHook(this.hooks.after_run, params.workDir);
               }
             }
 
@@ -145,12 +186,10 @@ export class PipelineExecutor {
         }
 
         if (allStepsSucceeded) {
-          break; // Phase succeeded, move to next phase
+          break;
         }
 
-        // Phase failed this cycle
         if (cycle >= maxCycles) {
-          // Exhausted all cycles
           if (phase.repeat?.on_exhaust === "pass") {
             warnings.push(
               `Phase "${phase.name}" exhausted max cycles (${maxCycles}), auto-passing`
@@ -164,12 +203,15 @@ export class PipelineExecutor {
             };
           }
         }
-        // Otherwise, loop for next cycle
       }
     }
 
     return { success: true, warnings };
   }
+}
+
+function runHook(command: string, workDir: string): void {
+  Bun.spawnSync(["sh", "-c", command], { cwd: workDir });
 }
 
 async function evaluateSuccess(
@@ -197,6 +239,5 @@ async function evaluateSuccess(
     return existsSync(filePath);
   }
 
-  // Default: agent exit code 0
   return agentResult ? agentResult.exitCode === 0 : true;
 }

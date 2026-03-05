@@ -27,7 +27,7 @@ export { ClaudeCodeAdapter } from "./agents/claude-code.ts";
 
 // Pipeline
 export { PipelineExecutor } from "./pipeline/executor.ts";
-export type { ExecuteParams, ExecuteResult } from "./pipeline/executor.ts";
+export type { ExecuteParams, ExecuteResult, AgentConfig, HooksConfig } from "./pipeline/executor.ts";
 
 // Context
 export { ContextAssembler } from "./context/assembler.ts";
