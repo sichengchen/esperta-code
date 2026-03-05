@@ -1,6 +1,6 @@
 # Agent Guide
 
-Feliz dispatches coding agents through a pluggable adapter interface. It includes a Claude Code adapter out of the box. Agent CLIs (Claude Code, Codex, etc.) must be installed and authenticated separately — Feliz never bundles proprietary software.
+Feliz dispatches coding agents through a pluggable adapter interface. It includes a Claude Code adapter out of the box. Agent CLIs (Claude Code, Codex, etc.) must be installed and authenticated separately.
 
 ## How agents work in Feliz
 
