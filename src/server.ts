@@ -5,6 +5,7 @@ import { WorkspaceManager } from "./workspace/manager.ts";
 import { Orchestrator } from "./orchestrator/orchestrator.ts";
 import { Publisher } from "./publishing/publisher.ts";
 import { ClaudeCodeAdapter } from "./agents/claude-code.ts";
+import { CodexAdapter } from "./agents/codex.ts";
 import { ContextAssembler } from "./context/assembler.ts";
 import {
   loadRepoConfig,
@@ -45,6 +46,7 @@ export class FelizServer {
     // Register adapters
     this.adapters = {
       "claude-code": new ClaudeCodeAdapter(),
+      "codex": new CodexAdapter(),
     };
   }
 

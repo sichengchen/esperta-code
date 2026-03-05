@@ -24,6 +24,7 @@ export { WorkspaceManager, sanitizeIdentifier } from "./workspace/manager.ts";
 // Agents
 export type { AgentAdapter, AgentRunParams, AgentRunResult } from "./agents/adapter.ts";
 export { ClaudeCodeAdapter } from "./agents/claude-code.ts";
+export { CodexAdapter } from "./agents/codex.ts";
 
 // Pipeline
 export { PipelineExecutor } from "./pipeline/executor.ts";
