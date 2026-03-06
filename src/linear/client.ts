@@ -16,6 +16,26 @@ export interface FetchResult {
   rateLimitLow: boolean;
 }
 
+export interface LinearProject {
+  id: string;
+  name: string;
+}
+
+const PROJECTS_QUERY = `
+query FelizListProjects($after: String) {
+  projects(
+    after: $after
+    first: 50
+    orderBy: createdAt
+  ) {
+    nodes {
+      id
+      name
+    }
+    pageInfo { hasNextPage endCursor }
+  }
+}`;
+
 const ISSUES_QUERY = `
 query FelizPollIssues($projectName: String!, $after: String) {
   issues(
@@ -54,6 +74,44 @@ export class LinearClient {
   constructor(apiKey: string, fetchFn: typeof fetch = globalThis.fetch) {
     this.apiKey = apiKey;
     this.fetch = fetchFn;
+  }
+
+  async fetchProjects(): Promise<LinearProject[]> {
+    const allProjects: LinearProject[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const response = await this.fetch("https://api.linear.app/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: this.apiKey,
+        },
+        body: JSON.stringify({
+          query: PROJECTS_QUERY,
+          variables: { after: cursor },
+        }),
+      });
+
+      const json = (await response.json()) as {
+        data: {
+          projects: {
+            nodes: { id: string; name: string }[];
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          };
+        };
+      };
+
+      const { nodes, pageInfo } = json.data.projects;
+
+      for (const node of nodes) {
+        allProjects.push({ id: node.id, name: node.name });
+      }
+
+      cursor = pageInfo.hasNextPage ? pageInfo.endCursor : null;
+    } while (cursor !== null);
+
+    return allProjects;
   }
 
   async fetchProjectIssues(projectName: string): Promise<FetchResult> {
