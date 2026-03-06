@@ -8,7 +8,7 @@ Assign a Linear issue to Feliz (or `@Feliz` mention) and it runs a configurable 
 
 ## Quick start
 
-Install the [`feliz-setup`](skills/feliz-setup/SKILL.md) and [`feliz-add-project`](skills/feliz-add-project/SKILL.md) Claude Code skills, then:
+You can use the [`feliz-setup`](skills/feliz-setup/SKILL.md) and [`feliz-add-project`](skills/feliz-add-project/SKILL.md) agent skills:
 
 1. **`feliz-setup`** — installs Feliz, configures credentials (Linear OAuth, GitHub token), writes `feliz.yml`, starts the daemon
 2. **`feliz-add-project`** — adds a repo, configures `.feliz/pipeline.yml`, prompt templates, and `WORKFLOW.md`
@@ -24,6 +24,13 @@ export GITHUB_TOKEN="ghp_..."
 
 bun run src/cli/index.ts init    # interactive setup
 bun run src/cli/index.ts start   # start daemon
+```
+
+Or with Docker:
+
+```bash
+cp .env.example .env   # fill in credentials
+docker compose up -d --build
 ```
 
 ## CLI
