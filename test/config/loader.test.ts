@@ -112,6 +112,8 @@ describe("loadFelizProjectAddConfig", () => {
     const yaml = `
 linear:
   api_key: test-key
+agent:
+  default: codex
 projects: []
 storage:
   workspace_root: /tmp/feliz-workspaces
@@ -119,6 +121,17 @@ storage:
     const config = loadFelizProjectAddConfig(yaml);
     expect(config.linear.api_key).toBe("test-key");
     expect(config.storage.workspace_root).toBe("/tmp/feliz-workspaces");
+    expect(config.agent.default).toBe("codex");
+  });
+
+  test("uses default scaffold adapter when agent.default is missing", () => {
+    const yaml = `
+linear:
+  api_key: test-key
+projects: []
+`;
+    const config = loadFelizProjectAddConfig(yaml);
+    expect(config.agent.default).toBe("claude-code");
   });
 
   test("throws when linear.api_key is missing", () => {

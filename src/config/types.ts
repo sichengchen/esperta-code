@@ -20,6 +20,9 @@ export interface ProjectAddConfig {
   linear: {
     api_key: string;
   };
+  agent: {
+    default: string;
+  };
   storage: {
     workspace_root: string;
   };

@@ -82,12 +82,16 @@ export function loadFelizProjectAddConfig(yamlContent: string): ProjectAddConfig
   }
 
   const linear = raw.linear as Record<string, unknown>;
+  const agent = (raw.agent as Record<string, unknown>) || {};
   const storage = (raw.storage as Record<string, unknown>) || {};
   const defaultDataDir = join(homedir(), ".feliz");
 
   return {
     linear: {
       api_key: resolveEnvVars(linear.api_key as string),
+    },
+    agent: {
+      default: (agent.default as string) || "claude-code",
     },
     storage: {
       workspace_root:

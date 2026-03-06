@@ -19,16 +19,21 @@ function makeDeps(overrides: Partial<WizardDeps> = {}): WizardDeps {
     ]) as any,
     cloneRepo: mock(async (_name: string, _url: string) => "/tmp/repo") as any,
     repoHasFelizConfig: mock((_path: string) => false) as any,
+    writeRepoScaffoldWithAgent: mock(async (_path: string, _adapter: string, _answers: any) => ({
+      success: false,
+      reason: "adapter unavailable",
+    })) as any,
     writeRepoScaffold: mock((_path: string, _answers: any) => {}) as any,
     gitCommitAndPush: mock((_path: string, _branch: string) => {}) as any,
     addProjectToConfig: mock((_path: string, _project: any) => {}) as any,
+    defaultScaffoldAdapter: "claude-code",
     configPath: "/tmp/feliz.yml",
     ...overrides,
   };
 }
 
 describe("runProjectAddWizard", () => {
-  test("happy path: fetches projects, selects, clones, scaffolds, pushes, adds to config", async () => {
+  test("happy path: fetches projects, selects, falls back to template scaffold, pushes, adds to config", async () => {
     // Answers: select project "1", repo URL, branch default, scaffold answers, push yes
     let promptIdx = 0;
     const answers = [
@@ -52,6 +57,7 @@ describe("runProjectAddWizard", () => {
     expect(deps.fetchProjects).toHaveBeenCalledTimes(1);
     expect(deps.cloneRepo).toHaveBeenCalledWith("backend-api", "git@github.com:org/backend-api.git");
     expect(deps.repoHasFelizConfig).toHaveBeenCalledWith("/tmp/repo");
+    expect(deps.writeRepoScaffoldWithAgent).toHaveBeenCalledTimes(1);
     expect(deps.writeRepoScaffold).toHaveBeenCalledTimes(1);
     expect(deps.gitCommitAndPush).toHaveBeenCalledWith("/tmp/repo", "main");
     expect(deps.addProjectToConfig).toHaveBeenCalledTimes(1);
@@ -79,6 +85,7 @@ describe("runProjectAddWizard", () => {
 
     await runProjectAddWizard(deps);
 
+    expect(deps.writeRepoScaffoldWithAgent).not.toHaveBeenCalled();
     expect(deps.writeRepoScaffold).not.toHaveBeenCalled();
     expect(deps.gitCommitAndPush).not.toHaveBeenCalled();
     expect(deps.addProjectToConfig).toHaveBeenCalledTimes(1);
@@ -107,9 +114,35 @@ describe("runProjectAddWizard", () => {
 
     await runProjectAddWizard(deps);
 
+    expect(deps.writeRepoScaffoldWithAgent).toHaveBeenCalledTimes(1);
     expect(deps.writeRepoScaffold).toHaveBeenCalledTimes(1);
     expect(deps.gitCommitAndPush).not.toHaveBeenCalled();
     expect(deps.addProjectToConfig).toHaveBeenCalledTimes(1);
+  });
+
+  test("uses agent scaffold when available and successful", async () => {
+    let promptIdx = 0;
+    const answers = [
+      "1",
+      "git@github.com:org/backend-api.git",
+      "",
+      "claude-code",
+      "y",
+      "bun test",
+      "bun run lint",
+      "n",
+    ];
+    const promptFn = mock((_msg: string) => answers[promptIdx++] ?? null);
+
+    const deps = makeDeps({
+      prompt: promptFn as any,
+      writeRepoScaffoldWithAgent: mock(async () => ({ success: true })) as any,
+    });
+
+    await runProjectAddWizard(deps);
+
+    expect(deps.writeRepoScaffoldWithAgent).toHaveBeenCalledTimes(1);
+    expect(deps.writeRepoScaffold).not.toHaveBeenCalled();
   });
 
   test("throws on invalid project selection", async () => {

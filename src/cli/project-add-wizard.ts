@@ -9,6 +9,11 @@ export interface WizardDeps {
   fetchProjects: () => Promise<LinearProject[]>;
   cloneRepo: (projectName: string, repoUrl: string) => Promise<string>;
   repoHasFelizConfig: (repoPath: string) => boolean;
+  writeRepoScaffoldWithAgent: (
+    repoPath: string,
+    adapterName: string,
+    answers: RepoScaffoldAnswers
+  ) => Promise<{ success: boolean; reason?: string }>;
   writeRepoScaffold: (repoPath: string, answers: RepoScaffoldAnswers) => void;
   gitCommitAndPush: (repoPath: string, branch: string) => void;
   addProjectToConfig: (
@@ -20,6 +25,7 @@ export interface WizardDeps {
       branch: string;
     }
   ) => void;
+  defaultScaffoldAdapter: string;
   configPath: string;
 }
 
@@ -59,21 +65,35 @@ export async function runProjectAddWizard(deps: WizardDeps): Promise<void> {
   if (deps.repoHasFelizConfig(repoPath)) {
     console.log("Found existing .feliz/ config, skipping scaffold.");
   } else {
-    const agentAdapter = deps.prompt("Agent adapter (claude-code):") || "claude-code";
+    const scaffoldAdapter =
+      deps.prompt(`Scaffold adapter (${deps.defaultScaffoldAdapter}):`) ||
+      deps.defaultScaffoldAdapter;
     const specsInput = deps.prompt("Enable specs? [y/N]:");
     const specsEnabled = specsInput?.toLowerCase() === "y";
     const testCommand = deps.prompt("Test command (optional):") || undefined;
     const lintCommand = deps.prompt("Lint command (optional):") || undefined;
 
     const scaffoldAnswers: RepoScaffoldAnswers = {
-      agentAdapter,
+      agentAdapter: scaffoldAdapter,
       specsEnabled,
       testCommand,
       lintCommand,
     };
 
-    deps.writeRepoScaffold(repoPath, scaffoldAnswers);
-    console.log("Created .feliz/ config and WORKFLOW.md");
+    const scaffoldResult = await deps.writeRepoScaffoldWithAgent(
+      repoPath,
+      scaffoldAdapter,
+      scaffoldAnswers
+    );
+    if (scaffoldResult.success) {
+      console.log(`Generated .feliz/ with ${scaffoldAdapter}.`);
+    } else {
+      console.log(
+        `Agent scaffold unavailable (${scaffoldResult.reason ?? "unknown error"}); using template scaffold.`
+      );
+      deps.writeRepoScaffold(repoPath, scaffoldAnswers);
+      console.log("Created .feliz/ config and WORKFLOW.md");
+    }
 
     const pushInput = deps.prompt("Commit and push .feliz/ config? [Y/n]:");
     if (pushInput?.toLowerCase() !== "n") {

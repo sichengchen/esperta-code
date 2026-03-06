@@ -4,9 +4,11 @@ import { join } from "path";
 import { tmpdir } from "os";
 import {
   writeRepoScaffold,
+  writeRepoScaffoldWithAgent,
   repoHasFelizConfig,
   gitCommitAndPush,
 } from "../../src/cli/repo-scaffold.ts";
+import type { AgentAdapter } from "../../src/agents/adapter.ts";
 
 const TEST_DIR = join(tmpdir(), "feliz-scaffold-test");
 
@@ -101,5 +103,77 @@ describe("gitCommitAndPush", () => {
     // Verify push succeeded by checking bare repo
     const bareLog = Bun.spawnSync(["git", "log", "--oneline", "main"], { cwd: BARE_DIR });
     expect(bareLog.stdout.toString()).toContain("feliz");
+  });
+});
+
+describe("writeRepoScaffoldWithAgent", () => {
+  beforeEach(() => {
+    if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
+  });
+
+  afterEach(() => {
+    if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
+  });
+
+  test("returns fallback reason when adapter is unavailable", async () => {
+    const adapter: AgentAdapter = {
+      name: "claude-code",
+      isAvailable: async () => false,
+      execute: async () => {
+        throw new Error("should not run");
+      },
+      cancel: async () => {},
+    };
+
+    const result = await writeRepoScaffoldWithAgent(
+      TEST_DIR,
+      adapter,
+      "claude-code",
+      {
+        agentAdapter: "claude-code",
+        specsEnabled: false,
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toContain("not available");
+  });
+
+  test("returns success when agent generates valid scaffold files", async () => {
+    const adapter: AgentAdapter = {
+      name: "claude-code",
+      isAvailable: async () => true,
+      execute: async () => {
+        writeRepoScaffold(TEST_DIR, {
+          agentAdapter: "claude-code",
+          specsEnabled: true,
+          testCommand: "bun test",
+        });
+        return {
+          status: "succeeded",
+          exitCode: 0,
+          stdout: "ok",
+          stderr: "",
+          filesChanged: [".feliz/config.yml", ".feliz/pipeline.yml", "WORKFLOW.md"],
+        };
+      },
+      cancel: async () => {},
+    };
+
+    const result = await writeRepoScaffoldWithAgent(
+      TEST_DIR,
+      adapter,
+      "claude-code",
+      {
+        agentAdapter: "claude-code",
+        specsEnabled: true,
+        testCommand: "bun test",
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".feliz", "config.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".feliz", "pipeline.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, "WORKFLOW.md"))).toBe(true);
   });
 });

@@ -359,20 +359,47 @@ async function main() {
       const { LinearClient } = await import("../linear/client.ts");
       const { WorkspaceManager } = await import("../workspace/manager.ts");
       const { addProjectToConfig } = await import("./project.ts");
-      const { repoHasFelizConfig, writeRepoScaffold, gitCommitAndPush } = await import("./repo-scaffold.ts");
+      const {
+        repoHasFelizConfig,
+        writeRepoScaffold,
+        writeRepoScaffoldWithAgent,
+        gitCommitAndPush,
+      } = await import("./repo-scaffold.ts");
+      const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
+      const { CodexAdapter } = await import("../agents/codex.ts");
       const { runProjectAddWizard } = await import("./project-add-wizard.ts");
 
       const linearClient = new LinearClient(config.linear.api_key);
       const workspace = new WorkspaceManager(config.storage.workspace_root);
+      const adapters = {
+        "claude-code": new ClaudeCodeAdapter(),
+        codex: new CodexAdapter(),
+      };
 
       await runProjectAddWizard({
         prompt: globalThis.prompt,
         fetchProjects: () => linearClient.fetchProjects(),
         cloneRepo: (name, url) => workspace.cloneRepo(name, url),
         repoHasFelizConfig,
+        writeRepoScaffoldWithAgent: async (repoPath, adapterName, answers) => {
+          const adapter = adapters[adapterName as keyof typeof adapters];
+          if (!adapter) {
+            return {
+              success: false,
+              reason: `unknown adapter "${adapterName}"`,
+            };
+          }
+          return writeRepoScaffoldWithAgent(
+            repoPath,
+            adapter,
+            adapterName,
+            answers
+          );
+        },
         writeRepoScaffold,
         gitCommitAndPush,
         addProjectToConfig,
+        defaultScaffoldAdapter: config.agent.default,
         configPath,
       });
     } catch (e: any) {
