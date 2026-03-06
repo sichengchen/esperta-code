@@ -29,9 +29,13 @@ Commands:
   agent list               List installed agents
   context history <proj>   Show history events
   context show <item>      Show context snapshot
+  e2e doctor               Validate local E2E prerequisites
+  e2e smoke                Run automated E2E smoke checks
 
 Options:
   --config <path>          Path to feliz.yml (default: ~/.feliz/feliz.yml)
+  --json                   Print report as JSON (for e2e commands)
+  --out <path>             Write report JSON to file (for e2e commands)
   --help                   Show this help
 `.trim();
 
@@ -484,6 +488,19 @@ async function main() {
     const config = loadConfig(configPath);
     const server = new FelizServer(config);
     await server.start();
+    return;
+  }
+
+  if (cmd.command === "e2e") {
+    const { runE2ECommand } = await import("./e2e.ts");
+    const ok = runE2ECommand({
+      subcommand: cmd.subcommand,
+      configPath,
+      flags: cmd.flags,
+    });
+    if (!ok) {
+      process.exit(1);
+    }
     return;
   }
 

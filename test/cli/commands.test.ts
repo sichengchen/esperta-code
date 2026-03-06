@@ -66,6 +66,18 @@ describe("CLI parseArgs", () => {
     expect(cmd.args).toEqual(["backend"]);
   });
 
+  test("parses 'e2e smoke' command", () => {
+    const cmd = parseArgs(["e2e", "smoke"]);
+    expect(cmd.command).toBe("e2e");
+    expect(cmd.subcommand).toBe("smoke");
+  });
+
+  test("parses 'e2e doctor' command", () => {
+    const cmd = parseArgs(["e2e", "doctor"]);
+    expect(cmd.command).toBe("e2e");
+    expect(cmd.subcommand).toBe("doctor");
+  });
+
   test("parses --config flag", () => {
     const cmd = parseArgs(["--config", "/path/to/feliz.yml", "start"]);
     expect(cmd.command).toBe("start");
