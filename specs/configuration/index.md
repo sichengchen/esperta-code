@@ -159,10 +159,13 @@ phases:
   - name: publish
     steps:
       - name: final_check
+        agent: claude-code
+        prompt: .feliz/prompts/final_check.md
         success:
           command: "npm run lint && npm test"
       - name: create_pr
-        builtin: publish
+        agent: claude-code
+        prompt: .feliz/prompts/publish.md
 ```
 
 **Pipeline schema**:
@@ -175,11 +178,10 @@ phases:
 | `phases[].repeat.on_exhaust` | `pass` \| `fail` | Behavior when max cycles reached without success. `pass` = continue with warning. `fail` = abort run. |
 | `phases[].steps[]` | array | Ordered list of steps within the phase. |
 | `phases[].steps[].name` | string | Unique step name. |
-| `phases[].steps[].agent` | string | Agent adapter to use (overrides repo default). Optional — omit for non-agent steps. |
+| `phases[].steps[].agent` | string | Agent adapter to use (overrides repo default). Every step is an agent call. |
 | `phases[].steps[].prompt` | string | Path to prompt template file (relative to repo root). Falls back to `WORKFLOW.md` if omitted. |
-| `phases[].steps[].success` | object | Success condition for this step (see below). |
+| `phases[].steps[].success` | object | Optional post-agent validation condition (see below). |
 | `phases[].steps[].max_attempts` | number | Max retries for this individual step (default: 1). Step is re-run with failure context on each retry. |
-| `phases[].steps[].builtin` | string | Built-in Feliz action instead of agent dispatch (e.g., `publish`). |
 
 **Success condition types**:
 
@@ -204,8 +206,8 @@ phases:
         prompt: WORKFLOW.md
         success:
           command: "{gates.test_command}"  # from config.yml, if set
-      - name: create_pr
-        builtin: publish
+      - name: publish
+        prompt: .feliz/prompts/publish.md
 ```
 
 ### `WORKFLOW.md`
