@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, rmSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { addProjectToConfig, removeProjectFromConfig } from "../../src/cli/project.ts";
+import { addProjectToConfig, removeProjectFromConfig, projectNameFromRepoUrl } from "../../src/cli/project.ts";
 
 const TEST_DIR = join(tmpdir(), "feliz-project-test");
 const CONFIG_PATH = join(TEST_DIR, "feliz.yml");
@@ -96,6 +96,37 @@ describe("project add/remove", () => {
     expect(content).toContain("develop");
   });
 
+});
+
+describe("projectNameFromRepoUrl", () => {
+  test("extracts name from SSH URL", () => {
+    expect(projectNameFromRepoUrl("git@github.com:org/payments-service.git")).toBe("payments-service");
+  });
+
+  test("extracts name from HTTPS URL", () => {
+    expect(projectNameFromRepoUrl("https://github.com/org/payments-service.git")).toBe("payments-service");
+  });
+
+  test("handles URL without .git suffix", () => {
+    expect(projectNameFromRepoUrl("https://github.com/org/payments-service")).toBe("payments-service");
+  });
+
+  test("returns empty string for invalid URL", () => {
+    expect(projectNameFromRepoUrl("")).toBe("");
+    expect(projectNameFromRepoUrl("not-a-url")).toBe("not-a-url");
+  });
+});
+
+describe("project add/remove edge cases", () => {
+  beforeEach(() => {
+    mkdirSync(TEST_DIR, { recursive: true });
+    writeFileSync(CONFIG_PATH, SAMPLE_CONFIG);
+  });
+
+  afterEach(() => {
+    rmSync(TEST_DIR, { recursive: true, force: true });
+  });
+
   test("addProjectToConfig omits branch when main", () => {
     addProjectToConfig(CONFIG_PATH, {
       name: "mobile",
@@ -104,9 +135,6 @@ describe("project add/remove", () => {
       branch: "main",
     });
     const content = readFileSync(CONFIG_PATH, "utf-8");
-    // The "main" branch is the default so should not be explicitly written
-    // (the word "main" appears in the original config's base_branch default,
-    //  but should not appear as a branch value for the new project entry)
     const lines = content.split("\n");
     const mobileIdx = lines.findIndex((l) => l.includes("mobile"));
     const mobileSectionEnd = lines.findIndex((l, i) => i > mobileIdx && l.trim().startsWith("-"));

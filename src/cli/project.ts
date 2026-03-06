@@ -1,6 +1,14 @@
 import { readFileSync, writeFileSync } from "fs";
 import { parse, stringify } from "yaml";
 
+export function projectNameFromRepoUrl(url: string): string {
+  if (!url) return "";
+  const stripped = url.replace(/\.git$/, "");
+  const sshMatch = stripped.match(/[:/]([^/]+)$/);
+  if (sshMatch) return sshMatch[1]!;
+  return stripped;
+}
+
 interface ProjectEntry {
   name: string;
   repo: string;
