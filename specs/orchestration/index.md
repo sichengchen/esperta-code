@@ -146,6 +146,42 @@ Dispatch eligibility requires:
 
 Priority ordering for dispatch queue: `priority ASC` (1=urgent first), then `created_at ASC`.
 
+## Poll-Cycle Progression
+
+In each poll cycle, for each project, Feliz executes orchestration progression in this order:
+
+1. Transition `unclaimed` items to their first orchestration state.
+2. Process `decomposing` items via the Decomposition Engine (`decomposing -> decompose_review` on success).
+3. Process `spec_drafting` items via the Spec Engine (`spec_drafting -> spec_review` on success, or auto-approve to `queued` when `specs.approval_required: false`).
+4. Promote retry-ready `retry_queued` items back to `queued`.
+5. Dispatch eligible `queued` items to `running`.
+
+## Behavioral Scenarios
+
+### Scenario: Spec Drafting Progression
+
+- **Given** a work item in `spec_drafting` and `specs.enabled: true`
+- **When** a poll cycle runs
+- **Then** Feliz invokes the Spec Engine and advances the item to `spec_review` on successful draft generation
+
+### Scenario: Decomposition Progression
+
+- **Given** a work item in `decomposing`
+- **When** a poll cycle runs
+- **Then** Feliz invokes the Decomposition Engine and advances the item to `decompose_review` on successful proposal generation
+
+### Scenario: Per-State Concurrency Enforcement
+
+- **Given** `concurrency.max_per_state` limits a Linear issue state and running items already consume that limit
+- **When** queued items in the same Linear state are considered for dispatch
+- **Then** those queued items remain `queued` until capacity is available
+
+### Scenario: Parent Auto-Completion
+
+- **Given** a parent work item in `decompose_review` with child work items
+- **When** the final child transitions to `completed`
+- **Then** Feliz auto-transitions the parent to `completed` and records `parent.auto_completed`
+
 ## Approval Gates
 
 Configurable via `agent.approval_policy` in `.feliz/config.yml`:

@@ -23,3 +23,17 @@ Worktree path safety: identifier is sanitized to `[A-Za-z0-9._-]` (other chars r
 Default: `feliz/{linear_identifier}` (e.g., `feliz/BAC-123`)
 
 Configurable via WORKFLOW.md front matter (future extension).
+
+## Behavioral Scenarios
+
+### Scenario: Worktree-Scoped Execution
+
+- **Given** a queued work item is dispatched
+- **When** Feliz executes the pipeline
+- **Then** the agent runs in that work item's dedicated worktree path
+
+### Scenario: Worktree Hook and Cleanup
+
+- **Given** `hooks.after_create` and/or `hooks.before_remove` are configured
+- **When** a worktree is created and later torn down
+- **Then** Feliz runs `after_create` in the worktree before agent execution and `before_remove` before `git worktree remove`

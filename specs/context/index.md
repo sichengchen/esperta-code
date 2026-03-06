@@ -13,6 +13,8 @@ Before each agent run, Feliz assembles a context payload by:
 4. **Budgeting** to fit within the agent's token window
 5. **Recording** the assembled set as a ContextSnapshot (manifest)
 
+Each snapshot is recorded with the run ID that consumed it, so run records and snapshot manifests are directly traceable in both directions.
+
 ## Context Storage
 
 Each layer lives in a different location, optimized for its access pattern:
@@ -43,3 +45,11 @@ Promotion is either automatic (if `specs.approval_required: false`) or requires 
 ---
 
 See [Context Lifecycle](lifecycle.md) for detailed lifecycle of each layer.
+
+## Behavioral Scenario
+
+### Scenario: Snapshot Traceability
+
+- **Given** a run is created for a work item
+- **When** Feliz assembles and stores context for that run
+- **Then** the stored `ContextSnapshot.run_id` equals the `Run.id` that references the snapshot

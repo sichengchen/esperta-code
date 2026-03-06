@@ -187,6 +187,21 @@ State and label changes are detected during the poll cycle (GraphQL). Comment co
 
 State transitions are configurable per-workflow in `.feliz/config.yml`.
 
+## GraphQL Mutation Safety
+
+All Linear GraphQL mutations must pass dynamic user/operator values via GraphQL `variables` rather than string interpolation in the query body.
+
+This applies to operations including:
+
+- `issueUpdate` (issue ID, target state ID)
+- `commentCreate` (issue ID, comment body)
+
+### Scenario: Comment Body With Special Characters
+
+- **Given** a comment body containing quotes and newlines
+- **When** Feliz sends `commentCreate`
+- **Then** the raw body is passed through GraphQL variables without manual escaping logic in the query string
+
 ## Future: GitHub Issues as alternative
 
 The Chat SDK also provides `@chat-adapter/github`, which supports mentions and comments on GitHub Issues and PRs. This means Feliz could support GitHub Issues as a project management interface with:
