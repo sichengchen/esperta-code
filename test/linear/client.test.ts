@@ -348,7 +348,7 @@ describe("LinearClient.fetchProjects", () => {
     );
     const client = new LinearClient("my-secret-key", authFetch as unknown as typeof fetch);
     await client.fetchProjects();
-    const call = authFetch.mock.calls[0];
-    expect(call![1].headers["Authorization"]).toBe("my-secret-key");
+    const call = authFetch.mock.calls[0] as any[];
+    expect(call[1].headers["Authorization"]).toBe("my-secret-key");
   });
 });
