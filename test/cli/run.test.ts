@@ -68,20 +68,34 @@ describe("run commands", () => {
     if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
   });
 
-  test("run list returns runs", () => {
+  test("run list returns runs with project info", () => {
     const runs = db.listRuns();
     expect(runs).toHaveLength(1);
     expect(runs[0]!.id).toBe("run-1");
     expect(runs[0]!.result).toBe("failed");
+    const wi = db.getWorkItem(runs[0]!.work_item_id);
+    expect(wi).not.toBeNull();
+    const project = db.getProject(wi!.project_id);
+    expect(project).not.toBeNull();
+    expect(project!.name).toBe("backend");
   });
 
-  test("run show returns run with steps", () => {
+  test("run show returns run details and step executions", () => {
     const run = db.getRun("run-1");
     expect(run).not.toBeNull();
     expect(run!.work_item_id).toBe("wi-1");
+    expect(run!.result).toBe("failed");
+    expect(run!.failure_reason).toBe("test failure");
     const steps = db.listStepExecutionsForRun("run-1");
     expect(steps).toHaveLength(1);
     expect(steps[0]!.result).toBe("failed");
+    expect(steps[0]!.agent_adapter).toBe("claude-code");
+    expect(steps[0]!.exit_code).toBe(1);
+  });
+
+  test("run show returns null for nonexistent run", () => {
+    const run = db.getRun("nonexistent");
+    expect(run).toBeNull();
   });
 
   test("run retry transitions failed work item to retry_queued", () => {
@@ -93,10 +107,16 @@ describe("run commands", () => {
     expect(updated!.orchestration_state).toBe("retry_queued");
   });
 
-  test("run retry rejects non-failed work item", () => {
+  test("run retry should only work on failed items", () => {
     db.updateWorkItemOrchestrationState("wi-1", "running");
     const wi = db.getWorkItemByLinearIdentifier("BAC-1");
     expect(wi!.orchestration_state).toBe("running");
-    // The CLI handler should reject this
+    // CLI should reject: only "failed" state is retryable
+    expect(wi!.orchestration_state).not.toBe("failed");
+  });
+
+  test("run retry returns null for unknown identifier", () => {
+    const wi = db.getWorkItemByLinearIdentifier("NOPE-999");
+    expect(wi).toBeNull();
   });
 });

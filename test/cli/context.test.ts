@@ -89,4 +89,75 @@ describe("context commands", () => {
     const snap = db.getLatestSnapshotForWorkItem("nonexistent");
     expect(snap).toBeNull();
   });
+
+  test("context show displays artifact details", () => {
+    db.insertRun({
+      id: "run-1",
+      work_item_id: "wi-1",
+      attempt: 1,
+      current_phase: "execute",
+      current_step: "run",
+      context_snapshot_id: "snap-1",
+    });
+    db.insertContextSnapshot({
+      id: "snap-1",
+      run_id: "run-1",
+      work_item_id: "wi-1",
+      artifact_refs: [
+        { artifact_id: "a1", path: "src/auth.ts", content_hash: "abc", version: 1, purpose: "implementation" },
+        { artifact_id: "a2", path: "specs/auth.md", content_hash: "def", version: 1, purpose: "spec" },
+      ],
+      token_budget: { max_input: 100000, reserved_system: 5000 },
+    });
+    const snap = db.getLatestSnapshotForWorkItem("wi-1");
+    expect(snap).not.toBeNull();
+    expect(snap!.artifact_refs).toHaveLength(2);
+    expect(snap!.artifact_refs[0]!.purpose).toBe("implementation");
+    expect(snap!.artifact_refs[1]!.purpose).toBe("spec");
+  });
+
+  test("context history filters by work item when provided", () => {
+    db.upsertWorkItem({
+      id: "wi-2",
+      linear_id: "lin-2",
+      linear_identifier: "BAC-2",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Other task",
+      description: "",
+      state: "Todo",
+      priority: 2,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+    db.appendHistory({
+      id: "h-1",
+      project_id: "proj-1",
+      work_item_id: "wi-1",
+      run_id: null,
+      event_type: "issue.discovered",
+      payload: { title: "Add login" },
+    });
+    db.appendHistory({
+      id: "h-2",
+      project_id: "proj-1",
+      work_item_id: "wi-2",
+      run_id: null,
+      event_type: "issue.discovered",
+      payload: { title: "Other task" },
+    });
+    // All history for project
+    const all = db.getHistory("proj-1");
+    expect(all).toHaveLength(2);
+    // Filtered by work item
+    const filtered = db.getHistory("proj-1", "wi-1");
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]!.work_item_id).toBe("wi-1");
+  });
+
+  test("getProjectByName returns null for missing project", () => {
+    const project = db.getProjectByName("nonexistent");
+    expect(project).toBeNull();
+  });
 });

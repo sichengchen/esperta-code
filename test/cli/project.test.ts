@@ -66,4 +66,52 @@ describe("project add/remove", () => {
       })
     ).toThrow("already exists");
   });
+
+  test("added config round-trips through loadFelizConfig", async () => {
+    const { loadFelizConfig } = await import("../../src/config/loader.ts");
+    addProjectToConfig(CONFIG_PATH, {
+      name: "frontend",
+      repo: "git@github.com:org/frontend.git",
+      linear_project: "Frontend",
+      branch: "develop",
+    });
+    const content = readFileSync(CONFIG_PATH, "utf-8");
+    const config = loadFelizConfig(content);
+    expect(config.projects).toHaveLength(2);
+    const fe = config.projects.find((p) => p.name === "frontend");
+    expect(fe).not.toBeUndefined();
+    expect(fe!.repo).toBe("git@github.com:org/frontend.git");
+    expect(fe!.linear_project).toBe("Frontend");
+    expect(fe!.branch).toBe("develop");
+  });
+
+  test("addProjectToConfig includes non-default branch", () => {
+    addProjectToConfig(CONFIG_PATH, {
+      name: "mobile",
+      repo: "git@github.com:org/mobile.git",
+      linear_project: "Mobile",
+      branch: "develop",
+    });
+    const content = readFileSync(CONFIG_PATH, "utf-8");
+    expect(content).toContain("develop");
+  });
+
+  test("addProjectToConfig omits branch when main", () => {
+    addProjectToConfig(CONFIG_PATH, {
+      name: "mobile",
+      repo: "git@github.com:org/mobile.git",
+      linear_project: "Mobile",
+      branch: "main",
+    });
+    const content = readFileSync(CONFIG_PATH, "utf-8");
+    // The "main" branch is the default so should not be explicitly written
+    // (the word "main" appears in the original config's base_branch default,
+    //  but should not appear as a branch value for the new project entry)
+    const lines = content.split("\n");
+    const mobileIdx = lines.findIndex((l) => l.includes("mobile"));
+    const mobileSectionEnd = lines.findIndex((l, i) => i > mobileIdx && l.trim().startsWith("-"));
+    const mobileSection = lines.slice(mobileIdx, mobileSectionEnd === -1 ? undefined : mobileSectionEnd);
+    const hasBranch = mobileSection.some((l) => l.includes("branch"));
+    expect(hasBranch).toBe(false);
+  });
 });
