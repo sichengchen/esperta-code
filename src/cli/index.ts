@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from "./commands.ts";
-import { loadFelizConfig } from "../config/loader.ts";
+import { loadFelizConfig, loadFelizProjectAddConfig } from "../config/loader.ts";
 import { Database } from "../db/database.ts";
 import { createLogger } from "../logger/index.ts";
 import { readFileSync, existsSync } from "fs";
@@ -42,6 +42,15 @@ function loadConfig(configPath: string) {
   }
   const content = readFileSync(configPath, "utf-8");
   return loadFelizConfig(content);
+}
+
+function loadProjectAddConfig(configPath: string) {
+  if (!existsSync(configPath)) {
+    console.error(`Config file not found: ${configPath}`);
+    process.exit(1);
+  }
+  const content = readFileSync(configPath, "utf-8");
+  return loadFelizProjectAddConfig(content);
 }
 
 function openDb(configPath: string) {
@@ -346,7 +355,7 @@ async function main() {
         console.error("Config file not found. Run `feliz init` first.");
         process.exit(1);
       }
-      const config = loadConfig(configPath);
+      const config = loadProjectAddConfig(configPath);
       const { LinearClient } = await import("../linear/client.ts");
       const { WorkspaceManager } = await import("../workspace/manager.ts");
       const { addProjectToConfig } = await import("./project.ts");

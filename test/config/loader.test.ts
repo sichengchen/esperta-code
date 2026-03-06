@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   loadFelizConfig,
+  loadFelizProjectAddConfig,
   resolveEnvVars,
   loadRepoConfig,
   loadPipelineConfig,
@@ -103,6 +104,30 @@ projects:
   - name: x
 `;
     expect(() => loadFelizConfig(yaml)).toThrow("repo is required");
+  });
+});
+
+describe("loadFelizProjectAddConfig", () => {
+  test("parses config required for project add when projects is empty", () => {
+    const yaml = `
+linear:
+  api_key: test-key
+projects: []
+storage:
+  workspace_root: /tmp/feliz-workspaces
+`;
+    const config = loadFelizProjectAddConfig(yaml);
+    expect(config.linear.api_key).toBe("test-key");
+    expect(config.storage.workspace_root).toBe("/tmp/feliz-workspaces");
+  });
+
+  test("throws when linear.api_key is missing", () => {
+    const yaml = `
+projects: []
+`;
+    expect(() => loadFelizProjectAddConfig(yaml)).toThrow(
+      "linear.api_key is required"
+    );
   });
 });
 

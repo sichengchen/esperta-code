@@ -4,6 +4,7 @@ import { join } from "path";
 import type {
   FelizConfig,
   ProjectConfig,
+  ProjectAddConfig,
   RepoConfig,
   PipelineDefinition,
 } from "./types.ts";
@@ -70,6 +71,29 @@ export function loadFelizConfig(yamlContent: string): FelizConfig {
       max_concurrent: (agent.max_concurrent as number) || 5,
     },
     projects,
+  };
+}
+
+export function loadFelizProjectAddConfig(yamlContent: string): ProjectAddConfig {
+  const raw = parse(yamlContent) as Record<string, unknown>;
+
+  if (!raw?.linear || !(raw.linear as Record<string, unknown>)?.api_key) {
+    throw new Error("linear.api_key is required");
+  }
+
+  const linear = raw.linear as Record<string, unknown>;
+  const storage = (raw.storage as Record<string, unknown>) || {};
+  const defaultDataDir = join(homedir(), ".feliz");
+
+  return {
+    linear: {
+      api_key: resolveEnvVars(linear.api_key as string),
+    },
+    storage: {
+      workspace_root:
+        (storage.workspace_root as string) ||
+        join((storage.data_dir as string) || defaultDataDir, "workspaces"),
+    },
   };
 }
 

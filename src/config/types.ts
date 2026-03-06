@@ -16,6 +16,15 @@ export interface FelizConfig {
   projects: ProjectConfig[];
 }
 
+export interface ProjectAddConfig {
+  linear: {
+    api_key: string;
+  };
+  storage: {
+    workspace_root: string;
+  };
+}
+
 export interface ProjectConfig {
   name: string;
   repo: string;
