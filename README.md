@@ -1,158 +1,94 @@
 # Feliz
 
-Feliz is a self-hosted cloud agents platform.
+Turn Linear issues into merged pull requests. Feliz is a self-hosted platform that orchestrates coding agents (Claude Code, Codex) through configurable pipelines — from issue discovery to PR delivery.
 
-It turns Linear issues into pull requests by orchestrating coding agents, repository worktrees, test/lint gates, and publishing.
+## How it works
 
-## What Feliz does
+```
+Linear issue created
+  → Feliz polls and claims it
+  → Creates isolated git worktree
+  → Runs multi-step agent pipeline
+  → Executes test/lint gates
+  → Opens pull request
+  → Updates Linear with results
+```
 
-1. Polls Linear projects for issue changes.
-2. Tracks each issue as a `WorkItem` with an orchestration state.
-3. Creates isolated git worktrees per run.
-4. Runs agent pipelines from repo config (`.feliz/pipeline.yml`).
-5. Publishes PRs and stores run/history/context artifacts.
+No dashboard needed. Linear is the interface.
 
-Runtime: Bun + TypeScript
-Persistence: SQLite + filesystem + git repos
-
-## Use Feliz (Operator Flow)
-
-This is the shortest path to actually use it:
-
-1. Run bootstrap once: `bun run e2e:real -- --env-file scripts/e2e.env`
-2. Start daemon: `bun run src/cli/index.ts start --config /tmp/feliz-e2e/feliz.yml`
-3. Create issue in mapped Linear project.
-4. Watch run: `bun run src/cli/index.ts run list --config /tmp/feliz-e2e/feliz.yml`
-5. Inspect run: `bun run src/cli/index.ts run show <run_id> --config /tmp/feliz-e2e/feliz.yml`
-
-Detailed usage guide: [docs/usage.md](docs/usage.md)
-
-## Quick Start (Local)
+## Quick start
 
 ```bash
-# 1) Install deps
+git clone <repo-url> && cd feliz
 bun install
 
-# 2) Set required env
 export LINEAR_API_KEY="lin_api_..."
-export GITHUB_TOKEN="ghp_..."   # recommended
+export GITHUB_TOKEN="ghp_..."
 
-# 3) Create config interactively
-bun run src/cli/index.ts init
-
-# 4) Start daemon
-bun run src/cli/index.ts start
+bun run src/cli/index.ts init    # interactive setup
+bun run src/cli/index.ts start   # start daemon
 ```
 
-In another terminal:
+Or with Docker:
 
 ```bash
-bun run src/cli/index.ts status
-bun run src/cli/index.ts config validate
-```
-
-If `start` is run before a config exists, Feliz scaffolds `~/.feliz/feliz.yml` and exits. Edit it, then run `start` again.
-
-## Quick Start (Docker)
-
-```bash
-cp .env.example .env
-# edit .env values
-
+cp .env.example .env   # fill in credentials
 docker compose up -d --build
 ```
 
-Default container command is `start`. Run other commands with:
+## CLI
 
-```bash
-docker compose exec feliz bun run src/cli/index.ts init
-docker compose exec feliz bun run src/cli/index.ts status
+```
+feliz start                    Start daemon
+feliz stop                     Stop daemon
+feliz status                   Show daemon health
+
+feliz init                     Setup wizard
+feliz config validate          Check configuration
+feliz config show              Print resolved config
+
+feliz project list             List projects
+feliz project add              Add a project
+feliz project remove <name>    Remove a project
+
+feliz run list                 List recent runs
+feliz run show <id>            Show run details
+feliz run retry <identifier>   Retry a failed item
+
+feliz agent list               Show available agents
+
+feliz context history <proj>   Project history
+feliz context show <item>      Work item context
+
+feliz e2e doctor               Check prerequisites
+feliz e2e smoke                Run smoke checks
 ```
 
-## E2E Smoke Harness
+## Configuration
 
-Use the repo helper script:
+Two layers:
 
-```bash
-cp scripts/e2e.env.example scripts/e2e.env
-# edit scripts/e2e.env
+1. **Central config** (`~/.feliz/feliz.yml`) — Linear API key, storage paths, project mappings, agent defaults.
+2. **Repo config** (`.feliz/config.yml` + `.feliz/pipeline.yml`) — agent behavior, pipeline steps, test/lint gates, hooks.
 
-bash scripts/e2e-smoke.sh \
-  --env-file scripts/e2e.env \
-  --config /tmp/feliz-e2e/feliz.yml \
-  --report /tmp/feliz-e2e-smoke-report.json
-```
-
-What it runs:
-
-1. `feliz e2e doctor`
-2. `feliz e2e smoke --json --out ...`
-
-## Real E2E Automation
-
-After `gh auth login`, agent login, and creating a Linear project (default: `Feliz E2E Test`), run:
-
-```bash
-cp scripts/e2e.env.example scripts/e2e.env
-# edit scripts/e2e.env
-
-bash scripts/e2e-real.sh --env-file scripts/e2e.env
-```
-
-`scripts/e2e-real.sh` creates/clones a GitHub sandbox repo, seeds repo files, writes E2E config, runs smoke checks, and prints the exact `start` command.
-
-## CLI Overview
-
-```text
-start                    Start the Feliz daemon
-init                     Interactive setup wizard
-stop                     Stop the daemon
-status                   Show daemon status
-config validate          Validate configuration
-config show              Print resolved configuration
-project list             List configured projects
-project add              Add a new project
-project remove <name>    Remove a project
-run list                 List recent runs
-run show <run_id>        Show run details
-run retry <work_item>    Retry a failed work item
-agent list               List installed agents
-context history <proj>   Show history events
-context show <item>      Show context snapshot
-e2e doctor               Validate local E2E prerequisites
-e2e smoke                Run automated E2E smoke checks
-```
-
-## Configuration Model
-
-Feliz has two config layers:
-
-1. Central config (`feliz.yml`) for Linear key, storage, global concurrency, and project mappings.
-2. Repo config (`.feliz/config.yml` + `.feliz/pipeline.yml`) for agent behavior, specs, gates, and pipeline steps.
-
-See [Configuration Guide](docs/configuration.md).
+See [docs/configuration.md](docs/configuration.md).
 
 ## Documentation
 
-- [Usage Guide](docs/usage.md)
-- [Getting Started](docs/getting-started.md)
-- [CLI Reference](docs/cli.md)
-- [Configuration Guide](docs/configuration.md)
-- [Pipeline Guide](docs/pipelines.md)
-- [Agent Guide](docs/agents.md)
-- [Skills](docs/skills.md)
+| Guide | Description |
+|---|---|
+| [Getting Started](docs/getting-started.md) | Install, configure, first run |
+| [Usage](docs/usage.md) | Day-to-day operation |
+| [Configuration](docs/configuration.md) | Central and repo config reference |
+| [Pipelines](docs/pipelines.md) | Multi-phase pipeline definition |
+| [Agents](docs/agents.md) | Agent adapters and custom agents |
+| [CLI](docs/cli.md) | Full command reference |
 
-## Specification Index
+## Specs
 
-Specs are the source of truth for behavior and architecture:
+Design specifications live in [`specs/`](specs/index.md) — the source of truth for architecture, state machines, data types, and behavior.
 
-- [Specs Index](specs/index.md)
-- [Architecture](specs/architecture/index.md)
-- [Configuration](specs/configuration/index.md)
-- [Orchestration](specs/orchestration/index.md)
-- [Testing Plan](specs/testing/index.md)
-
-## Development Commands
+## Development
 
 ```bash
 bun install

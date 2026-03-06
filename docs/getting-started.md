@@ -1,18 +1,16 @@
 # Getting Started
 
-This guide walks through first install, first project onboarding, and first smoke validation.
-
-If you already have config and want day-to-day operation steps, use [usage.md](usage.md).
+Install Feliz, configure your first project, and verify everything works.
 
 ## Prerequisites
 
-- Bun
+- [Bun](https://bun.sh)
 - Git
-- Linear API key
-- GitHub CLI (`gh`) authenticated
-- At least one supported agent CLI (`codex` or `claude`)
+- Linear API key ([Settings > API](https://linear.app/settings/api))
+- GitHub CLI (`gh auth login`)
+- A coding agent CLI: `claude` or `codex`
 
-## 1) Install Feliz
+## Install
 
 ```bash
 git clone <repo-url>
@@ -20,101 +18,77 @@ cd feliz
 bun install
 ```
 
-## 2) Set environment variables
+## Set credentials
 
 ```bash
 export LINEAR_API_KEY="lin_api_..."
-export GITHUB_TOKEN="ghp_..."   # recommended for publish checks
+export GITHUB_TOKEN="ghp_..."
 ```
 
-For E2E testing, put test-only values in `scripts/e2e.env` (copied from `scripts/e2e.env.example`) and pass it to the smoke script.
+## Create config
 
-## 3) Initialize central config
-
-Interactive wizard:
+Run the interactive wizard:
 
 ```bash
 bun run src/cli/index.ts init
 ```
 
-You will be prompted for:
+This prompts for your Linear API key, a project name, repo URL, and Linear project — then writes `~/.feliz/feliz.yml`.
 
-1. Linear API key (or use existing `LINEAR_API_KEY` env var)
-2. Project name
-3. Git repo URL
-4. Linear project name
+Alternatively, run `start` without a config to scaffold a template you can edit manually.
 
-This writes `~/.feliz/feliz.yml` by default.
-
-Alternative: run `start` first to scaffold a template config file, then edit manually.
-
-## 4) Start the daemon
+## Start the daemon
 
 ```bash
 bun run src/cli/index.ts start
 ```
 
-Check status:
+Verify it's running:
 
 ```bash
 bun run src/cli/index.ts status
+bun run src/cli/index.ts config validate
 ```
 
-## 5) Add additional projects
+## Add more projects
 
 ```bash
 bun run src/cli/index.ts project add
 ```
 
-`project add` flow:
+This walks through Linear project selection, repo cloning, and scaffolding `.feliz/` config files if they don't exist.
 
-1. Fetch Linear projects and choose one.
-2. Enter repo URL and base branch.
-3. Clone repo into workspace.
-4. If `.feliz/config.yml` is missing, scaffold `.feliz/` and `WORKFLOW.md`.
-5. Optionally commit and push scaffolded files.
-6. Append project mapping to central `feliz.yml`.
-
-## 6) Validate config and run preflight
+## Validate with E2E smoke checks
 
 ```bash
-bun run src/cli/index.ts config validate
 bun run src/cli/index.ts e2e doctor
 bun run src/cli/index.ts e2e smoke
 ```
 
-## 7) One-command real E2E bootstrap (recommended for real Linear/GitHub)
-
-Prerequisite: `gh auth login` and an existing Linear project (default name `Feliz E2E Test`).
+For a full automated E2E run against real Linear and GitHub:
 
 ```bash
 cp scripts/e2e.env.example scripts/e2e.env
-# edit scripts/e2e.env
-
+# fill in credentials
 bash scripts/e2e-real.sh --env-file scripts/e2e.env
 ```
 
-This script automates:
-
-1. GitHub sandbox repo creation/clone
-2. Sandbox file seeding (`package.json`, tests, `.feliz/`, `WORKFLOW.md`)
-3. E2E config generation
-4. Smoke preflight execution
-
-## 8) Use smoke-only helper (optional)
+## Docker alternative
 
 ```bash
-bash scripts/e2e-smoke.sh --env-file scripts/e2e.env
+cp .env.example .env
+# fill in credentials
+docker compose up -d --build
 ```
 
-## 9) Operate through Linear
+Run CLI commands inside the container:
 
-Issue interaction is driven from Linear (state changes/comments/labels). CLI is operational and inspection tooling.
+```bash
+docker compose exec feliz bun run src/cli/index.ts status
+```
 
-## Next Docs
+## Next steps
 
-- [Usage](usage.md)
-- [Configuration](configuration.md)
-- [Pipelines](pipelines.md)
-- [Agents](agents.md)
-- [CLI](cli.md)
+- [Usage](usage.md) — day-to-day operation
+- [Configuration](configuration.md) — config reference
+- [Pipelines](pipelines.md) — custom pipeline steps

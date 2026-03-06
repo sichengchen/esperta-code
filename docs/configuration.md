@@ -1,10 +1,10 @@
-# Configuration Guide
+# Configuration
 
-Feliz uses central config + per-repo config.
+Feliz has two config layers: central server config and per-repo config.
 
 ## Central config (`feliz.yml`)
 
-Default path: `~/.feliz/feliz.yml` (override with `--config`).
+Default location: `~/.feliz/feliz.yml`. Override with `--config <path>`.
 
 ```yaml
 linear:
@@ -14,8 +14,8 @@ polling:
   interval_ms: 30000
 
 storage:
-  data_dir: /path/to/feliz/data
-  workspace_root: /path/to/feliz/workspaces
+  data_dir: ~/.feliz
+  workspace_root: ~/.feliz/workspaces
 
 agent:
   default: claude-code
@@ -28,24 +28,21 @@ projects:
     branch: main
 ```
 
-### Fields
+| Field | Default | Description |
+|---|---|---|
+| `linear.api_key` | — | Required. Supports `$ENV_VAR` syntax. |
+| `polling.interval_ms` | `30000` | Poll interval in milliseconds. |
+| `storage.data_dir` | `~/.feliz` | SQLite database and artifacts. |
+| `storage.workspace_root` | `{data_dir}/workspaces` | Git clones and worktrees. |
+| `agent.default` | `claude-code` | Default agent adapter. |
+| `agent.max_concurrent` | `5` | Max parallel agent runs. |
+| `projects[]` | — | Required. At least one project mapping. |
 
-- `linear.api_key` (required): supports `$ENV_VAR` syntax.
-- `polling.interval_ms` (default `30000`).
-- `storage.data_dir` (default `~/.feliz`).
-- `storage.workspace_root` (default `{data_dir}/workspaces`).
-- `agent.default` (default `claude-code`).
-- `agent.max_concurrent` (default `5`).
-- `projects[]` (required, at least one).
-
-Each project needs:
-
-- `name`
-- `repo`
-- `linear_project`
-- `branch` (default `main`)
+Each project requires `name`, `repo`, `linear_project`, and optionally `branch` (default: `main`).
 
 ## Repo config (`.feliz/config.yml`)
+
+Lives in the target repository. Controls agent behavior for that repo.
 
 ```yaml
 agent:
@@ -74,63 +71,36 @@ concurrency:
     Todo: 1
 ```
 
-### Repo config behavior
-
-- `agent.adapter`: default adapter for steps without explicit `agent`.
-- `agent.approval_policy`: `auto | gated | suggest`.
-- `hooks.*`: shell hooks executed in worktree.
-- `specs.enabled`: toggles spec states (`spec_drafting/spec_review`).
-- `gates.*`: default quality commands.
-- `concurrency.max_per_state`: optional state-level caps.
+| Field | Description |
+|---|---|
+| `agent.adapter` | Agent for steps without explicit `agent`. |
+| `agent.approval_policy` | `auto`, `suggest`, or `gated`. |
+| `hooks.*` | Shell commands run in worktree at lifecycle points. |
+| `specs.enabled` | Enables spec drafting/review states. |
+| `gates.*` | Default test and lint commands. |
+| `concurrency.max_per_state` | Per-state concurrency caps. |
 
 ## Pipeline config (`.feliz/pipeline.yml`)
 
-```yaml
-phases:
-  - name: execute
-    steps:
-      - name: run
-        prompt: WORKFLOW.md
-        success:
-          command: "bun test"
-      - name: create_pr
-        builtin: publish
-```
-
-See [Pipelines](pipelines.md) for full schema.
+Defines the execution pipeline. See [Pipelines](pipelines.md).
 
 ## Prompt templates
 
-Default template file is `WORKFLOW.md` in repo root.
+The default prompt template is `WORKFLOW.md` in the repo root. Templates support variables:
 
-Supported variables include:
-
-- `project.name`
-- `issue.identifier`, `issue.title`, `issue.description`
-- `specs`
-- `attempt`, `previous_failure`
-- `cycle`, `previous_review`
+- `project.name`, `issue.identifier`, `issue.title`, `issue.description`
+- `specs`, `context`
 - `step.name`, `phase.name`
-- `context`
+- `attempt`, `previous_failure`, `cycle`, `previous_review`
 
 ## Environment variables
 
-### Runtime
-
-- `LINEAR_API_KEY` (required if referenced by config)
-- `GITHUB_TOKEN` (recommended for publish/auth checks)
-- Agent credential vars as needed (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
-
-### E2E testing
-
-Recommended location: `scripts/e2e.env` (local copy created from example).
-
-```bash
-cp scripts/e2e.env.example scripts/e2e.env
-bash scripts/e2e-smoke.sh --env-file scripts/e2e.env
-```
-
-In CI, set the same values as secret environment variables.
+| Variable | Purpose |
+|---|---|
+| `LINEAR_API_KEY` | Linear API access |
+| `GITHUB_TOKEN` | PR creation and repo access |
+| `ANTHROPIC_API_KEY` | Claude Code agent |
+| `OPENAI_API_KEY` | Codex agent |
 
 ## Validation
 

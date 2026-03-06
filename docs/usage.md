@@ -1,102 +1,63 @@
-# Usage Guide
+# Usage
 
-This guide shows the day-to-day operator workflow for running Feliz.
+Day-to-day operation of Feliz after setup is complete.
 
-Use it after initial setup is complete and you are ready to process real Linear issues.
-
-## 0) One-time bootstrap
-
-If you have not configured Feliz yet, do this once:
+## Start the daemon
 
 ```bash
-cp scripts/e2e.env.example scripts/e2e.env
-# fill real credentials
-bun run e2e:real -- --env-file scripts/e2e.env
+bun run src/cli/index.ts start
 ```
 
-This prepares a real sandbox repo + `feliz.yml` and runs smoke checks.
+Keep this terminal running. Feliz polls Linear on the configured interval (default: 30s).
 
-## 1) Start Feliz
+## Create work in Linear
 
-```bash
-bun run src/cli/index.ts start --config /tmp/feliz-e2e/feliz.yml
-```
-
-Keep this terminal running.
-
-## 2) Create work in Linear
-
-In your mapped Linear project (example: `Feliz E2E Test`):
+In your mapped Linear project:
 
 1. Create an issue with clear acceptance criteria.
-2. Keep it unblocked.
-3. Wait one poll cycle (default in E2E config: 5s).
+2. Feliz picks it up on the next poll cycle, creates a worktree, and runs the pipeline.
 
-Feliz will discover it and start orchestration.
+No labels, commands, or special formatting needed — just write the issue.
 
-## 3) Monitor runs
-
-Open a second terminal:
+## Monitor
 
 ```bash
-bun run src/cli/index.ts status --config /tmp/feliz-e2e/feliz.yml
-bun run src/cli/index.ts run list --config /tmp/feliz-e2e/feliz.yml
+bun run src/cli/index.ts status          # daemon health
+bun run src/cli/index.ts run list        # recent runs
+bun run src/cli/index.ts run show <id>   # run details + step results
 ```
 
-When you have a run id:
+## Verify delivery
+
+A successful run produces:
+
+- A pull request on the target repo
+- A PR URL in `run show` output
+- Status updates posted to the Linear issue
+
+## Handle failures
 
 ```bash
-bun run src/cli/index.ts run show <run_id> --config /tmp/feliz-e2e/feliz.yml
+bun run src/cli/index.ts run retry <LINEAR_ID>
 ```
 
-## 4) Verify delivery
+The retry carries failure context from the previous attempt so the agent can correct course.
 
-Success means all are true:
-
-1. A PR is created in GitHub sandbox repo.
-2. `run show` prints a non-null `PR` URL.
-3. Linear issue has run updates/comments.
-
-## 5) Retry failure
-
-If a run fails:
+## Inspect context
 
 ```bash
-bun run src/cli/index.ts run retry <LINEAR_IDENTIFIER> --config /tmp/feliz-e2e/feliz.yml
+bun run src/cli/index.ts context history <project>   # past events
+bun run src/cli/index.ts context show <LINEAR_ID>     # snapshot for a work item
 ```
 
-Then monitor again with `run list` / `run show`.
-
-## 6) Inspect history/context
+## Stop
 
 ```bash
-bun run src/cli/index.ts context history feliz-e2e-sandbox --config /tmp/feliz-e2e/feliz.yml
-bun run src/cli/index.ts context show <LINEAR_IDENTIFIER> --config /tmp/feliz-e2e/feliz.yml
+bun run src/cli/index.ts stop
 ```
 
-## Daily Operator Cheat Sheet
+## Related
 
-```bash
-# start
-bun run src/cli/index.ts start --config /tmp/feliz-e2e/feliz.yml
-
-# health
-bun run src/cli/index.ts status --config /tmp/feliz-e2e/feliz.yml
-
-# runs
-bun run src/cli/index.ts run list --config /tmp/feliz-e2e/feliz.yml
-bun run src/cli/index.ts run show <run_id> --config /tmp/feliz-e2e/feliz.yml
-
-# retry
-bun run src/cli/index.ts run retry <LINEAR_IDENTIFIER> --config /tmp/feliz-e2e/feliz.yml
-
-# stop
-bun run src/cli/index.ts stop --config /tmp/feliz-e2e/feliz.yml
-```
-
-## Related Docs
-
-- Setup: [getting-started.md](getting-started.md)
-- Config reference: [configuration.md](configuration.md)
-- CLI reference: [cli.md](cli.md)
-- E2E spec plan: ../specs/testing/index.md
+- [Getting Started](getting-started.md) — first-time setup
+- [Configuration](configuration.md) — config reference
+- [CLI](cli.md) — full command reference

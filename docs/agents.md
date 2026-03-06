@@ -1,65 +1,40 @@
-# Agent Guide
+# Agents
 
-Feliz dispatches coding agents via adapter implementations.
+Feliz dispatches coding agents through a pluggable adapter interface.
 
-## Adapter interface
+## Supported agents
 
-```ts
-interface AgentAdapter {
-  name: string;
-  isAvailable(): Promise<boolean>;
-  execute(params: AgentRunParams): Promise<AgentRunResult>;
-  cancel(runId: string): Promise<void>;
-}
-```
-
-Core run params:
-
-- `runId`
-- `workDir`
-- `prompt`
-- `timeout_ms`
-- `maxTurns`
-- `approvalPolicy`
-- `env`
-
-## Built-in adapters
-
-### `claude-code`
-
-Command shape:
+### Claude Code
 
 ```bash
 claude --dangerously-skip-permissions --output-format json --max-turns <N> --print -p "<prompt>"
 ```
 
-### `codex`
-
-Command shape:
+### Codex
 
 ```bash
 codex exec --json -s <sandbox> "<prompt>"
 ```
 
-Sandbox mapping from `approvalPolicy`:
+Sandbox mode maps from `approval_policy`:
 
-- `auto` -> `danger-full-access`
-- `suggest` -> `workspace-write`
-- `gated` -> `read-only`
+| Policy | Sandbox |
+|---|---|
+| `auto` | `danger-full-access` |
+| `suggest` | `workspace-write` |
+| `gated` | `read-only` |
 
-## Availability checks
-
-List adapters with:
+## Check availability
 
 ```bash
 bun run src/cli/index.ts agent list
 ```
 
-Feliz reports whether each adapter CLI is installed and runnable.
+Reports whether each agent CLI is installed and runnable.
 
 ## Per-step agent selection
 
-`agent` can be set per pipeline step.
+Override the default agent on any pipeline step:
 
 ```yaml
 phases:
@@ -73,17 +48,25 @@ phases:
         agent: codex
 ```
 
-If omitted, Feliz uses `.feliz/config.yml` -> `agent.adapter`.
+Steps without an explicit `agent` use the default from `.feliz/config.yml`.
 
-## Writing a custom adapter
+## Adapter interface
 
-1. Add a new adapter file under `src/agents/` implementing `AgentAdapter`.
-2. Register it in `src/server.ts` adapter map.
-3. Reference the adapter name in repo config or pipeline steps.
+```ts
+interface AgentAdapter {
+  name: string;
+  isAvailable(): Promise<boolean>;
+  execute(params: AgentRunParams): Promise<AgentRunResult>;
+  cancel(runId: string): Promise<void>;
+}
+```
 
-Keep adapters deterministic:
+Run params include `runId`, `workDir`, `prompt`, `timeout_ms`, `maxTurns`, `approvalPolicy`, and `env`.
 
-- always return structured status (`succeeded|failed|timed_out|cancelled`)
-- capture stdout/stderr
-- honor `timeout_ms`
-- implement `cancel(runId)`
+## Custom adapters
+
+1. Create a file in `src/agents/` implementing `AgentAdapter`.
+2. Register it in `src/server.ts`.
+3. Reference the adapter name in config or pipeline steps.
+
+Adapters must return structured status (`succeeded | failed | timed_out | cancelled`), capture stdout/stderr, honor `timeout_ms`, and implement `cancel`.

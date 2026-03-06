@@ -1,38 +1,26 @@
 # Skills
 
-Feliz setup skills are split by scope.
+Claude Code skills for bootstrapping Feliz projects.
 
 ## `feliz-machine-setup`
 
+Host and container bootstrap: central `feliz.yml` setup, daemon lifecycle, E2E preflight.
+
 File: `skills/feliz-machine-setup/SKILL.md`
-
-Use for:
-
-- host/container bootstrap
-- central `feliz.yml` setup
-- daemon lifecycle checks (`start`, `status`, `stop`)
-- E2E preflight setup (`e2e doctor`, smoke env preparation)
 
 ## `feliz-project-onboarding`
 
+Per-repo setup: project mappings, `.feliz/config.yml`, `.feliz/pipeline.yml`, `WORKFLOW.md`.
+
 File: `skills/feliz-project-onboarding/SKILL.md`
 
-Use for:
+## `feliz-setup`
 
-- adding project mappings to central config
-- generating or updating repo-level `.feliz/config.yml`
-- generating or updating `.feliz/pipeline.yml`
-- creating/updating `WORKFLOW.md`
-
-## `feliz-setup` (router)
+Router skill for mixed-scope requests. Delegates to machine-setup or project-onboarding as needed.
 
 File: `skills/feliz-setup/SKILL.md`
 
-Use when request scope is mixed/unclear and routing is needed.
+## Recommended order
 
-## Recommendation
-
-Run machine setup first, then onboarding:
-
-1. `feliz-machine-setup`
-2. `feliz-project-onboarding`
+1. `feliz-machine-setup` — get the daemon running
+2. `feliz-project-onboarding` — wire up each repo

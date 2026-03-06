@@ -1,163 +1,140 @@
 # CLI Reference
 
-Feliz CLI controls the daemon and inspects persisted state.
-
 ## Global flags
 
-- `--config <path>`: path to central config (`~/.feliz/feliz.yml` default)
-- `--json`: JSON output mode (`e2e` commands)
-- `--out <path>`: write JSON report to file (`e2e` commands)
-- `--help`, `-h`: show help
+| Flag | Description |
+|---|---|
+| `--config <path>` | Central config path (default: `~/.feliz/feliz.yml`) |
+| `--json` | JSON output (E2E commands) |
+| `--out <path>` | Write JSON report to file (E2E commands) |
+| `--help`, `-h` | Show help |
 
 ## Commands
 
-### `start`
+### Daemon
 
-Start daemon. If config file is missing, writes a template config and exits.
+**`start`** — Start the Feliz daemon. Scaffolds a template config and exits if none exists.
 
 ```bash
-bun run src/cli/index.ts start
-bun run src/cli/index.ts start --config /tmp/feliz.yml
+feliz start
+feliz start --config /path/to/feliz.yml
 ```
 
-### `init`
-
-Interactive setup wizard for initial `feliz.yml` creation.
+**`stop`** — Stop the daemon via PID file.
 
 ```bash
-bun run src/cli/index.ts init
+feliz stop
 ```
 
-### `stop`
-
-Stop daemon using PID file in `storage.data_dir`.
+**`status`** — Show daemon and project status.
 
 ```bash
-bun run src/cli/index.ts stop
+feliz status
 ```
 
-### `status`
+### Setup
 
-Show configured/running status from config + database.
+**`init`** — Interactive setup wizard. Creates `feliz.yml`.
 
 ```bash
-bun run src/cli/index.ts status
+feliz init
 ```
 
-### `config validate`
+### Config
 
-Validates central config and repo configs/pipelines for cloned projects.
+**`config validate`** — Validate central and repo configs.
 
 ```bash
-bun run src/cli/index.ts config validate
+feliz config validate
 ```
 
-### `config show`
-
-Print resolved central config (env-expanded).
+**`config show`** — Print resolved config with environment variables expanded.
 
 ```bash
-bun run src/cli/index.ts config show
+feliz config show
 ```
 
-### `project list`
+### Projects
 
-List project mappings from central config.
+**`project list`** — List project mappings.
 
 ```bash
-bun run src/cli/index.ts project list
+feliz project list
 ```
 
-### `project add`
-
-Interactive project onboarding wizard.
+**`project add`** — Interactive project onboarding.
 
 ```bash
-bun run src/cli/index.ts project add
+feliz project add
 ```
 
-### `project remove <name>`
-
-Remove mapping from central config.
+**`project remove <name>`** — Remove a project mapping.
 
 ```bash
-bun run src/cli/index.ts project remove backend-api
+feliz project remove backend-api
 ```
 
-### `run list`
+### Runs
 
-List recent runs.
+**`run list`** — List recent runs.
 
 ```bash
-bun run src/cli/index.ts run list
+feliz run list
 ```
 
-### `run show <run_id>`
-
-Show run details and step executions.
+**`run show <run_id>`** — Show run details and step executions.
 
 ```bash
-bun run src/cli/index.ts run show <run_id>
+feliz run show abc123
 ```
 
-### `run retry <work_item_identifier>`
-
-Move failed item to `retry_queued`.
+**`run retry <identifier>`** — Retry a failed work item.
 
 ```bash
-bun run src/cli/index.ts run retry BAC-123
+feliz run retry BAC-123
 ```
 
-### `agent list`
+### Agents
 
-Show installed adapter availability.
+**`agent list`** — Show installed agent adapters and availability.
 
 ```bash
-bun run src/cli/index.ts agent list
+feliz agent list
 ```
 
-### `context history <project>`
+### Context
 
-Show history events for a project.
+**`context history <project>`** — Show history events for a project.
 
 ```bash
-bun run src/cli/index.ts context history backend-api
+feliz context history backend-api
 ```
 
-### `context show <work_item_identifier>`
-
-Show latest context snapshot and artifact refs for a work item.
+**`context show <identifier>`** — Show context snapshot for a work item.
 
 ```bash
-bun run src/cli/index.ts context show BAC-123
+feliz context show BAC-123
 ```
 
-### `e2e doctor`
+### E2E Testing
 
-Check E2E prerequisites (tools/auth/config).
+**`e2e doctor`** — Check prerequisites (tools, auth, config).
 
 ```bash
-bun run src/cli/index.ts e2e doctor
+feliz e2e doctor
 ```
 
-### `e2e smoke`
-
-Run preflight smoke checks and scenario checklist projection.
+**`e2e smoke`** — Run preflight smoke checks.
 
 ```bash
-bun run src/cli/index.ts e2e smoke
-bun run src/cli/index.ts e2e smoke --json --out /tmp/feliz-e2e-report.json
+feliz e2e smoke
+feliz e2e smoke --json --out /tmp/report.json
 ```
 
 ## Helper scripts
 
-From repo root:
-
 ```bash
-bun run e2e:doctor
-bun run e2e:smoke
-bun run e2e:real
+bun run e2e:doctor    # runs feliz e2e doctor
+bun run e2e:smoke     # runs scripts/e2e-smoke.sh
+bun run e2e:real      # runs scripts/e2e-real.sh
 ```
-
-`e2e:smoke` runs `scripts/e2e-smoke.sh`.
-`e2e:real` runs `scripts/e2e-real.sh`.

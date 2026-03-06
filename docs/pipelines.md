@@ -1,12 +1,12 @@
-# Pipeline Guide
+# Pipelines
 
-A pipeline is an ordered list of phases; each phase contains ordered steps.
+A pipeline defines the sequence of work Feliz performs for each issue. Pipelines are ordered phases, each containing ordered steps.
 
 Location: `.feliz/pipeline.yml`
 
-If absent, Feliz uses a default `execute -> create_pr` pipeline.
+If absent, Feliz uses a default pipeline: run agent with `WORKFLOW.md` prompt, then create PR.
 
-## Schema
+## Example
 
 ```yaml
 phases:
@@ -31,42 +31,69 @@ phases:
 
 ## Step types
 
-- Agent step: has `agent` and usually `prompt`.
-- Builtin step: has `builtin` (currently `publish`).
+**Agent step** — runs a coding agent with a prompt:
+
+```yaml
+- name: code
+  agent: claude-code
+  prompt: .feliz/prompts/implement.md
+```
+
+**Builtin step** — runs a built-in action (currently `publish` for PR creation):
+
+```yaml
+- name: create_pr
+  builtin: publish
+```
 
 ## Success conditions
 
-Choose one per step:
+One per step:
 
-- `command`: run shell command in worktree, pass on exit code 0.
-- `agent_verdict`: pass when output contains required verdict.
-- `file_exists`: pass when file exists after step.
-- `always: true`: unconditional pass.
+| Condition | Passes when |
+|---|---|
+| `command` | Shell command exits 0 in worktree |
+| `agent_verdict` | Agent output contains required verdict |
+| `file_exists` | File exists after step completes |
+| `always: true` | Always |
 
-If no `success` is provided, Feliz treats agent exit code 0 as success.
+No `success` field defaults to agent exit code 0.
 
 ## Retry and repeat
 
-- `max_attempts` retries a step with failure context.
-- `repeat` reruns the entire phase up to `max` cycles.
-- `on_exhaust: pass` continues to next phase.
-- `on_exhaust: fail` aborts pipeline.
+**Step retry** — `max_attempts` retries a single step, injecting failure context:
 
-## Execution behavior
+```yaml
+- name: code
+  max_attempts: 5
+  success:
+    command: "bun test"
+```
 
-For each step execution, Feliz:
+**Phase repeat** — `repeat` reruns the entire phase (useful for review cycles):
 
-1. Renders prompt template with issue/context variables.
+```yaml
+repeat:
+  max: 3
+  on_exhaust: pass   # or fail
+```
+
+## Execution sequence
+
+For each step, Feliz:
+
+1. Renders the prompt template with issue, context, and cycle variables.
 2. Runs `hooks.before_run` if configured.
 3. Executes agent or builtin.
 4. Runs `hooks.after_run`.
-5. Evaluates success and records `StepExecution`.
+5. Evaluates success condition.
+6. Records a `StepExecution` result.
 
-All steps share one worktree, so files can be passed between steps directly.
+All steps share one worktree — files pass between steps directly.
 
 ## Default pipeline
 
-When `.feliz/pipeline.yml` does not exist:
+When no `.feliz/pipeline.yml` exists:
 
 ```yaml
 phases:
@@ -74,7 +101,6 @@ phases:
     steps:
       - name: run
         prompt: WORKFLOW.md
-        # includes gates.test_command success only if configured
       - name: create_pr
         builtin: publish
 ```
