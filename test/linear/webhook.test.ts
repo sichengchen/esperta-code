@@ -132,6 +132,33 @@ describe("WebhookHandler", () => {
     expect(result.command!.command).toBe("retry");
   });
 
+  test("creates work item on updated event when none exists", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    const event = makeEvent({ action: "updated" });
+    const result = await handler.handleEvent(event, "proj-1");
+
+    expect(result.workItemId).toBeDefined();
+    const wi = db.getWorkItemByLinearId("lin-1");
+    expect(wi).not.toBeNull();
+    expect(wi!.orchestration_state).toBe("unclaimed");
+
+    const history = db.getHistory("proj-1", result.workItemId);
+    expect(history).toHaveLength(1);
+    expect(history[0]!.event_type).toBe("issue.discovered");
+  });
+
+  test("does not emit thought on updated event", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    const event = makeEvent({ action: "updated" });
+    await handler.handleEvent(event, "proj-1");
+
+    expect(client.emitThought).not.toHaveBeenCalled();
+  });
+
   test("records history on session created", async () => {
     const client = makeLinearClient();
     const handler = new WebhookHandler(db, client as any);

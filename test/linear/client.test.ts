@@ -426,6 +426,19 @@ describe("LinearClient.emitThought", () => {
       content: "Looking into this...",
     });
   });
+
+  test("throws on non-ok response", async () => {
+    const failFetch = mock(() =>
+      Promise.resolve({
+        ok: false,
+        status: 500,
+        headers: new Headers(),
+        json: () => Promise.resolve({}),
+      })
+    );
+    const client = new LinearClient("token", failFetch as unknown as typeof fetch);
+    expect(client.emitThought("s", "t")).rejects.toThrow("emitThought failed: HTTP 500");
+  });
 });
 
 describe("LinearClient.emitComment", () => {
@@ -453,5 +466,18 @@ describe("LinearClient.emitComment", () => {
       sessionId: "session-2",
       content: "Done!",
     });
+  });
+
+  test("throws on non-ok response", async () => {
+    const failFetch = mock(() =>
+      Promise.resolve({
+        ok: false,
+        status: 502,
+        headers: new Headers(),
+        json: () => Promise.resolve({}),
+      })
+    );
+    const client = new LinearClient("token", failFetch as unknown as typeof fetch);
+    expect(client.emitComment("s", "t")).rejects.toThrow("emitComment failed: HTTP 502");
   });
 });

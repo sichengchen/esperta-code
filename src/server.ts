@@ -205,7 +205,13 @@ export class FelizServer {
   }
 
   private findProjectForIssue(event: AgentSessionEvent) {
-    // For now, use the first project. In the future, match by Linear project.
+    const issueProject = event.agentSession.issue.project?.name;
+    if (issueProject) {
+      const match = this.config.projects.find(
+        (p) => p.linear_project === issueProject
+      );
+      if (match) return match;
+    }
     return this.config.projects[0] ?? null;
   }
 

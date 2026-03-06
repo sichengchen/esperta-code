@@ -10,8 +10,11 @@ Lives in Feliz's data directory (e.g., `/data/feliz.yml` or `~/.feliz/feliz.yml`
 linear:
   oauth_token: $LINEAR_OAUTH_TOKEN   # OAuth app token (actor=app)
 
-polling:
-  interval_ms: 30000
+webhook:
+  port: 3421
+
+tick:
+  interval_ms: 5000
 
 storage:
   data_dir: /data/feliz
@@ -38,7 +41,8 @@ projects:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `linear.oauth_token` | string (env ref) | required | Linear OAuth app token (`actor=app`). Supports `$ENV_VAR` indirection. |
-| `polling.interval_ms` | number | `30000` | Polling interval in milliseconds. |
+| `webhook.port` | number | `3421` | Port for receiving Linear webhook events. |
+| `tick.interval_ms` | number | `5000` | Tick interval in milliseconds for background orchestration. |
 | `storage.data_dir` | string | `~/.feliz` | Root directory for Feliz data (DB, logs). |
 | `storage.workspace_root` | string | `{data_dir}/workspaces` | Root directory for repo clones and worktrees. |
 | `agent.default` | string | `claude-code` | Default agent adapter name. |

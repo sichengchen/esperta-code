@@ -78,7 +78,6 @@ export interface PipelineStep {
   prompt?: string;
   success?: SuccessCondition;
   max_attempts?: number;
-
 }
 
 export interface PipelinePhase {

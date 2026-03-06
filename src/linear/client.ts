@@ -200,7 +200,7 @@ export class LinearClient {
   }
 
   async emitThought(sessionId: string, content: string): Promise<void> {
-    await this.fetch("https://api.linear.app/graphql", {
+    const response = await this.fetch("https://api.linear.app/graphql", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -216,10 +216,13 @@ export class LinearClient {
         },
       }),
     });
+    if (!response.ok) {
+      throw new Error(`emitThought failed: HTTP ${response.status}`);
+    }
   }
 
   async emitComment(sessionId: string, content: string): Promise<void> {
-    await this.fetch("https://api.linear.app/graphql", {
+    const response = await this.fetch("https://api.linear.app/graphql", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -235,6 +238,9 @@ export class LinearClient {
         },
       }),
     });
+    if (!response.ok) {
+      throw new Error(`emitComment failed: HTTP ${response.status}`);
+    }
   }
 }
 

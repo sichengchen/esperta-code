@@ -17,6 +17,7 @@ export interface AgentSessionEvent {
       priority: number;
       state: { name: string };
       labels: { nodes: { name: string }[] };
+      project?: { name: string };
       url: string;
     };
     promptContext: string;
@@ -50,67 +51,53 @@ export class WebhookHandler {
 
     if (event.action === "created") {
       await this.linearClient.emitThought(session.id, "Looking into this...");
+    }
 
-      let existing = this.db.getWorkItemByLinearId(issue.id);
-      if (!existing) {
-        const workItemId = newId();
-        this.db.upsertWorkItem({
-          id: workItemId,
-          linear_id: issue.id,
-          linear_identifier: issue.identifier,
-          project_id: projectId,
-          parent_work_item_id: null,
-          title: issue.title,
-          description: issue.description,
-          state: issue.state.name,
-          priority: issue.priority,
-          labels: issue.labels.nodes.map((l) => l.name),
-          blocker_ids: [],
-          orchestration_state: "unclaimed",
-        });
-
-        this.db.appendHistory({
-          id: newId(),
-          project_id: projectId,
-          work_item_id: workItemId,
-          run_id: null,
-          event_type: "issue.discovered",
-          payload: {
-            source: "webhook",
-            session_id: session.id,
-            linear_id: issue.id,
-            identifier: issue.identifier,
-            title: issue.title,
-          },
-        });
-
-        return { workItemId, command };
-      }
-
+    const existing = this.db.getWorkItemByLinearId(issue.id);
+    if (existing) {
       return { workItemId: existing.id, command };
     }
 
-    // action === "updated"
-    const existing = this.db.getWorkItemByLinearId(issue.id);
-    if (!existing) {
-      const workItemId = newId();
-      this.db.upsertWorkItem({
-        id: workItemId,
-        linear_id: issue.id,
-        linear_identifier: issue.identifier,
-        project_id: projectId,
-        parent_work_item_id: null,
-        title: issue.title,
-        description: issue.description,
-        state: issue.state.name,
-        priority: issue.priority,
-        labels: issue.labels.nodes.map((l) => l.name),
-        blocker_ids: [],
-        orchestration_state: "unclaimed",
-      });
-      return { workItemId, command };
-    }
+    const workItemId = this.createWorkItem(session, issue, projectId);
+    return { workItemId, command };
+  }
 
-    return { workItemId: existing.id, command };
+  private createWorkItem(
+    session: AgentSessionEvent["agentSession"],
+    issue: AgentSessionEvent["agentSession"]["issue"],
+    projectId: string
+  ): string {
+    const workItemId = newId();
+    this.db.upsertWorkItem({
+      id: workItemId,
+      linear_id: issue.id,
+      linear_identifier: issue.identifier,
+      project_id: projectId,
+      parent_work_item_id: null,
+      title: issue.title,
+      description: issue.description,
+      state: issue.state.name,
+      priority: issue.priority,
+      labels: issue.labels.nodes.map((l) => l.name),
+      blocker_ids: [],
+      orchestration_state: "unclaimed",
+    });
+
+    this.db.appendHistory({
+      id: newId(),
+      project_id: projectId,
+      work_item_id: workItemId,
+      run_id: null,
+      event_type: "issue.discovered",
+      payload: {
+        source: "webhook",
+        session_id: session.id,
+        linear_id: issue.id,
+        identifier: issue.identifier,
+        title: issue.title,
+      },
+    });
+
+    return workItemId;
   }
 }
