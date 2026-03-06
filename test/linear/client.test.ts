@@ -217,6 +217,13 @@ describe("LinearClient", () => {
     const client = new LinearClient("key", updateFetch as unknown as typeof fetch);
     await client.updateIssueState("lin-1", "state-id-123");
     expect(updateFetch).toHaveBeenCalledTimes(1);
+
+    const body = JSON.parse((updateFetch.mock.calls[0]![1] as { body: string }).body);
+    expect(body.query).toContain("mutation FelizUpdateIssueState");
+    expect(body.variables).toEqual({
+      issueId: "lin-1",
+      stateId: "state-id-123",
+    });
   });
 
   test("creates a comment on an issue", async () => {
@@ -234,6 +241,34 @@ describe("LinearClient", () => {
     const client = new LinearClient("key", commentFetch as unknown as typeof fetch);
     await client.createComment("lin-1", "Hello from Feliz");
     expect(commentFetch).toHaveBeenCalledTimes(1);
+
+    const body = JSON.parse((commentFetch.mock.calls[0]![1] as { body: string }).body);
+    expect(body.query).toContain("mutation FelizCreateComment");
+    expect(body.variables).toEqual({
+      issueId: "lin-1",
+      body: "Hello from Feliz",
+    });
+  });
+
+  test("passes comment content via GraphQL variables without manual escaping", async () => {
+    const commentFetch = mock(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        json: () =>
+          Promise.resolve({
+            data: { commentCreate: { success: true } },
+          }),
+      })
+    );
+    const client = new LinearClient("key", commentFetch as unknown as typeof fetch);
+    const rawComment = `Line 1\nHe said "quote"`;
+    await client.createComment("lin-escaped", rawComment);
+
+    const body = JSON.parse((commentFetch.mock.calls[0]![1] as { body: string }).body);
+    expect(body.variables.issueId).toBe("lin-escaped");
+    expect(body.variables.body).toBe(rawComment);
   });
 });
 

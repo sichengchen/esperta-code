@@ -125,6 +125,9 @@ describe("FelizServer", () => {
     anyServer.workspace = {
       getRepoPath: () => repoPath,
     };
+    anyServer.publisher = {
+      publish: async () => ({ prUrl: "https://example.com/pr/1" }),
+    };
 
     const successAdapter: AgentAdapter = {
       name: "claude-code",
@@ -147,6 +150,150 @@ describe("FelizServer", () => {
 
     const wi = db.getWorkItem("wi-1");
     expect(wi.orchestration_state).toBe("completed");
+
+    await server.stop();
+  });
+
+  test("Given a work item in spec_drafting When pollCycle runs Then it advances to spec_review", async () => {
+    const server = new FelizServer(makeConfig());
+    const anyServer = server as any;
+    const db = anyServer.db;
+
+    const project = {
+      id: "proj-spec",
+      name: "test-project",
+      repo_url: "git@github.com:org/test.git",
+      linear_project_name: "Test",
+      base_branch: "main",
+    };
+    db.insertProject(project);
+    db.upsertWorkItem({
+      id: "wi-spec",
+      linear_id: "lin-spec",
+      linear_identifier: "T-20",
+      project_id: project.id,
+      parent_work_item_id: null,
+      title: "Draft spec",
+      description: "Need a spec",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "spec_drafting",
+    });
+
+    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
+    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
+    writeFileSync(
+      join(repoPath, ".feliz", "config.yml"),
+      `specs:
+  enabled: true
+  directory: specs
+  approval_required: true
+agent:
+  adapter: claude-code
+`,
+      "utf-8"
+    );
+
+    anyServer.poller = { poll: async () => [] };
+    anyServer.workspace = { getRepoPath: () => repoPath };
+    anyServer.publisher = {
+      publish: async () => ({ prUrl: "https://example.com/pr/1" }),
+    };
+    const specAdapter: AgentAdapter = {
+      name: "claude-code",
+      isAvailable: async () => true,
+      execute: async () => ({
+        status: "succeeded",
+        exitCode: 0,
+        stdout: "spec drafted",
+        stderr: "",
+        filesChanged: ["specs/new-feature.md"],
+      }),
+      cancel: async () => {},
+    };
+    anyServer.adapters = { "claude-code": specAdapter, codex: specAdapter };
+
+    await anyServer.pollCycle();
+
+    const wi = db.getWorkItem("wi-spec");
+    expect(wi.orchestration_state).toBe("spec_review");
+
+    await server.stop();
+  });
+
+  test("Given a work item in decomposing When pollCycle runs Then it advances to decompose_review", async () => {
+    const server = new FelizServer(makeConfig());
+    const anyServer = server as any;
+    const db = anyServer.db;
+
+    const project = {
+      id: "proj-decomp",
+      name: "test-project",
+      repo_url: "git@github.com:org/test.git",
+      linear_project_name: "Test",
+      base_branch: "main",
+    };
+    db.insertProject(project);
+    db.upsertWorkItem({
+      id: "wi-decomp",
+      linear_id: "lin-decomp",
+      linear_identifier: "T-30",
+      project_id: project.id,
+      parent_work_item_id: null,
+      title: "Large feature",
+      description: "Break down this epic",
+      state: "Todo",
+      priority: 1,
+      labels: ["epic"],
+      blocker_ids: [],
+      orchestration_state: "decomposing",
+    });
+
+    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
+    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
+    writeFileSync(
+      join(repoPath, ".feliz", "config.yml"),
+      `specs:
+  enabled: false
+agent:
+  adapter: claude-code
+`,
+      "utf-8"
+    );
+
+    anyServer.poller = { poll: async () => [] };
+    anyServer.workspace = { getRepoPath: () => repoPath };
+    anyServer.publisher = {
+      publish: async () => ({ prUrl: "https://example.com/pr/1" }),
+    };
+    const decompAdapter: AgentAdapter = {
+      name: "claude-code",
+      isAvailable: async () => true,
+      execute: async () => ({
+        status: "succeeded",
+        exitCode: 0,
+        stdout: JSON.stringify({
+          sub_issues: [
+            {
+              title: "Part 1",
+              description: "First part",
+              dependencies: [],
+            },
+          ],
+        }),
+        stderr: "",
+        filesChanged: [],
+      }),
+      cancel: async () => {},
+    };
+    anyServer.adapters = { "claude-code": decompAdapter, codex: decompAdapter };
+
+    await anyServer.pollCycle();
+
+    const wi = db.getWorkItem("wi-decomp");
+    expect(wi.orchestration_state).toBe("decompose_review");
 
     await server.stop();
   });

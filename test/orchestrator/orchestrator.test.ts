@@ -378,6 +378,199 @@ describe("Orchestrator", () => {
     expect(dispatched).toHaveLength(1);
   });
 
+  test("Given per-state concurrency limit reached When dispatching queued items Then item remains queued", async () => {
+    db.upsertWorkItem({
+      id: "wi-running",
+      linear_id: "l-running",
+      linear_identifier: "T-10",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Running item",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "running",
+    });
+
+    db.upsertWorkItem({
+      id: "wi-queued",
+      linear_id: "l-queued",
+      linear_identifier: "T-11",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Queued item",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+
+    const orch = new Orchestrator(
+      db,
+      { "test-agent": makeSuccessAdapter() },
+      makeRepoConfig({
+        concurrency: {
+          max_per_state: { Todo: 1 },
+        },
+      }),
+      TEST_SCRATCH,
+      5
+    );
+
+    const dispatched = await orch.dispatchQueued(
+      "proj-1",
+      makeSimplePipeline(),
+      TEST_WORK_DIR
+    );
+
+    expect(dispatched).toEqual([]);
+    const wi = db.getWorkItem("wi-queued");
+    expect(wi!.orchestration_state).toBe("queued");
+  });
+
+  test("Given a queued work item When a run starts Then the context snapshot is linked to the same run id", async () => {
+    db.upsertWorkItem({
+      id: "wi-ctx",
+      linear_id: "l-ctx",
+      linear_identifier: "T-CTX",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Context linkage",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+
+    const orch = new Orchestrator(
+      db,
+      { "test-agent": makeSuccessAdapter() },
+      makeRepoConfig(),
+      TEST_SCRATCH,
+      5
+    );
+
+    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
+
+    const run = db.getLatestRunForWorkItem("wi-ctx");
+    expect(run).toBeDefined();
+
+    const snapshot = db.getContextSnapshot(run!.context_snapshot_id);
+    expect(snapshot).toBeDefined();
+    expect(snapshot!.run_id).toBe(run!.id);
+  });
+
+  test("Given a publish builtin step When pipeline succeeds Then PR URL is persisted from publisher", async () => {
+    db.upsertWorkItem({
+      id: "wi-publish",
+      linear_id: "l-publish",
+      linear_identifier: "T-PUB",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Publish item",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+
+    const publish = mock(async () => ({
+      prUrl: "https://github.com/org/repo/pull/123",
+    }));
+
+    const pipeline: PipelineDefinition = {
+      phases: [
+        {
+          name: "execute",
+          steps: [
+            {
+              name: "run",
+              agent: "test-agent",
+              success: { always: true },
+            },
+            {
+              name: "create_pr",
+              builtin: "publish",
+            },
+          ],
+        },
+      ],
+    };
+
+    const orch = new Orchestrator(
+      db,
+      { "test-agent": makeSuccessAdapter() },
+      makeRepoConfig(),
+      TEST_SCRATCH,
+      5,
+      {
+        publisher: {
+          publish,
+        } as any,
+      }
+    );
+
+    await orch.dispatchQueued("proj-1", pipeline, TEST_WORK_DIR);
+
+    expect(publish).toHaveBeenCalledTimes(1);
+    const run = db.getLatestRunForWorkItem("wi-publish");
+    expect(run!.pr_url).toBe("https://github.com/org/repo/pull/123");
+  });
+
+  test("Given workspace manager is configured When dispatching Then agent runs in worktree and cleanup occurs", async () => {
+    db.upsertWorkItem({
+      id: "wi-wt",
+      linear_id: "l-wt",
+      linear_identifier: "T-WT",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Worktree item",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+
+    const worktreeDir = join(TEST_WORK_DIR, "worktrees", "T-WT");
+    mkdirSync(worktreeDir, { recursive: true });
+
+    const adapter = makeSuccessAdapter();
+    const workspace = {
+      createWorktree: mock(async () => worktreeDir),
+      removeWorktree: mock(async () => {}),
+      getBranchName: (_identifier: string) => "feliz/T-WT",
+      runHook: mock(async () => ({ exitCode: 0, stdout: "", stderr: "" })),
+    };
+
+    const orch = new Orchestrator(
+      db,
+      { "test-agent": adapter },
+      makeRepoConfig(),
+      TEST_SCRATCH,
+      5,
+      { workspace: workspace as any }
+    );
+
+    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
+
+    const call = (adapter.execute as ReturnType<typeof mock>).mock.calls[0]![0] as {
+      workDir: string;
+    };
+    expect(call.workDir).toBe(worktreeDir);
+    expect(workspace.createWorktree).toHaveBeenCalledTimes(1);
+    expect(workspace.removeWorktree).toHaveBeenCalledTimes(1);
+  });
+
   test("cancels work item", () => {
     db.upsertWorkItem({
       id: "wi-1",
