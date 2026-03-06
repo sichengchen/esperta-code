@@ -1,6 +1,6 @@
 # Feliz
 
-Turn Linear issues into merged pull requests. Feliz is a self-hosted platform that orchestrates coding agents (Claude Code, Codex) through configurable pipelines — from issue discovery to PR delivery.
+Turn Linear issues into merged pull requests. Feliz is a self-hosted platform that orchestrates local coding agents (Claude Code, Codex) through configurable pipelines — from issue discovery to PR delivery.
 
 ## How it works
 
