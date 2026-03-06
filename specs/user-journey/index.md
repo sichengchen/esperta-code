@@ -12,7 +12,7 @@ This document traces how a developer/team uses Feliz throughout the entire lifec
 
 1. **Clone, configure, and start**:
    ```bash
-   git clone <repo-url> && cd feliz
+   git clone git@github.com:sichengchen/feliz.git && cd feliz
    cp .env.example .env
    # Edit .env with your GITHUB_TOKEN, etc. (Linear OAuth token set during `feliz init`)
    docker compose up -d --build

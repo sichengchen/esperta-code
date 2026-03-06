@@ -13,7 +13,7 @@ Install Feliz, configure your first project, and verify everything works.
 ## Install
 
 ```bash
-git clone <repo-url>
+git clone git@github.com:sichengchen/feliz.git
 cd feliz
 bun install
 ```
