@@ -139,7 +139,7 @@ fi
 CONFIG_PATH="${CONFIG_PATH:-${WORK_DIR}/feliz.yml}"
 REPORT_PATH="${REPORT_PATH:-${WORK_DIR}/e2e-smoke-report.json}"
 
-for cmd in bun gh git sqlite3 curl; do
+for cmd in bun gh git sqlite3; do
   if ! command -v "${cmd}" >/dev/null 2>&1; then
     echo "Missing required command: ${cmd}" >&2
     exit 1
@@ -338,31 +338,50 @@ MD
 
 check_linear_project() {
   local project_name="$1"
-  local escaped
-  escaped="${project_name//\"/\\\"}"
+  (
+    cd "${REPO_ROOT}"
+    LINEAR_PROJECT_TO_CHECK="${project_name}" bun --eval '
+import { LinearClient } from "./src/linear/client.ts";
 
-  local query
-  query="query ProjectByName { projects(filter: { name: { eq: \"${escaped}\" } }) { nodes { id name } } }"
+const target = (process.env.LINEAR_PROJECT_TO_CHECK ?? "").trim();
+const key = process.env.LINEAR_API_KEY ?? "";
 
-  local payload
-  payload="$(printf '{"query":"%s"}' "${query}")"
+if (!target) {
+  console.error("Linear project name is empty.");
+  process.exit(2);
+}
+if (!key) {
+  console.error("LINEAR_API_KEY is not set.");
+  process.exit(2);
+}
 
-  local response
-  response="$(curl -sS https://api.linear.app/graphql \
-    -H "Authorization: ${LINEAR_API_KEY}" \
-    -H "Content-Type: application/json" \
-    --data "${payload}")"
+const client = new LinearClient(key);
+const projects = await client.fetchProjects();
 
-  if echo "${response}" | grep -q '"errors"'; then
-    echo "Unable to query Linear project list. Response: ${response}" >&2
-    return 1
-  fi
+const exact = projects.find((p) => p.name === target);
+if (exact) process.exit(0);
 
-  if ! echo "${response}" | grep -Fq "\"name\":\"${project_name}\""; then
-    echo "Linear project not found: ${project_name}" >&2
-    echo "Create it in Linear first or pass --linear-project <existing-name>." >&2
-    return 1
-  fi
+const caseInsensitive = projects.find(
+  (p) => p.name.toLowerCase() === target.toLowerCase()
+);
+if (caseInsensitive) {
+  console.error(`Linear project exists as "${caseInsensitive.name}" (case mismatch).`);
+  console.error("Use the exact project name with --linear-project.");
+  process.exit(1);
+}
+
+console.error(`Linear project not found: ${target}`);
+if (projects.length > 0) {
+  const shown = projects.slice(0, 20).map((p) => p.name);
+  console.error(`Available projects (first ${shown.length}):`);
+  for (const name of shown) {
+    console.error(`- ${name}`);
+  }
+}
+console.error("Create it in Linear first or pass --linear-project <existing-name>.");
+process.exit(1);
+'
+  )
 }
 
 if [[ "${SKIP_SEED}" != "true" ]]; then
