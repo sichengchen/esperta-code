@@ -142,4 +142,18 @@ describe("project add/remove edge cases", () => {
     const hasBranch = mobileSection.some((l) => l.includes("branch"));
     expect(hasBranch).toBe(false);
   });
+
+  test("removeProjectFromConfig removes project workspace directory", () => {
+    const workspaceRoot = join(TEST_DIR, "workspaces");
+    const projectWorkspace = join(workspaceRoot, "backend");
+    mkdirSync(projectWorkspace, { recursive: true });
+
+    writeFileSync(
+      CONFIG_PATH,
+      `linear:\n  api_key: test-key\nstorage:\n  workspace_root: ${workspaceRoot}\nprojects:\n  - name: backend\n    repo: git@github.com:org/backend.git\n    linear_project: Backend\n`
+    );
+
+    removeProjectFromConfig(CONFIG_PATH, "backend");
+    expect(existsSync(projectWorkspace)).toBe(false);
+  });
 });
