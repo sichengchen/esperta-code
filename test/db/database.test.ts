@@ -327,4 +327,107 @@ describe("Database", () => {
     expect(step!.exit_code).toBe(0);
     expect(step!.finished_at).not.toBeNull();
   });
+
+  // listRuns
+  test("lists all runs ordered by started_at DESC", () => {
+    seedProjectAndWorkItem();
+    db.insertRun({
+      id: "run-1",
+      work_item_id: "wi-1",
+      attempt: 1,
+      current_phase: "execute",
+      current_step: "run",
+      context_snapshot_id: "snap-1",
+    });
+    db.insertRun({
+      id: "run-2",
+      work_item_id: "wi-1",
+      attempt: 2,
+      current_phase: "execute",
+      current_step: "run",
+      context_snapshot_id: "snap-2",
+    });
+    const runs = db.listRuns();
+    expect(runs).toHaveLength(2);
+    expect(runs[0]!.id).toBe("run-2");
+    expect(runs[1]!.id).toBe("run-1");
+  });
+
+  test("listRuns respects limit", () => {
+    seedProjectAndWorkItem();
+    db.insertRun({
+      id: "run-1",
+      work_item_id: "wi-1",
+      attempt: 1,
+      current_phase: "execute",
+      current_step: "run",
+      context_snapshot_id: "snap-1",
+    });
+    db.insertRun({
+      id: "run-2",
+      work_item_id: "wi-1",
+      attempt: 2,
+      current_phase: "execute",
+      current_step: "run",
+      context_snapshot_id: "snap-2",
+    });
+    const runs = db.listRuns(1);
+    expect(runs).toHaveLength(1);
+  });
+
+  // getWorkItemByLinearIdentifier
+  test("finds work item by linear_identifier", () => {
+    seedProjectAndWorkItem();
+    const item = db.getWorkItemByLinearIdentifier("B-1");
+    expect(item).not.toBeNull();
+    expect(item!.id).toBe("wi-1");
+  });
+
+  test("returns null for missing linear_identifier", () => {
+    const item = db.getWorkItemByLinearIdentifier("NOPE-999");
+    expect(item).toBeNull();
+  });
+
+  // Context snapshots
+  test("inserts and retrieves a context snapshot", () => {
+    seedRun();
+    db.insertContextSnapshot({
+      id: "snap-1",
+      run_id: "run-1",
+      work_item_id: "wi-1",
+      artifact_refs: [{ artifact_id: "a1", path: "/f.ts", content_hash: "h", version: 1, purpose: "code" }],
+      token_budget: { max_input: 100000, reserved_system: 5000 },
+    });
+    const snap = db.getContextSnapshot("snap-1");
+    expect(snap).not.toBeNull();
+    expect(snap!.work_item_id).toBe("wi-1");
+    expect(snap!.artifact_refs).toHaveLength(1);
+    expect(snap!.token_budget.max_input).toBe(100000);
+  });
+
+  test("gets latest snapshot for work item", () => {
+    seedRun();
+    db.insertContextSnapshot({
+      id: "snap-1",
+      run_id: "run-1",
+      work_item_id: "wi-1",
+      artifact_refs: [],
+      token_budget: { max_input: 100000, reserved_system: 5000 },
+    });
+    db.insertContextSnapshot({
+      id: "snap-2",
+      run_id: "run-1",
+      work_item_id: "wi-1",
+      artifact_refs: [{ artifact_id: "a1", path: "/f.ts", content_hash: "h", version: 1, purpose: "code" }],
+      token_budget: { max_input: 200000, reserved_system: 5000 },
+    });
+    const snap = db.getLatestSnapshotForWorkItem("wi-1");
+    expect(snap).not.toBeNull();
+    expect(snap!.id).toBe("snap-2");
+  });
+
+  test("returns null for missing snapshot", () => {
+    const snap = db.getContextSnapshot("nonexistent");
+    expect(snap).toBeNull();
+  });
 });

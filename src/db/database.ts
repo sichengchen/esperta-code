@@ -5,6 +5,7 @@ import type {
   Run,
   StepExecution,
   HistoryEntry,
+  ContextSnapshot,
   RunResult,
   StepResult,
 } from "../domain/types.ts";
@@ -485,6 +486,70 @@ export class Database {
       )
       .all(parentWorkItemId) as Record<string, unknown>[];
     return rows.map((row) => this.rowToWorkItem(row));
+  }
+
+  listRuns(limit = 50): Run[] {
+    const rows = this.db
+      .query("SELECT * FROM runs ORDER BY started_at DESC, rowid DESC LIMIT ?1")
+      .all(limit) as Record<string, unknown>[];
+    return rows.map((row) => this.rowToRun(row));
+  }
+
+  getWorkItemByLinearIdentifier(identifier: string): WorkItem | null {
+    const row = this.db
+      .query("SELECT * FROM work_items WHERE linear_identifier = ?1")
+      .get(identifier) as Record<string, unknown> | null;
+    if (!row) return null;
+    return this.rowToWorkItem(row);
+  }
+
+  // Context snapshots
+  insertContextSnapshot(snap: {
+    id: string;
+    run_id: string;
+    work_item_id: string;
+    artifact_refs: unknown[];
+    token_budget: { max_input: number; reserved_system: number };
+  }) {
+    this.db
+      .query(
+        `INSERT INTO context_snapshots (id, run_id, work_item_id, artifact_refs, token_budget)
+         VALUES (?1, ?2, ?3, ?4, ?5)`
+      )
+      .run(
+        snap.id,
+        snap.run_id,
+        snap.work_item_id,
+        JSON.stringify(snap.artifact_refs),
+        JSON.stringify(snap.token_budget)
+      );
+  }
+
+  getContextSnapshot(id: string): ContextSnapshot | null {
+    const row = this.db
+      .query("SELECT * FROM context_snapshots WHERE id = ?1")
+      .get(id) as Record<string, unknown> | null;
+    if (!row) return null;
+    return this.rowToContextSnapshot(row);
+  }
+
+  getLatestSnapshotForWorkItem(workItemId: string): ContextSnapshot | null {
+    const row = this.db
+      .query(
+        "SELECT * FROM context_snapshots WHERE work_item_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT 1"
+      )
+      .get(workItemId) as Record<string, unknown> | null;
+    if (!row) return null;
+    return this.rowToContextSnapshot(row);
+  }
+
+  private rowToContextSnapshot(row: Record<string, unknown>): ContextSnapshot {
+    return {
+      ...row,
+      artifact_refs: JSON.parse(row.artifact_refs as string),
+      token_budget: JSON.parse(row.token_budget as string),
+      created_at: new Date(row.created_at as string),
+    } as unknown as ContextSnapshot;
   }
 
   // Concurrency helpers
