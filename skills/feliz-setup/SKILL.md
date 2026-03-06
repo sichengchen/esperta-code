@@ -1,6 +1,6 @@
 ---
 name: feliz-setup
-description: Use this skill when setting up or repairing Feliz. The agent must run `/interview` first, collect user preferences, and write correct in-repo `feliz.yml` and `.feliz/*` configs tailored to those preferences.
+description: Use this skill when setting up or repairing Feliz. The agent must run `/interview` first, collect user preferences, write central `feliz.yml`, and configure `.feliz/*` correctly inside the managed project repository in the Feliz workspace.
 ---
 
 # Feliz Setup
@@ -13,7 +13,8 @@ Before editing any config, run `/interview` and collect preferences.
 
 Minimum interview topics:
 - Deployment mode: local CLI or Docker
-- Config location: repository-local `./feliz.yml` (default for this skill) or home path
+- Central config location: `/data/feliz/feliz.yml` (Docker default) or `~/.feliz/feliz.yml` (local default)
+- Workspace root: `/data/feliz/workspaces` (Docker default) or `~/.feliz/workspaces` (local default)
 - Linear API key source: env var reference or literal key
 - Git auth mode: SSH or HTTPS token/credential helper
 - Default agent adapter: `claude-code` or `codex`
@@ -28,18 +29,22 @@ Minimum interview topics:
   - git `repo`
   - Linear `linear_project`
   - base `branch`
+- Target repository path for repo config:
+  - usually `<workspace_root>/<project-name>/repo`
 
 If any required field is missing, continue the interview before generating files.
 
 ## Output contract
 
-After interview, write appropriate configs in the repository.
+After interview, write appropriate configs in the correct locations.
 
 Required files:
-- `feliz.yml` (or user-selected path)
-- `.feliz/config.yml`
-- `.feliz/pipeline.yml`
-- `WORKFLOW.md`
+- Central config:
+  - `feliz.yml` at selected central config path
+- Repo config inside target project repo:
+  - `<repo_path>/.feliz/config.yml`
+  - `<repo_path>/.feliz/pipeline.yml`
+  - `<repo_path>/WORKFLOW.md`
 
 Config rules:
 - Prefer env var reference for secrets, e.g. `linear.api_key: $LINEAR_API_KEY`.
@@ -47,6 +52,18 @@ Config rules:
 - Include only necessary fields; avoid unrelated options.
 - Keep YAML valid and schema-aligned with Feliz specs.
 - Use test/lint/spec settings from interview answers.
+
+## Repository target requirement
+
+`.feliz` must be configured in the managed project repository, not in the Feliz service repository.
+
+Default target in Docker:
+- `/data/feliz/workspaces/<project-name>/repo/.feliz/`
+
+Default target in local setup:
+- `~/.feliz/workspaces/<project-name>/repo/.feliz/`
+
+Always resolve the repo path from `storage.workspace_root` + project name before writing repo config files.
 
 ## Recommended generation flow
 
@@ -61,16 +78,21 @@ Config rules:
   - `agent`
   - `projects[]` from interview
 
-3. Write repo config
-- Generate `.feliz/config.yml` from interview preferences.
-- Generate `.feliz/pipeline.yml` using a sensible default execute pipeline.
-- Generate `WORKFLOW.md` with standard Feliz prompt structure.
+3. Resolve target repo path
+- Compute target path: `<workspace_root>/<project-name>/repo`.
+- In Docker, expect it under `/data/feliz/workspaces/...`.
+- Verify the target repo exists (or document that it must be cloned first).
 
-4. Validate
+4. Write repo config in target repo
+- Generate `<repo_path>/.feliz/config.yml` from interview preferences.
+- Generate `<repo_path>/.feliz/pipeline.yml` using a sensible default execute pipeline.
+- Generate `<repo_path>/WORKFLOW.md` with standard Feliz prompt structure.
+
+5. Validate
 - Run `bun run src/cli/index.ts --config <path> config validate`.
 - Fix any reported schema/format issues immediately.
 
-5. Confirm and proceed
+6. Confirm and proceed
 - Summarize what was written and why it matches user preferences.
 - Offer next commands: `start`, `status`, `project add/remove`.
 
