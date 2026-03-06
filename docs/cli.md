@@ -109,6 +109,8 @@ Add a new project interactively. Prompts for:
 - Git repo URL
 - Base branch
 
+For agent-assisted setup workflows, treat machine bootstrap and project onboarding as separate concerns. See [Skills](skills.md).
+
 ### `feliz project remove <name>`
 
 Remove a project from the configuration.

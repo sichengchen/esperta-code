@@ -37,6 +37,15 @@ No context switching. No prompting. Linear is your interface — Feliz is the en
 
 See the full **[Getting Started Guide](docs/getting-started.md)** for detailed setup instructions, or follow the quick start below.
 
+### Codex setup skills
+
+Feliz setup workflows are split into two distinct skills:
+
+- **Machine/bootstrap setup**: [`feliz-machine-setup`](skills/feliz-machine-setup/SKILL.md)
+- **Project onboarding**: [`feliz-project-onboarding`](skills/feliz-project-onboarding/SKILL.md)
+
+Use [`feliz-setup`](skills/feliz-setup/SKILL.md) as a router when you want the agent to choose the correct one.
+
 ### Prerequisites
 
 - [Bun](https://bun.sh) v1.0+
@@ -247,6 +256,7 @@ Interact with Feliz through Linear comments:
 | Document | Description |
 |---|---|
 | [Getting Started](docs/getting-started.md) | Installation, setup, and first project |
+| [Skills](docs/skills.md) | Setup skills for machine bootstrap vs project onboarding |
 | [Configuration](docs/configuration.md) | All config options with examples |
 | [CLI Reference](docs/cli.md) | Full CLI command documentation |
 | [Pipelines](docs/pipelines.md) | Pipeline definition and execution model |
