@@ -34,6 +34,24 @@ Options:
   --help                   Show this help
 `.trim();
 
+function loadConfig(configPath: string) {
+  if (!existsSync(configPath)) {
+    console.error(`Config file not found: ${configPath}`);
+    process.exit(1);
+  }
+  const content = readFileSync(configPath, "utf-8");
+  return loadFelizConfig(content);
+}
+
+function openDb(configPath: string) {
+  const config = loadConfig(configPath);
+  const dbPath = join(config.storage.data_dir, "db", "feliz.db");
+  if (!existsSync(dbPath)) {
+    return { config, db: null, dbPath };
+  }
+  return { config, db: new Database(dbPath), dbPath };
+}
+
 async function main() {
   const cmd = parseArgs(process.argv.slice(2));
   const logger = createLogger("cli");
@@ -48,12 +66,7 @@ async function main() {
 
   if (cmd.command === "config" && cmd.subcommand === "validate") {
     try {
-      if (!existsSync(configPath)) {
-        console.error(`Config file not found: ${configPath}`);
-        process.exit(1);
-      }
-      const content = readFileSync(configPath, "utf-8");
-      loadFelizConfig(content);
+      loadConfig(configPath);
       console.log("Configuration is valid.");
     } catch (e: any) {
       console.error(`Configuration error: ${e.message}`);
@@ -64,12 +77,7 @@ async function main() {
 
   if (cmd.command === "config" && cmd.subcommand === "show") {
     try {
-      if (!existsSync(configPath)) {
-        console.error(`Config file not found: ${configPath}`);
-        process.exit(1);
-      }
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
+      const config = loadConfig(configPath);
       console.log(JSON.stringify(config, null, 2));
     } catch (e: any) {
       console.error(`Error: ${e.message}`);
@@ -84,8 +92,7 @@ async function main() {
         console.log("Feliz is not configured. Run `feliz init` first.");
         return;
       }
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
+      const config = loadConfig(configPath);
       const dbPath = join(config.storage.data_dir, "db", "feliz.db");
       if (!existsSync(dbPath)) {
         console.log(
@@ -112,8 +119,7 @@ async function main() {
 
   if (cmd.command === "project" && cmd.subcommand === "list") {
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
+      const config = loadConfig(configPath);
       for (const p of config.projects) {
         console.log(`${p.name}: ${p.repo} (${p.linear_project})`);
       }
@@ -126,14 +132,11 @@ async function main() {
 
   if (cmd.command === "run" && cmd.subcommand === "list") {
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
-      if (!existsSync(dbPath)) {
+      const { db } = openDb(configPath);
+      if (!db) {
         console.log("No runs found. Feliz has not been started yet.");
         return;
       }
-      const db = new Database(dbPath);
       const runs = db.listRuns();
       if (runs.length === 0) {
         console.log("No runs found.");
@@ -167,10 +170,11 @@ async function main() {
       process.exit(1);
     }
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
-      const db = new Database(dbPath);
+      const { db } = openDb(configPath);
+      if (!db) {
+        console.error("No data found. Feliz has not been started yet.");
+        process.exit(1);
+      }
       const run = db.getRun(runId);
       if (!run) {
         console.error(`Run not found: ${runId}`);
@@ -213,10 +217,11 @@ async function main() {
       process.exit(1);
     }
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
-      const db = new Database(dbPath);
+      const { db } = openDb(configPath);
+      if (!db) {
+        console.error("No data found. Feliz has not been started yet.");
+        process.exit(1);
+      }
       const wi = db.getWorkItemByLinearIdentifier(identifier);
       if (!wi) {
         console.error(`Work item not found: ${identifier}`);
@@ -245,14 +250,11 @@ async function main() {
       process.exit(1);
     }
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
-      if (!existsSync(dbPath)) {
+      const { db } = openDb(configPath);
+      if (!db) {
         console.log("No history found. Feliz has not been started yet.");
         return;
       }
-      const db = new Database(dbPath);
       const project = db.getProjectByName(projectName);
       if (!project) {
         console.error(`Project not found: ${projectName}`);
@@ -285,14 +287,11 @@ async function main() {
       process.exit(1);
     }
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
-      if (!existsSync(dbPath)) {
+      const { db } = openDb(configPath);
+      if (!db) {
         console.error("No data found. Feliz has not been started yet.");
         process.exit(1);
       }
-      const db = new Database(dbPath);
       const wi = db.getWorkItemByLinearIdentifier(identifier);
       if (!wi) {
         console.error(`Work item not found: ${identifier}`);
@@ -391,8 +390,11 @@ async function main() {
 
   if (cmd.command === "stop") {
     try {
-      const content = readFileSync(configPath, "utf-8");
-      const config = loadFelizConfig(content);
+      if (!existsSync(configPath)) {
+        console.log("Feliz is not running (no config file found).");
+        return;
+      }
+      const config = loadConfig(configPath);
       const { readPidFile } = await import("../pid.ts");
       const pid = readPidFile(config.storage.data_dir);
       if (pid === null) {
@@ -412,12 +414,8 @@ async function main() {
         }
       }
     } catch (e: any) {
-      if (e.message?.includes("api_key") || e.message?.includes("project")) {
-        console.log("Feliz is not running (no PID file found).");
-      } else {
-        console.error(`Error: ${e.message}`);
-        process.exit(1);
-      }
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
     }
     return;
   }
@@ -434,10 +432,8 @@ async function main() {
     }
     console.log("Starting Feliz daemon...");
     logger.info("Feliz starting");
-    // Import and run server
     const { FelizServer } = await import("../server.ts");
-    const content = readFileSync(configPath, "utf-8");
-    const config = loadFelizConfig(content);
+    const config = loadConfig(configPath);
     const server = new FelizServer(config);
     await server.start();
     return;
