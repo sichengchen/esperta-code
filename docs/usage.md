@@ -1,11 +1,8 @@
 # Usage Guide
 
-`USE = CONFIG + USAGE`
+This guide shows the day-to-day operator workflow for running Feliz.
 
-- **Config** tells Feliz what projects/tools to use.
-- **Usage** is the day-to-day operator flow.
-
-This guide is the usage part.
+Use it after initial setup is complete and you are ready to process real Linear issues.
 
 ## 0) One-time bootstrap
 
