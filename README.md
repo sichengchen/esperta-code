@@ -37,14 +37,14 @@ No context switching. No prompting. Linear is your interface — Feliz is the en
 
 See the full **[Getting Started Guide](docs/getting-started.md)** for detailed setup instructions, or follow the quick start below.
 
-### Codex setup skills
+### Agent setup skills
 
 Feliz setup workflows are split into two distinct skills:
 
 - **Machine/bootstrap setup**: [`feliz-machine-setup`](skills/feliz-machine-setup/SKILL.md)
 - **Project onboarding**: [`feliz-project-onboarding`](skills/feliz-project-onboarding/SKILL.md)
 
-Use [`feliz-setup`](skills/feliz-setup/SKILL.md) as a router when you want the agent to choose the correct one.
+Use [`feliz-setup`](skills/feliz-setup/SKILL.md) as a router when you want the setup agent to choose the correct one.
 
 ### Prerequisites
 

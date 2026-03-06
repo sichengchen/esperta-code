@@ -105,9 +105,9 @@ bun run src/cli/index.ts config validate
 bun run src/cli/index.ts start
 ```
 
-## Codex skills for setup
+## Agent skills for setup
 
-If you are using Codex to perform setup, use the split setup skills:
+If you are using an agent to perform setup, use the split setup skills:
 
 - `feliz-machine-setup` for machine/container bootstrap and central `feliz.yml`
 - `feliz-project-onboarding` for adding a project and writing repo `.feliz/*`
