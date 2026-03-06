@@ -62,3 +62,4 @@
 - [x] 9.2 Approval gates (gated, suggest modes)
 - [x] 9.3 Retry policy (exponential backoff with jitter)
 - [x] 9.4 CLI commands (full suite)
+- [x] 9.5 Config scaffold on first run + `feliz init` wizard

@@ -80,28 +80,17 @@ export LINEAR_API_KEY="lin_api_..."
 export GITHUB_TOKEN="ghp_..."
 ```
 
-3. Create `~/.feliz/feliz.yml`:
+3. Create a config file using the interactive wizard:
 
-```yaml
-linear:
-  api_key: $LINEAR_API_KEY
+```bash
+bun run src/cli/index.ts init
+```
 
-polling:
-  interval_ms: 30000
+Or simply run `start` — Feliz scaffolds a template config on first run:
 
-storage:
-  data_dir: ~/.feliz
-  workspace_root: ~/.feliz/workspaces
-
-agent:
-  default: claude-code
-  max_concurrent: 5
-
-projects:
-  - name: my-project
-    repo: git@github.com:you/my-project.git
-    linear_project: My Project
-    branch: main
+```bash
+bun run src/cli/index.ts start
+# Edit ~/.feliz/feliz.yml with your settings, then re-run start
 ```
 
 4. Validate the config:

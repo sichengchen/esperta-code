@@ -11,6 +11,17 @@ The Feliz CLI manages the daemon and inspects state. All issue interaction happe
 
 ## Commands
 
+### `feliz init`
+
+Interactive setup wizard. Prompts for Linear API key, project name, repo URL, and Linear project name, then writes a valid `feliz.yml`.
+
+```bash
+feliz init
+feliz init --config /path/to/feliz.yml
+```
+
+If a config file already exists at the target path, prints a message and exits without overwriting. To reconfigure, delete the existing file first.
+
 ### `feliz start`
 
 Start the Feliz daemon. Begins polling Linear and processing issues.
@@ -19,6 +30,8 @@ Start the Feliz daemon. Begins polling Linear and processing issues.
 feliz start
 feliz start --config /path/to/feliz.yml
 ```
+
+If no config file exists, Feliz scaffolds a template `feliz.yml` at the default path (or `--config` path), prints instructions, and exits. Edit the template and re-run `feliz start`.
 
 On startup, Feliz:
 1. Loads and validates `feliz.yml`
