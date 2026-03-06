@@ -31,6 +31,7 @@ Feliz is a long-running orchestration service that connects Linear (as the prima
 | [Agent Dispatch](agents/index.md) | Adapter interface, Claude Code adapter, pipeline execution sequence |
 | [Publishing](publishing/index.md) | PR creation, Linear status updates |
 | [CLI](cli/index.md) | CLI commands for managing Feliz |
+| [Testing](testing/index.md) | End-to-end validation plan from install through PR creation |
 | [Security](security/index.md) | Secrets, agent auth, Docker credentials, isolation, trust model |
 | [User Journey](user-journey/index.md) | Full project lifecycle walkthrough, from install to ongoing operations |
 | [Roadmap](roadmap/index.md) | Implementation phases |
