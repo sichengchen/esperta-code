@@ -74,9 +74,17 @@ Run the interactive wizard:
 bun run src/cli/index.ts init
 ```
 
-This prompts for a project name, repo URL, and Linear project — then writes `~/.feliz/feliz.yml`.
+This prompts for the Linear OAuth token and writes `~/.feliz/feliz.yml` with default settings (webhook port, storage paths, agent defaults, and an empty `projects` list).
 
 Alternatively, run `start` without a config to scaffold a template you can edit manually.
+
+## Add a project
+
+```bash
+bun run src/cli/index.ts project add
+```
+
+This walks through Linear project selection, repo cloning, and scaffolding `.feliz/` config files if they don't exist.
 
 ## Start the daemon
 
@@ -96,8 +104,6 @@ bun run src/cli/index.ts config validate
 ```bash
 bun run src/cli/index.ts project add
 ```
-
-This walks through Linear project selection, repo cloning, and scaffolding `.feliz/` config files if they don't exist.
 
 ## Validate with E2E smoke checks
 

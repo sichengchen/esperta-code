@@ -24,7 +24,7 @@ describe("runInit", () => {
     process.env.LINEAR_OAUTH_TOKEN = "lin_test_key";
     try {
       const configPath = join(TEST_DIR, "feliz.yml");
-      const promptFn = makePromptFn(["Y", "backend", "git@github.com:acme/backend.git", "Backend API"]);
+      const promptFn = makePromptFn(["Y"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
       await runInit(configPath, promptFn);
@@ -32,9 +32,8 @@ describe("runInit", () => {
       expect(existsSync(configPath)).toBe(true);
       const content = readFileSync(configPath, "utf-8");
       expect(content).toContain("oauth_token: $LINEAR_OAUTH_TOKEN");
-      expect(content).toContain("name: backend");
-      expect(content).toContain("repo: git@github.com:acme/backend.git");
-      expect(content).toContain("linear_project: Backend API");
+      expect(content).toContain("projects: []");
+      expect(content).not.toContain("name: backend");
     } finally {
       if (origEnv !== undefined) {
         process.env.LINEAR_OAUTH_TOKEN = origEnv;
@@ -49,7 +48,7 @@ describe("runInit", () => {
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
       const configPath = join(TEST_DIR, "feliz.yml");
-      const promptFn = makePromptFn(["lin_api_abc123", "frontend", "git@github.com:acme/frontend.git", "Frontend"]);
+      const promptFn = makePromptFn(["lin_api_abc123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
       await runInit(configPath, promptFn);
@@ -57,7 +56,7 @@ describe("runInit", () => {
       expect(existsSync(configPath)).toBe(true);
       const content = readFileSync(configPath, "utf-8");
       expect(content).toContain("oauth_token: lin_api_abc123");
-      expect(content).toContain("name: frontend");
+      expect(content).toContain("projects: []");
     } finally {
       if (origEnv !== undefined) {
         process.env.LINEAR_OAUTH_TOKEN = origEnv;
@@ -90,7 +89,7 @@ describe("runInit", () => {
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
       const configPath = join(TEST_DIR, "a", "b", "feliz.yml");
-      const promptFn = makePromptFn(["lin_key_123", "proj", "git@github.com:o/r.git", "Proj"]);
+      const promptFn = makePromptFn(["lin_key_123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
       await runInit(configPath, promptFn);

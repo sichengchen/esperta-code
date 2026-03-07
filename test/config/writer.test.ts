@@ -18,10 +18,8 @@ describe("CONFIG_TEMPLATE", () => {
     expect(CONFIG_TEMPLATE).toContain("oauth_token: $LINEAR_OAUTH_TOKEN");
   });
 
-  test("contains project placeholders", () => {
-    expect(CONFIG_TEMPLATE).toContain("name: my-project");
-    expect(CONFIG_TEMPLATE).toContain("repo: git@github.com:org/repo.git");
-    expect(CONFIG_TEMPLATE).toContain("linear_project: My Project");
+  test("contains empty projects list", () => {
+    expect(CONFIG_TEMPLATE).toContain("projects: []");
   });
 
   test("contains comment header", () => {
@@ -30,25 +28,17 @@ describe("CONFIG_TEMPLATE", () => {
 });
 
 describe("generateConfig", () => {
-  test("produces YAML with provided values", () => {
+  test("produces YAML with provided token", () => {
     const yaml = generateConfig({
       oauthToken: "$LINEAR_OAUTH_TOKEN",
-      projectName: "backend",
-      repo: "git@github.com:acme/backend.git",
-      linearProject: "Backend API",
     });
     expect(yaml).toContain("oauth_token: $LINEAR_OAUTH_TOKEN");
-    expect(yaml).toContain("name: backend");
-    expect(yaml).toContain("repo: git@github.com:acme/backend.git");
-    expect(yaml).toContain("linear_project: Backend API");
+    expect(yaml).toContain("projects: []");
   });
 
   test("produces YAML with literal API key", () => {
     const yaml = generateConfig({
       oauthToken: "lin_api_abc123",
-      projectName: "frontend",
-      repo: "git@github.com:acme/frontend.git",
-      linearProject: "Frontend",
     });
     expect(yaml).toContain("oauth_token: lin_api_abc123");
   });
@@ -58,15 +48,10 @@ describe("generateConfig", () => {
     try {
       const yaml = generateConfig({
         oauthToken: "$LINEAR_OAUTH_TOKEN",
-        projectName: "backend",
-        repo: "git@github.com:acme/backend.git",
-        linearProject: "Backend API",
       });
       const config = loadFelizConfig(yaml);
       expect(config.linear.oauth_token).toBe("test-roundtrip-key");
-      expect(config.projects[0]!.name).toBe("backend");
-      expect(config.projects[0]!.repo).toBe("git@github.com:acme/backend.git");
-      expect(config.projects[0]!.linear_project).toBe("Backend API");
+      expect(config.projects).toEqual([]);
     } finally {
       delete process.env.LINEAR_OAUTH_TOKEN;
     }

@@ -25,8 +25,9 @@ bun run src/cli/index.ts auth linear --callback-url https://<your-host>:3421/aut
 
 export GITHUB_TOKEN="ghp_..."
 
-bun run src/cli/index.ts init    # interactive setup
-bun run src/cli/index.ts start   # start daemon
+bun run src/cli/index.ts init         # set up central config
+bun run src/cli/index.ts project add  # add a project
+bun run src/cli/index.ts start        # start daemon
 ```
 
 Or with Docker:
@@ -47,7 +48,7 @@ feliz start                    Start daemon
 feliz stop                     Stop daemon
 feliz status                   Show daemon health
 
-feliz init                     Setup wizard
+feliz init                     Set up central config
 feliz config validate          Check configuration
 feliz config show              Print resolved config
 

@@ -111,8 +111,8 @@ YAML
   echo "Config written to $CONFIG_PATH"
   echo ""
   echo "Next steps:"
-  echo "  1. Add a project:  docker compose exec feliz bun run src/cli/index.ts project add"
-  echo "  2. Or run auth:    docker compose exec feliz bun run src/cli/index.ts auth linear"
+  echo "  1. Run setup:      docker compose exec feliz bun run src/cli/index.ts init"
+  echo "  2. Add a project:  docker compose exec feliz bun run src/cli/index.ts project add"
   echo ""
 fi
 

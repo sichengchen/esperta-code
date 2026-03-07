@@ -12,17 +12,18 @@ linear:
 webhook:
   port: 3421
 
-projects:
-  - name: my-project
-    repo: git@github.com:org/repo.git
-    linear_project: My Project
+storage:
+  data_dir: /data/feliz
+  workspace_root: /data/feliz/workspaces
+
+agent:
+  default: claude-code
+
+projects: []
 `;
 
 export interface InitAnswers {
   oauthToken: string;
-  projectName: string;
-  repo: string;
-  linearProject: string;
 }
 
 export function generateConfig(answers: InitAnswers): string {
@@ -32,10 +33,17 @@ export function generateConfig(answers: InitAnswers): string {
 linear:
   oauth_token: ${answers.oauthToken}
 
-projects:
-  - name: ${answers.projectName}
-    repo: ${answers.repo}
-    linear_project: ${answers.linearProject}
+webhook:
+  port: 3421
+
+storage:
+  data_dir: /data/feliz
+  workspace_root: /data/feliz/workspaces
+
+agent:
+  default: claude-code
+
+projects: []
 `;
 }
 

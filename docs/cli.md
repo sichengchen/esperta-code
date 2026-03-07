@@ -34,7 +34,7 @@ feliz status
 
 ### Setup
 
-**`init`** — Interactive setup wizard. Creates `feliz.yml`.
+**`init`** — Interactive setup wizard. Creates `feliz.yml` with Linear token, webhook port, storage paths, agent defaults, and an empty projects list. Add projects separately with `feliz project add`.
 
 ```bash
 feliz init

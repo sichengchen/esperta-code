@@ -33,22 +33,14 @@ export async function runInit(
     oauthToken = entered;
   }
 
-  const projectName = promptFn("Project name:");
-  if (!projectName) throw new Error("Project name is required");
-
-  const repo = promptFn("Git repo URL:");
-  if (!repo) throw new Error("Repo URL is required");
-
-  const linearProject = promptFn("Linear project name:");
-  if (!linearProject) throw new Error("Linear project name is required");
-
-  const content = generateConfig({ oauthToken, projectName, repo, linearProject });
+  const content = generateConfig({ oauthToken });
   writeConfigFile(configPath, content);
 
   console.log("");
   console.log(`Config written to ${configPath}`);
   console.log("");
   console.log("Next steps:");
-  console.log("  1. Review the config: feliz config show");
-  console.log("  2. Start Feliz:       feliz start");
+  console.log("  1. Add a project:     feliz project add");
+  console.log("  2. Review the config: feliz config show");
+  console.log("  3. Start Feliz:       feliz start");
 }
