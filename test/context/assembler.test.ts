@@ -213,6 +213,79 @@ describe("ContextAssembler", () => {
     expect(content).toBe("Agent output content");
   });
 
+  test("writeRunContext writes history to workdir", () => {
+    db.appendHistory({
+      id: "h-1",
+      project_id: "proj-1",
+      work_item_id: "wi-1",
+      run_id: "run-1",
+      event_type: "run.step_completed",
+      payload: { phase: "implement", step: "run", result: "succeeded" },
+    });
+
+    const assembler = new ContextAssembler(db, TEST_SCRATCH_DIR);
+    const context = assembler.assemble("proj-1", "wi-1", TEST_WORK_DIR);
+    assembler.writeRunContext(TEST_WORK_DIR, context);
+
+    const historyPath = join(TEST_WORK_DIR, ".feliz", "context", "run", "history.md");
+    expect(existsSync(historyPath)).toBe(true);
+    const content = readFileSync(historyPath, "utf-8");
+    expect(content).toContain("run.step_completed");
+  });
+
+  test("writeRunContext writes scratchpad to workdir", () => {
+    // Create scratchpad files on the filesystem
+    db.insertRun({
+      id: "run-1",
+      work_item_id: "wi-1",
+      attempt: 1,
+      current_phase: "implement",
+      current_step: "run",
+      context_snapshot_id: "snap-1",
+    });
+    const assembler = new ContextAssembler(db, TEST_SCRATCH_DIR);
+    assembler.writeScratchpad("test", "run-1", "step-implement-run.md", "Agent did things");
+
+    const context = assembler.assemble("proj-1", "wi-1", TEST_WORK_DIR, "run-1");
+    assembler.writeRunContext(TEST_WORK_DIR, context);
+
+    const scratchDir = join(TEST_WORK_DIR, ".feliz", "context", "run", "scratchpad");
+    expect(existsSync(scratchDir)).toBe(true);
+    const content = readFileSync(join(scratchDir, "step-implement-run.md"), "utf-8");
+    expect(content).toBe("Agent did things");
+  });
+
+  test("writeRunContext is idempotent (overwrites on re-call)", () => {
+    db.appendHistory({
+      id: "h-1",
+      project_id: "proj-1",
+      work_item_id: "wi-1",
+      run_id: null,
+      event_type: "issue.discovered",
+      payload: { title: "Test" },
+    });
+
+    const assembler = new ContextAssembler(db, TEST_SCRATCH_DIR);
+    const context1 = assembler.assemble("proj-1", "wi-1", TEST_WORK_DIR);
+    assembler.writeRunContext(TEST_WORK_DIR, context1);
+
+    db.appendHistory({
+      id: "h-2",
+      project_id: "proj-1",
+      work_item_id: "wi-1",
+      run_id: null,
+      event_type: "issue.updated",
+      payload: {},
+    });
+
+    const context2 = assembler.assemble("proj-1", "wi-1", TEST_WORK_DIR);
+    assembler.writeRunContext(TEST_WORK_DIR, context2);
+
+    const historyPath = join(TEST_WORK_DIR, ".feliz", "context", "run", "history.md");
+    const content = readFileSync(historyPath, "utf-8");
+    expect(content).toContain("issue.updated");
+  });
+
   test("context snapshot stores artifact refs", () => {
     // Create memory so snapshot has something to reference
     const memoryDir = join(TEST_WORK_DIR, ".feliz", "context", "memory");

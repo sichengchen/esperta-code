@@ -1,7 +1,7 @@
 import type { Database } from "../db/database.ts";
 import type { HistoryEntry } from "../domain/types.ts";
 import { newId } from "../id.ts";
-import { existsSync, readdirSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "fs";
 import { join, relative } from "path";
 
 export interface MemoryItem {
@@ -148,6 +148,31 @@ export class ContextAssembler {
         JSON.stringify({ max_input: 100000, reserved_system: 5000 })
       );
     return id;
+  }
+
+  writeRunContext(workDir: string, context: AssembledContext): void {
+    const runDir = join(workDir, ".feliz", "context", "run");
+    mkdirSync(runDir, { recursive: true });
+
+    // Write history
+    if (context.history.length > 0) {
+      const historyMd = context.history
+        .map(
+          (h) =>
+            `## ${h.event_type}\n\n${JSON.stringify(h.payload, null, 2)}`
+        )
+        .join("\n\n---\n\n");
+      writeFileSync(join(runDir, "history.md"), historyMd);
+    }
+
+    // Write scratchpad artifacts
+    if (context.scratchpad.length > 0) {
+      const scratchDir = join(runDir, "scratchpad");
+      mkdirSync(scratchDir, { recursive: true });
+      for (const item of context.scratchpad) {
+        writeFileSync(join(scratchDir, item.path), item.content);
+      }
+    }
   }
 
   writeScratchpad(
