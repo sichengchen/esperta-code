@@ -76,7 +76,7 @@ export class PipelineExecutor {
               step_name: step.name,
               cycle,
               step_attempt: attempt,
-              agent_adapter: step.agent || null,
+              agent_adapter: step.agent || this.agentConfig.defaultAgent || null,
             });
 
             let agentResult: { status: string; exitCode: number; stdout: string } | null = null;

@@ -69,7 +69,11 @@ You must create these paths:
 - step "create_pr" with agent "${answers.agentAdapter}" and prompt .feliz/prompts/publish.md
 - IMPORTANT: every step MUST have an "agent" field set to "${answers.agentAdapter}"
 
-WORKFLOW.md should contain the standard Feliz starter prompt template using variables like {{ project.name }} and {{ issue.identifier }}.
+WORKFLOW.md MUST contain these exact template variables:
+- {{ project.name }} — the project name
+- {{ issue.identifier }} — the issue ID (e.g. SIC-29)
+- {{ issue.title }} — the issue title (REQUIRED — without this, the agent won't know what to do)
+- {{ issue.description }} — the issue description
 
 Only modify the listed scaffold files/directories.`);
 
