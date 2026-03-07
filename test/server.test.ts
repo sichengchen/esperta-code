@@ -334,4 +334,183 @@ agent:
 
     await server.stop();
   });
+
+  test("stop signal cancels work item and emits error activity", async () => {
+    const server = new FelizServer(makeConfig());
+    const anyServer = server as any;
+    const db = anyServer.db;
+
+    const project = {
+      id: "proj-stop",
+      name: "test-project",
+      repo_url: "git@github.com:org/test.git",
+      linear_project_name: "Test",
+      base_branch: "main",
+    };
+    db.insertProject(project);
+
+    db.upsertWorkItem({
+      id: "wi-stop",
+      linear_id: "lin-stop",
+      linear_identifier: "T-STOP",
+      project_id: project.id,
+      parent_work_item_id: null,
+      title: "Stop me",
+      description: "Should be stopped",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "running",
+      linear_session_id: "session-stop",
+    });
+
+    const mockLinearClient = {
+      emitThought: async () => {},
+      emitComment: async () => {},
+      emitError: async () => {},
+    };
+    anyServer.linearClient = mockLinearClient;
+
+    const emitErrorCalls: string[][] = [];
+    mockLinearClient.emitError = async (...args: any[]) => {
+      emitErrorCalls.push(args as string[]);
+    };
+
+    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
+    mkdirSync(repoPath, { recursive: true });
+    anyServer.workspace = { getRepoPath: () => repoPath };
+
+    const event = {
+      action: "prompted",
+      type: "AgentSession",
+      agentSession: {
+        id: "session-stop",
+        issueId: "lin-stop",
+        issue: {
+          id: "lin-stop",
+          identifier: "T-STOP",
+          title: "Stop me",
+          description: "Should be stopped",
+          priority: 1,
+          state: { name: "Todo" },
+          labels: { nodes: [] },
+          url: "https://linear.app/org/issue/T-STOP",
+        },
+        promptContext: "",
+        signal: "stop",
+      },
+    };
+
+    const httpServer = Bun.serve({
+      port: 0,
+      fetch: anyServer.handleRequest.bind(anyServer),
+    });
+
+    try {
+      const resp = await fetch(
+        `http://localhost:${httpServer.port}/webhook/linear`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(event),
+        }
+      );
+      expect(resp.status).toBe(200);
+
+      const wi = db.getWorkItem("wi-stop");
+      expect(wi.orchestration_state).toBe("cancelled");
+
+      expect(emitErrorCalls).toHaveLength(1);
+      expect(emitErrorCalls[0]![0]).toBe("session-stop");
+      expect(emitErrorCalls[0]![1]).toContain("Cancelled by user");
+    } finally {
+      httpServer.stop();
+      await server.stop();
+    }
+  });
+
+  test("cancels work item when @feliz cancel command received via webhook", async () => {
+    const server = new FelizServer(makeConfig());
+    const anyServer = server as any;
+    const db = anyServer.db;
+
+    const project = {
+      id: "proj-cancel",
+      name: "test-project",
+      repo_url: "git@github.com:org/test.git",
+      linear_project_name: "Test",
+      base_branch: "main",
+    };
+    db.insertProject(project);
+
+    db.upsertWorkItem({
+      id: "wi-cancel",
+      linear_id: "lin-cancel",
+      linear_identifier: "T-99",
+      project_id: project.id,
+      parent_work_item_id: null,
+      title: "Cancel me",
+      description: "Should be cancelled",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "queued",
+    });
+
+    // Mock the linearClient to avoid real API calls
+    anyServer.linearClient = {
+      emitThought: async () => {},
+      emitComment: async () => {},
+    };
+
+    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
+    mkdirSync(repoPath, { recursive: true });
+    anyServer.workspace = { getRepoPath: () => repoPath };
+
+    const event = {
+      action: "prompted",
+      type: "AgentSession",
+      agentSession: {
+        id: "session-cancel",
+        issueId: "lin-cancel",
+        issue: {
+          id: "lin-cancel",
+          identifier: "T-99",
+          title: "Cancel me",
+          description: "Should be cancelled",
+          priority: 1,
+          state: { name: "Todo" },
+          labels: { nodes: [] },
+          url: "https://linear.app/org/issue/T-99",
+        },
+        promptContext: "",
+        comment: { body: "@feliz cancel" },
+      },
+    };
+
+    const httpServer = Bun.serve({
+      port: 0,
+      fetch: anyServer.handleRequest.bind(anyServer),
+    });
+
+    try {
+      const resp = await fetch(
+        `http://localhost:${httpServer.port}/webhook/linear`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(event),
+        }
+      );
+      expect(resp.status).toBe(200);
+
+      const wi = db.getWorkItem("wi-cancel");
+      expect(wi.orchestration_state).toBe("cancelled");
+    } finally {
+      httpServer.stop();
+      await server.stop();
+    }
+  });
 });

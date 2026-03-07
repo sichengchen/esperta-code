@@ -32,6 +32,7 @@ export interface WorkItem {
   priority: number;
   labels: string[];
   blocker_ids: string[];
+  linear_session_id: string | null;
   orchestration_state: OrchestrationState;
   created_at: Date;
   updated_at: Date;

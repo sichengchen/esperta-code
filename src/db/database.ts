@@ -124,6 +124,12 @@ export class Database {
       CREATE INDEX IF NOT EXISTS idx_scratchpad_run
         ON scratchpad(run_id, status);
     `);
+
+    try {
+      this.db.exec(`ALTER TABLE work_items ADD COLUMN linear_session_id TEXT`);
+    } catch {
+      // Column already exists
+    }
   }
 
   listTables(): string[] {
@@ -202,13 +208,14 @@ export class Database {
     labels: string[];
     blocker_ids: string[];
     orchestration_state: string;
+    linear_session_id?: string | null;
   }) {
     this.db
       .query(
         `INSERT INTO work_items (id, linear_id, linear_identifier, project_id,
           parent_work_item_id, title, description, state, priority, labels,
-          blocker_ids, orchestration_state)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+          blocker_ids, orchestration_state, linear_session_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
          ON CONFLICT(id) DO UPDATE SET
           title = excluded.title,
           description = excluded.description,
@@ -231,8 +238,17 @@ export class Database {
         wi.priority,
         JSON.stringify(wi.labels),
         JSON.stringify(wi.blocker_ids),
-        wi.orchestration_state
+        wi.orchestration_state,
+        wi.linear_session_id ?? null
       );
+  }
+
+  updateWorkItemSessionId(id: string, sessionId: string) {
+    this.db
+      .query(
+        "UPDATE work_items SET linear_session_id = ?1, updated_at = datetime('now') WHERE id = ?2"
+      )
+      .run(sessionId, id);
   }
 
   getWorkItem(id: string): WorkItem | null {

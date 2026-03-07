@@ -23,12 +23,14 @@ export interface AgentSessionEvent {
     };
     promptContext: string;
     comment?: { body: string };
+    signal?: string;
   };
 }
 
 export interface WebhookResult {
   workItemId: string;
   command: FelizCommand | null;
+  signal?: string;
 }
 
 export class WebhookHandler {
@@ -56,11 +58,12 @@ export class WebhookHandler {
 
     const existing = this.db.getWorkItemByLinearId(issue.id);
     if (existing) {
-      return { workItemId: existing.id, command };
+      this.db.updateWorkItemSessionId(existing.id, session.id);
+      return { workItemId: existing.id, command, signal: session.signal };
     }
 
     const workItemId = this.createWorkItem(session, issue, projectId);
-    return { workItemId, command };
+    return { workItemId, command, signal: session.signal };
   }
 
   private createWorkItem(
@@ -82,6 +85,7 @@ export class WebhookHandler {
       labels: issue.labels?.nodes.map((l) => l.name) || [],
       blocker_ids: [],
       orchestration_state: "unclaimed",
+      linear_session_id: session.id,
     });
 
     this.db.appendHistory({
