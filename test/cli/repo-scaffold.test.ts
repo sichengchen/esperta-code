@@ -158,6 +158,34 @@ describe("writeRepoScaffoldWithAgent", () => {
     expect(result.reason).toContain("not available");
   });
 
+  test("includes stderr in failure reason when agent execution fails", async () => {
+    const adapter: AgentAdapter = {
+      name: "claude-code",
+      isAvailable: async () => true,
+      execute: async () => ({
+        status: "failed" as const,
+        exitCode: 1,
+        stdout: "",
+        stderr: "Error: ANTHROPIC_API_KEY not set",
+        filesChanged: [],
+      }),
+      cancel: async () => {},
+    };
+
+    const result = await writeRepoScaffoldWithAgent(
+      TEST_DIR,
+      adapter,
+      "claude-code",
+      {
+        agentAdapter: "claude-code",
+        specsEnabled: false,
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toContain("ANTHROPIC_API_KEY not set");
+  });
+
   test("returns success when agent generates valid scaffold files", async () => {
     const adapter: AgentAdapter = {
       name: "claude-code",

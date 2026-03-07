@@ -120,9 +120,10 @@ export async function writeRepoScaffoldWithAgent(
   });
 
   if (result.status !== "succeeded") {
+    const detail = result.stderr?.trim() || result.status;
     return {
       success: false,
-      reason: `agent scaffold failed (${result.status})`,
+      reason: `agent scaffold failed: ${detail}`,
     };
   }
 
