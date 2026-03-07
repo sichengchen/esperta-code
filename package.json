@@ -23,6 +23,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@linear/sdk": "^76.0.0",
     "yaml": "^2.4.0"
   }
 }
