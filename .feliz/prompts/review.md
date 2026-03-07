@@ -8,19 +8,6 @@ Review the changes made for this issue.
 
 {{ issue.description }}
 
-{% if specs %}
-## Specifications
-
-{{ specs }}
-{% endif %}
-
-{% if cycle %}
-## Review Cycle {{ cycle }}
-
-Previous review feedback:
-{{ previous_review }}
-{% endif %}
-
 ## Instructions
 
 - Check that tests cover the new behavior

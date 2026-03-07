@@ -8,19 +8,6 @@ You are working on {{ project.name }}.
 
 {{ issue.description }}
 
-{% if specs %}
-## Specifications
-
-{{ specs }}
-{% endif %}
-
-{% if attempt %}
-## Previous Attempt
-
-This is attempt {{ attempt }}. Previous run failed with:
-{{ previous_failure }}
-{% endif %}
-
 ## Instructions
 
 - Read the relevant spec before writing any code

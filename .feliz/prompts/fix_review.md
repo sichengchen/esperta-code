@@ -6,12 +6,6 @@ Address the review feedback for this issue.
 
 **{{ issue.identifier }}**: {{ issue.title }}
 
-{% if previous_review %}
-## Review Feedback
-
-{{ previous_review }}
-{% endif %}
-
 ## Instructions
 
 - Fix each issue raised in the review
