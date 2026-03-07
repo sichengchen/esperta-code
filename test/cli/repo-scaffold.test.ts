@@ -60,6 +60,7 @@ describe("writeRepoScaffold", () => {
     const pipelineYml = readFileSync(join(TEST_DIR, ".feliz", "pipeline.yml"), "utf-8");
     expect(pipelineYml).toContain("execute");
     expect(pipelineYml).toContain("bun test");
+    expect(pipelineYml).toContain("agent: claude-code");
 
     const workflow = readFileSync(join(TEST_DIR, "WORKFLOW.md"), "utf-8");
     expect(workflow).toContain("{{ project.name }}");

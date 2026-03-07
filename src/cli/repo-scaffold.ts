@@ -64,9 +64,10 @@ You must create these paths:
 
   sections.push(`.feliz/pipeline.yml must define the default pipeline:
 - single phase named "execute"
-- step "run" with prompt WORKFLOW.md
+- step "run" with agent "${answers.agentAdapter}" and prompt WORKFLOW.md
 - include success.command only when a test command is provided
-- step "create_pr" with prompt .feliz/prompts/publish.md
+- step "create_pr" with agent "${answers.agentAdapter}" and prompt .feliz/prompts/publish.md
+- IMPORTANT: every step MUST have an "agent" field set to "${answers.agentAdapter}"
 
 WORKFLOW.md should contain the standard Feliz starter prompt template using variables like {{ project.name }} and {{ issue.identifier }}.
 
