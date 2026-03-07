@@ -2,6 +2,8 @@ services:
   feliz:
     build: .
     env_file: .env
+    ports:
+      - "8374:8374"  # OAuth callback for `feliz auth linear`
     volumes:
       - ${SSH_AUTH_SOCK}:/ssh-agent:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro

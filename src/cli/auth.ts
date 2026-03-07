@@ -43,7 +43,13 @@ export async function exchangeCodeForToken(opts: {
     body: body.toString(),
   });
 
-  const json = await response.json();
+  const json = (await response.json()) as {
+    access_token?: string;
+    token_type?: string;
+    expires_in?: number;
+    scope?: string[];
+    error?: string;
+  };
 
   if (!response.ok || !json.access_token) {
     throw new Error(
@@ -51,7 +57,7 @@ export async function exchangeCodeForToken(opts: {
     );
   }
 
-  return json;
+  return json as { access_token: string; token_type: string; expires_in: number; scope: string[] };
 }
 
 export async function verifyToken(

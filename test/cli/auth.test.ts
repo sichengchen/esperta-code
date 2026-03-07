@@ -69,7 +69,7 @@ describe("exchangeCodeForToken", () => {
       clientSecret: "csecret",
       code: "auth_code_abc",
       redirectUri: "http://localhost:8374/auth/callback",
-      fetchFn: mockFetch as typeof fetch,
+      fetchFn: mockFetch as any,
     });
 
     expect(capturedUrl).toBe("https://api.linear.app/oauth/token");
@@ -106,7 +106,7 @@ describe("exchangeCodeForToken", () => {
         clientSecret: "csecret",
         code: "bad_code",
         redirectUri: "http://localhost:8374/auth/callback",
-        fetchFn: mockFetch as typeof fetch,
+        fetchFn: mockFetch as any,
       })
     ).rejects.toThrow();
   });
@@ -129,7 +129,7 @@ describe("verifyToken", () => {
 
     const viewer = await verifyToken(
       "lin_oauth_test123",
-      mockFetch as typeof fetch
+      mockFetch as any
     );
 
     expect(capturedAuth).toBe("Bearer lin_oauth_test123");
@@ -147,7 +147,7 @@ describe("verifyToken", () => {
 
     const viewer = await verifyToken(
       "bad_token",
-      mockFetch as typeof fetch
+      mockFetch as any
     );
 
     expect(viewer).toBeNull();
