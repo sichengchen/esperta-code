@@ -159,6 +159,65 @@ describe("WebhookHandler", () => {
     expect(client.emitThought).not.toHaveBeenCalled();
   });
 
+  test("stores session ID on new work item", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    const result = await handler.handleEvent(makeEvent(), "proj-1");
+
+    const wi = db.getWorkItemByLinearId("lin-1");
+    expect(wi!.linear_session_id).toBe("session-1");
+  });
+
+  test("updates session ID on prompted event for existing work item", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    await handler.handleEvent(makeEvent(), "proj-1");
+
+    const updateEvent = makeEvent({
+      action: "prompted",
+      agentSession: {
+        ...makeEvent().agentSession,
+        id: "session-2",
+        comment: { body: "@feliz retry" },
+      },
+    });
+
+    await handler.handleEvent(updateEvent, "proj-1");
+
+    const wi = db.getWorkItemByLinearId("lin-1");
+    expect(wi!.linear_session_id).toBe("session-2");
+  });
+
+  test("detects stop signal from webhook event", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    // First create the work item
+    await handler.handleEvent(makeEvent(), "proj-1");
+
+    const stopEvent = makeEvent({
+      action: "prompted",
+      agentSession: {
+        ...makeEvent().agentSession,
+        id: "session-stop",
+        signal: "stop",
+      },
+    });
+
+    const result = await handler.handleEvent(stopEvent, "proj-1");
+    expect(result.signal).toBe("stop");
+  });
+
+  test("signal is undefined when not present", async () => {
+    const client = makeLinearClient();
+    const handler = new WebhookHandler(db, client as any);
+
+    const result = await handler.handleEvent(makeEvent(), "proj-1");
+    expect(result.signal).toBeUndefined();
+  });
+
   test("records history on session created", async () => {
     const client = makeLinearClient();
     const handler = new WebhookHandler(db, client as any);
