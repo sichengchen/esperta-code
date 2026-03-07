@@ -113,17 +113,19 @@ describe("generateRepoConfig", () => {
 
 describe("generatePipelineYml", () => {
   test("round-trips through loadPipelineConfig", () => {
-    const yaml = generatePipelineYml("npm test");
+    const yaml = generatePipelineYml("claude-code", "npm test");
     const pipeline = loadPipelineConfig(yaml);
     expect(pipeline.phases).toHaveLength(1);
     expect(pipeline.phases[0]!.name).toBe("execute");
     expect(pipeline.phases[0]!.steps[0]!.name).toBe("run");
+    expect(pipeline.phases[0]!.steps[0]!.agent).toBe("claude-code");
     expect(pipeline.phases[0]!.steps[0]!.success!.command).toBe("npm test");
     expect(pipeline.phases[0]!.steps[1]!.prompt).toBe(".feliz/prompts/publish.md");
+    expect(pipeline.phases[0]!.steps[1]!.agent).toBe("claude-code");
   });
 
   test("omits success condition without test command", () => {
-    const yaml = generatePipelineYml();
+    const yaml = generatePipelineYml("claude-code");
     const pipeline = loadPipelineConfig(yaml);
     expect(pipeline.phases[0]!.steps[0]!.success).toBeUndefined();
   });

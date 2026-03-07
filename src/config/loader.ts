@@ -147,7 +147,7 @@ export function loadPipelineConfig(yamlContent: string): PipelineDefinition {
   return raw as unknown as PipelineDefinition;
 }
 
-export function getDefaultPipeline(testCommand?: string): PipelineDefinition {
+export function getDefaultPipeline(agentAdapter: string, testCommand?: string): PipelineDefinition {
   return {
     phases: [
       {
@@ -155,11 +155,13 @@ export function getDefaultPipeline(testCommand?: string): PipelineDefinition {
         steps: [
           {
             name: "run",
+            agent: agentAdapter,
             prompt: "WORKFLOW.md",
             ...(testCommand ? { success: { command: testCommand } } : {}),
           },
           {
             name: "create_pr",
+            agent: agentAdapter,
             prompt: ".feliz/prompts/publish.md",
           },
         ],

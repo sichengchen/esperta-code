@@ -279,6 +279,6 @@ export class FelizServer {
     if (existsSync(pipelinePath)) {
       return loadPipelineConfig(readFileSync(pipelinePath, "utf-8"));
     }
-    return getDefaultPipeline(repoConfig.gates.test_command);
+    return getDefaultPipeline(repoConfig.agent.adapter, repoConfig.gates.test_command);
   }
 }

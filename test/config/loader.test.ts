@@ -312,7 +312,7 @@ phases:
 
 describe("getDefaultPipeline", () => {
   test("returns default single-phase pipeline", () => {
-    const pipeline = getDefaultPipeline();
+    const pipeline = getDefaultPipeline("claude-code");
     expect(pipeline.phases).toHaveLength(1);
     expect(pipeline.phases[0]!.name).toBe("execute");
     expect(pipeline.phases[0]!.steps).toHaveLength(2);
@@ -322,7 +322,19 @@ describe("getDefaultPipeline", () => {
   });
 
   test("includes test command in success condition when provided", () => {
-    const pipeline = getDefaultPipeline("npm test");
+    const pipeline = getDefaultPipeline("claude-code", "npm test");
     expect(pipeline.phases[0]!.steps[0]!.success?.command).toBe("npm test");
+  });
+
+  test("sets agent on all steps", () => {
+    const pipeline = getDefaultPipeline("claude-code");
+    expect(pipeline.phases[0]!.steps[0]!.agent).toBe("claude-code");
+    expect(pipeline.phases[0]!.steps[1]!.agent).toBe("claude-code");
+  });
+
+  test("uses provided agent adapter name", () => {
+    const pipeline = getDefaultPipeline("codex");
+    expect(pipeline.phases[0]!.steps[0]!.agent).toBe("codex");
+    expect(pipeline.phases[0]!.steps[1]!.agent).toBe("codex");
   });
 });

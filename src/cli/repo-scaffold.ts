@@ -29,7 +29,7 @@ export function writeRepoScaffold(
   );
   writeFileSync(
     join(felizDir, "pipeline.yml"),
-    generatePipelineYml(answers.testCommand),
+    generatePipelineYml(answers.agentAdapter, answers.testCommand),
     "utf-8"
   );
   writeFileSync(join(repoPath, "WORKFLOW.md"), generateWorkflowMd(), "utf-8");

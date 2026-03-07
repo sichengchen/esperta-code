@@ -83,8 +83,8 @@ export function generateRepoConfig(answers: RepoScaffoldAnswers): string {
   return stringify(doc);
 }
 
-export function generatePipelineYml(testCommand?: string): string {
-  return stringify(getDefaultPipeline(testCommand));
+export function generatePipelineYml(agentAdapter: string = "claude-code", testCommand?: string): string {
+  return stringify(getDefaultPipeline(agentAdapter, testCommand));
 }
 
 export function generateWorkflowMd(): string {
