@@ -17,11 +17,20 @@ export interface HooksConfig {
   after_run?: string;
 }
 
+export interface StepResult {
+  phaseName: string;
+  stepName: string;
+  cycle: number;
+  agentResult: { status: string; exitCode: number; stdout: string; stderr: string; filesChanged: string[] } | null;
+  success: boolean;
+}
+
 export interface ExecuteParams {
   runId: string;
   workDir: string;
   pipeline: PipelineDefinition;
   promptRenderer: (phaseName: string, stepName: string, cycle: number) => string;
+  afterStep?: (result: StepResult) => void;
 }
 
 export interface ExecuteResult {
@@ -158,6 +167,18 @@ export class PipelineExecutor {
               agentResult?.exitCode ?? 0,
               success ? null : "Success condition not met"
             );
+
+            if (params.afterStep) {
+              params.afterStep({
+                phaseName: phase.name,
+                stepName: step.name,
+                cycle,
+                agentResult: agentResult
+                  ? { status: agentResult.status, exitCode: agentResult.exitCode, stdout: agentResult.stdout, stderr: agentResult.stderr, filesChanged: agentResult.filesChanged }
+                  : null,
+                success,
+              });
+            }
 
             if (success) {
               stepSucceeded = true;

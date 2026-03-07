@@ -725,6 +725,67 @@ describe("PipelineExecutor", () => {
     expect(result.failureReason).toContain("No agent");
   });
 
+  test("calls afterStep callback with agent result", async () => {
+    const adapter = makeAdapter({ stdout: "output text", filesChanged: ["src/foo.ts"] });
+    const pipeline: PipelineDefinition = {
+      phases: [
+        {
+          name: "implement",
+          steps: [
+            { name: "run", agent: "test-agent", success: { always: true } },
+          ],
+        },
+      ],
+    };
+
+    const afterStepCalls: any[] = [];
+    const executor = new PipelineExecutor(db, { "test-agent": adapter });
+    await executor.execute({
+      runId: "run-1",
+      workDir: TEST_WORK_DIR,
+      pipeline,
+      promptRenderer: () => "prompt",
+      afterStep: (info) => {
+        afterStepCalls.push(info);
+      },
+    });
+
+    expect(afterStepCalls).toHaveLength(1);
+    expect(afterStepCalls[0].phaseName).toBe("implement");
+    expect(afterStepCalls[0].stepName).toBe("run");
+    expect(afterStepCalls[0].cycle).toBe(1);
+    expect(afterStepCalls[0].agentResult.stdout).toBe("output text");
+  });
+
+  test("afterStep called for each step in multi-step pipeline", async () => {
+    const adapter = makeAdapter();
+    const pipeline: PipelineDefinition = {
+      phases: [
+        {
+          name: "implement",
+          steps: [
+            { name: "write_tests", agent: "test-agent", success: { always: true } },
+            { name: "write_code", agent: "test-agent", success: { always: true } },
+          ],
+        },
+      ],
+    };
+
+    const afterStepCalls: any[] = [];
+    const executor = new PipelineExecutor(db, { "test-agent": adapter });
+    await executor.execute({
+      runId: "run-1",
+      workDir: TEST_WORK_DIR,
+      pipeline,
+      promptRenderer: () => "prompt",
+      afterStep: (info) => afterStepCalls.push(info),
+    });
+
+    expect(afterStepCalls).toHaveLength(2);
+    expect(afterStepCalls[0].stepName).toBe("write_tests");
+    expect(afterStepCalls[1].stepName).toBe("write_code");
+  });
+
   test("passes approval policy to agent via agentConfig", async () => {
     const adapter = makeAdapter();
     const pipeline: PipelineDefinition = {
