@@ -786,6 +786,37 @@ describe("PipelineExecutor", () => {
     expect(afterStepCalls[1].stepName).toBe("write_code");
   });
 
+  test("passes env vars to agent adapter", async () => {
+    const adapter = makeAdapter();
+    const pipeline: PipelineDefinition = {
+      phases: [
+        {
+          name: "execute",
+          steps: [
+            { name: "run", agent: "test-agent", success: { always: true } },
+          ],
+        },
+      ],
+    };
+
+    const executor = new PipelineExecutor(db, { "test-agent": adapter });
+    await executor.execute({
+      runId: "run-1",
+      workDir: TEST_WORK_DIR,
+      pipeline,
+      promptRenderer: () => "prompt",
+      env: {
+        FELIZ_RUN_ID: "run-1",
+        FELIZ_PROJECT_ID: "proj-1",
+      },
+    });
+
+    const call = (adapter.execute as ReturnType<typeof mock>).mock.calls[0]!;
+    const params = call[0] as any;
+    expect(params.env.FELIZ_RUN_ID).toBe("run-1");
+    expect(params.env.FELIZ_PROJECT_ID).toBe("proj-1");
+  });
+
   test("passes approval policy to agent via agentConfig", async () => {
     const adapter = makeAdapter();
     const pipeline: PipelineDefinition = {

@@ -31,6 +31,7 @@ export interface ExecuteParams {
   pipeline: PipelineDefinition;
   promptRenderer: (phaseName: string, stepName: string, cycle: number) => string;
   afterStep?: (result: StepResult) => void;
+  env?: Record<string, string>;
 }
 
 export interface ExecuteResult {
@@ -120,7 +121,7 @@ export class PipelineExecutor {
                 timeout_ms: this.agentConfig.timeout_ms,
                 maxTurns: this.agentConfig.max_turns,
                 approvalPolicy: this.agentConfig.approval_policy,
-                env: {},
+                env: params.env ?? {},
               });
 
               agentResult = result;

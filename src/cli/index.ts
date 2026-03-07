@@ -29,6 +29,8 @@ Commands:
   agent list               List installed agents
   context history <proj>   Show history events
   context show <item>      Show context snapshot
+  context read             Read context (for agents during pipeline runs)
+  context write <msg>      Write scratchpad message (for agents during pipeline runs)
   auth linear              Authenticate with Linear (OAuth flow)
   e2e doctor               Validate local E2E prerequisites
   e2e smoke                Run automated E2E smoke checks
@@ -332,6 +334,70 @@ async function main() {
           console.log(`  ${ref.path} (${ref.purpose})`);
         }
       }
+      db.close();
+    } catch (e: any) {
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (cmd.command === "context" && cmd.subcommand === "read") {
+    const dataDir = process.env.FELIZ_DATA_DIR;
+    const projectId = process.env.FELIZ_PROJECT_ID;
+    const workItemId = process.env.FELIZ_WORK_ITEM_ID;
+    const runId = process.env.FELIZ_RUN_ID ?? null;
+
+    if (!dataDir || !projectId || !workItemId) {
+      console.error("Missing environment variables. This command is for use by agents during pipeline execution.");
+      console.error("Required: FELIZ_DATA_DIR, FELIZ_PROJECT_ID, FELIZ_WORK_ITEM_ID");
+      process.exit(1);
+    }
+
+    try {
+      const dbPath = join(dataDir, "db", "feliz.db");
+      if (!existsSync(dbPath)) {
+        console.log("No context available.");
+        return;
+      }
+      const db = new Database(dbPath);
+      const { contextRead } = await import("./context-agent.ts");
+      const output = contextRead(db, join(dataDir, "scratchpad"), projectId, workItemId, runId);
+      console.log(output);
+      db.close();
+    } catch (e: any) {
+      console.error(`Error: ${e.message}`);
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (cmd.command === "context" && cmd.subcommand === "write") {
+    const dataDir = process.env.FELIZ_DATA_DIR;
+    const projectId = process.env.FELIZ_PROJECT_ID;
+    const runId = process.env.FELIZ_RUN_ID;
+
+    if (!dataDir || !projectId || !runId) {
+      console.error("Missing environment variables. This command is for use by agents during pipeline execution.");
+      console.error("Required: FELIZ_DATA_DIR, FELIZ_PROJECT_ID, FELIZ_RUN_ID");
+      process.exit(1);
+    }
+
+    let message = cmd.args.join(" ");
+    if (!message) {
+      // Read from stdin
+      message = await Bun.stdin.text();
+    }
+    if (!message.trim()) {
+      console.error("Usage: feliz context write <message>");
+      process.exit(1);
+    }
+
+    try {
+      const dbPath = join(dataDir, "db", "feliz.db");
+      const db = new Database(dbPath);
+      const { contextWrite } = await import("./context-agent.ts");
+      contextWrite(db, join(dataDir, "scratchpad"), projectId, runId, message.trim());
       db.close();
     } catch (e: any) {
       console.error(`Error: ${e.message}`);

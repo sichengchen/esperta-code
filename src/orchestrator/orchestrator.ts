@@ -365,6 +365,12 @@ export class Orchestrator {
       runId,
       workDir: executionDir,
       pipeline,
+      env: {
+        FELIZ_RUN_ID: runId,
+        FELIZ_PROJECT_ID: wi.project_id,
+        FELIZ_WORK_ITEM_ID: wi.id,
+        FELIZ_DATA_DIR: this.scratchpadRoot.replace(/\/scratchpad$/, ""),
+      },
       promptRenderer: (phaseName, stepName, cycle) => {
         const template = this.getStepPromptTemplate(
           executionDir,
