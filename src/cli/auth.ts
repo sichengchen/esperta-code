@@ -206,13 +206,12 @@ export async function runAuth(
   console.log(`Token saved to ${configPath}`);
 
   if (useEnvVar) {
-    const masked = maskToken(tokenResult.access_token);
     console.log("");
-    console.log(
-      `Set the LINEAR_OAUTH_TOKEN environment variable to your token (${masked}).`
-    );
-    console.log("Add to your .env file or shell profile. The full token was");
-    console.log("shown only during the OAuth redirect — it is not stored in logs.");
+    console.log("Set the LINEAR_OAUTH_TOKEN environment variable:");
+    console.log("");
+    console.log(`  export LINEAR_OAUTH_TOKEN="${tokenResult.access_token}"`);
+    console.log("");
+    console.log("Add this to your .env file or shell profile.");
   }
 
   console.log("");
