@@ -102,4 +102,11 @@ export class LinearClient {
       content: { type: "response", body },
     });
   }
+
+  async emitError(sessionId: string, body: string): Promise<void> {
+    await this.sdk.createAgentActivity({
+      agentSessionId: sessionId,
+      content: { type: "error", body },
+    });
+  }
 }

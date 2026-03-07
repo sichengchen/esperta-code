@@ -248,3 +248,24 @@ describe("LinearClient.emitComment", () => {
     expect(client.emitComment("s", "t")).rejects.toThrow();
   });
 });
+
+describe("LinearClient.emitError", () => {
+  test("sends error agent activity with content object", async () => {
+    const sdk = makeSdkClient();
+    const client = new LinearClient("token", sdk as any);
+    await client.emitError("session-3", "Something went wrong");
+    expect(sdk.createAgentActivity).toHaveBeenCalledTimes(1);
+    expect(sdk.createAgentActivity).toHaveBeenCalledWith({
+      agentSessionId: "session-3",
+      content: { type: "error", body: "Something went wrong" },
+    });
+  });
+
+  test("throws on failure", async () => {
+    const sdk = makeSdkClient({
+      createAgentActivity: mock(() => Promise.reject(new Error("API error"))),
+    });
+    const client = new LinearClient("token", sdk as any);
+    expect(client.emitError("s", "e")).rejects.toThrow();
+  });
+});
