@@ -113,14 +113,14 @@ describe("WebhookHandler", () => {
     expect(result1.workItemId).toBe(result2.workItemId);
   });
 
-  test("handles updated event for existing work item", async () => {
+  test("handles prompted event for existing work item", async () => {
     const client = makeLinearClient();
     const handler = new WebhookHandler(db, client as any);
 
     await handler.handleEvent(makeEvent(), "proj-1");
 
     const updateEvent = makeEvent({
-      action: "updated",
+      action: "prompted",
       agentSession: {
         ...makeEvent().agentSession,
         comment: { body: "@feliz retry" },
@@ -132,11 +132,11 @@ describe("WebhookHandler", () => {
     expect(result.command!.command).toBe("retry");
   });
 
-  test("creates work item on updated event when none exists", async () => {
+  test("creates work item on prompted event when none exists", async () => {
     const client = makeLinearClient();
     const handler = new WebhookHandler(db, client as any);
 
-    const event = makeEvent({ action: "updated" });
+    const event = makeEvent({ action: "prompted" });
     const result = await handler.handleEvent(event, "proj-1");
 
     expect(result.workItemId).toBeDefined();
@@ -149,11 +149,11 @@ describe("WebhookHandler", () => {
     expect(history[0]!.event_type).toBe("issue.discovered");
   });
 
-  test("does not emit thought on updated event", async () => {
+  test("does not emit thought on prompted event", async () => {
     const client = makeLinearClient();
     const handler = new WebhookHandler(db, client as any);
 
-    const event = makeEvent({ action: "updated" });
+    const event = makeEvent({ action: "prompted" });
     await handler.handleEvent(event, "proj-1");
 
     expect(client.emitThought).not.toHaveBeenCalled();

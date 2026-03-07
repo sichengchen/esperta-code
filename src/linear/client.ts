@@ -199,7 +199,7 @@ export class LinearClient {
     });
   }
 
-  async emitThought(sessionId: string, content: string): Promise<void> {
+  async emitThought(sessionId: string, body: string): Promise<void> {
     const response = await this.fetch("https://api.linear.app/graphql", {
       method: "POST",
       headers: {
@@ -207,21 +207,24 @@ export class LinearClient {
         Authorization: `Bearer ${this.oauthToken}`,
       },
       body: JSON.stringify({
-        query: `mutation FelizEmitThought($sessionId: String!, $content: String!) {
-  agentActivityCreate(input: { agentSessionId: $sessionId, type: "thought", content: $content }) { success }
+        query: `mutation FelizEmitThought($input: AgentActivityCreateInput!) {
+  agentActivityCreate(input: $input) { success }
 }`,
         variables: {
-          sessionId,
-          content,
+          input: {
+            agentSessionId: sessionId,
+            content: { type: "thought", body },
+          },
         },
       }),
     });
     if (!response.ok) {
-      throw new Error(`emitThought failed: HTTP ${response.status}`);
+      const text = await response.text();
+      throw new Error(`emitThought failed: HTTP ${response.status}: ${text}`);
     }
   }
 
-  async emitComment(sessionId: string, content: string): Promise<void> {
+  async emitComment(sessionId: string, body: string): Promise<void> {
     const response = await this.fetch("https://api.linear.app/graphql", {
       method: "POST",
       headers: {
@@ -229,17 +232,20 @@ export class LinearClient {
         Authorization: `Bearer ${this.oauthToken}`,
       },
       body: JSON.stringify({
-        query: `mutation FelizEmitComment($sessionId: String!, $content: String!) {
-  agentActivityCreate(input: { agentSessionId: $sessionId, type: "comment", content: $content }) { success }
+        query: `mutation FelizEmitComment($input: AgentActivityCreateInput!) {
+  agentActivityCreate(input: $input) { success }
 }`,
         variables: {
-          sessionId,
-          content,
+          input: {
+            agentSessionId: sessionId,
+            content: { type: "response", body },
+          },
         },
       }),
     });
     if (!response.ok) {
-      throw new Error(`emitComment failed: HTTP ${response.status}`);
+      const text = await response.text();
+      throw new Error(`emitComment failed: HTTP ${response.status}: ${text}`);
     }
   }
 }

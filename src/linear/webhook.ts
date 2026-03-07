@@ -4,8 +4,8 @@ import { parseCommand, type FelizCommand } from "./commands.ts";
 import { newId } from "../id.ts";
 
 export interface AgentSessionEvent {
-  action: "created" | "updated";
-  type: "AgentSession";
+  action: "created" | "prompted";
+  type: "AgentSession" | "AgentSessionEvent";
   agentSession: {
     id: string;
     issueId: string;
@@ -13,11 +13,12 @@ export interface AgentSessionEvent {
       id: string;
       identifier: string;
       title: string;
-      description: string;
-      priority: number;
-      state: { name: string };
-      labels: { nodes: { name: string }[] };
+      description?: string;
+      priority?: number;
+      state?: { name: string };
+      labels?: { nodes: { name: string }[] };
       project?: { name: string };
+      team?: { name: string; key: string };
       url: string;
     };
     promptContext: string;
@@ -75,10 +76,10 @@ export class WebhookHandler {
       project_id: projectId,
       parent_work_item_id: null,
       title: issue.title,
-      description: issue.description,
-      state: issue.state.name,
-      priority: issue.priority,
-      labels: issue.labels.nodes.map((l) => l.name),
+      description: issue.description || "",
+      state: issue.state?.name || "Unknown",
+      priority: issue.priority ?? 0,
+      labels: issue.labels?.nodes.map((l) => l.name) || [],
       blocker_ids: [],
       orchestration_state: "unclaimed",
     });

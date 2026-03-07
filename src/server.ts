@@ -119,6 +119,7 @@ export class FelizServer {
 
   async handleRequest(req: Request): Promise<Response> {
     const url = new URL(req.url);
+    this.logger.info(`${req.method} ${url.pathname}`);
 
     if (url.pathname === "/auth/callback") {
       const code = url.searchParams.get("code");
@@ -133,8 +134,11 @@ export class FelizServer {
 
     if (req.method === "POST" && url.pathname === "/webhook/linear") {
       try {
-        const event = (await req.json()) as AgentSessionEvent;
-        if (event.type !== "AgentSession") {
+        const rawBody = await req.text();
+        this.logger.info("Webhook payload", { body: rawBody.slice(0, 2000) });
+        const event = JSON.parse(rawBody) as AgentSessionEvent;
+        if (event.type !== "AgentSession" && event.type !== "AgentSessionEvent") {
+          this.logger.info(`Ignoring webhook type: ${(event as any).type}`, { action: (event as any).action });
           return new Response("ignored", { status: 200 });
         }
 
@@ -218,6 +222,7 @@ export class FelizServer {
   }
 
   private findProjectForIssue(event: AgentSessionEvent) {
+    // Try issue.project first
     const issueProject = event.agentSession.issue.project?.name;
     if (issueProject) {
       const match = this.config.projects.find(
@@ -225,6 +230,19 @@ export class FelizServer {
       );
       if (match) return match;
     }
+
+    // Try extracting from promptContext XML
+    const ctx = event.agentSession.promptContext;
+    if (ctx) {
+      const projectMatch = ctx.match(/<project\s+name="([^"]+)"/);
+      if (projectMatch) {
+        const match = this.config.projects.find(
+          (p) => p.linear_project === projectMatch[1]
+        );
+        if (match) return match;
+      }
+    }
+
     return this.config.projects[0] ?? null;
   }
 

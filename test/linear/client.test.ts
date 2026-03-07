@@ -401,12 +401,13 @@ describe("LinearClient.fetchProjects", () => {
 });
 
 describe("LinearClient.emitThought", () => {
-  test("sends thought agent activity mutation", async () => {
+  test("sends thought agent activity with content object", async () => {
     const activityFetch = mock(() =>
       Promise.resolve({
         ok: true,
         status: 200,
         headers: new Headers(),
+        text: () => Promise.resolve("{}"),
         json: () =>
           Promise.resolve({
             data: { agentActivityCreate: { success: true } },
@@ -420,10 +421,9 @@ describe("LinearClient.emitThought", () => {
     const call = activityFetch.mock.calls[0] as unknown as [string, { body: string }];
     const body = JSON.parse(call[1].body);
     expect(body.query).toContain("agentActivityCreate");
-    expect(body.query).toContain('"thought"');
-    expect(body.variables).toEqual({
-      sessionId: "session-1",
-      content: "Looking into this...",
+    expect(body.variables.input).toEqual({
+      agentSessionId: "session-1",
+      content: { type: "thought", body: "Looking into this..." },
     });
   });
 
@@ -433,21 +433,22 @@ describe("LinearClient.emitThought", () => {
         ok: false,
         status: 500,
         headers: new Headers(),
-        json: () => Promise.resolve({}),
+        text: () => Promise.resolve("error"),
       })
     );
     const client = new LinearClient("token", failFetch as unknown as typeof fetch);
-    expect(client.emitThought("s", "t")).rejects.toThrow("emitThought failed: HTTP 500");
+    expect(client.emitThought("s", "t")).rejects.toThrow("emitThought failed");
   });
 });
 
 describe("LinearClient.emitComment", () => {
-  test("sends comment agent activity mutation", async () => {
+  test("sends response agent activity with content object", async () => {
     const activityFetch = mock(() =>
       Promise.resolve({
         ok: true,
         status: 200,
         headers: new Headers(),
+        text: () => Promise.resolve("{}"),
         json: () =>
           Promise.resolve({
             data: { agentActivityCreate: { success: true } },
@@ -461,10 +462,9 @@ describe("LinearClient.emitComment", () => {
     const call = activityFetch.mock.calls[0] as unknown as [string, { body: string }];
     const body = JSON.parse(call[1].body);
     expect(body.query).toContain("agentActivityCreate");
-    expect(body.query).toContain('"comment"');
-    expect(body.variables).toEqual({
-      sessionId: "session-2",
-      content: "Done!",
+    expect(body.variables.input).toEqual({
+      agentSessionId: "session-2",
+      content: { type: "response", body: "Done!" },
     });
   });
 
@@ -474,10 +474,10 @@ describe("LinearClient.emitComment", () => {
         ok: false,
         status: 502,
         headers: new Headers(),
-        json: () => Promise.resolve({}),
+        text: () => Promise.resolve("error"),
       })
     );
     const client = new LinearClient("token", failFetch as unknown as typeof fetch);
-    expect(client.emitComment("s", "t")).rejects.toThrow("emitComment failed: HTTP 502");
+    expect(client.emitComment("s", "t")).rejects.toThrow("emitComment failed");
   });
 });
