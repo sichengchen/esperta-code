@@ -164,9 +164,13 @@ export class FelizServer {
           { workspace: this.workspace }
         );
 
-        const wi = this.db.getWorkItem(result.workItemId);
-        if (wi && wi.orchestration_state === "unclaimed") {
-          orchestrator.processNewIssue(wi.id);
+        if (result.command?.command === "cancel") {
+          orchestrator.cancelWorkItem(result.workItemId);
+        } else {
+          const wi = this.db.getWorkItem(result.workItemId);
+          if (wi && wi.orchestration_state === "unclaimed") {
+            orchestrator.processNewIssue(wi.id);
+          }
         }
 
         return new Response(JSON.stringify({ ok: true, workItemId: result.workItemId }), {
