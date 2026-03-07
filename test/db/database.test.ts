@@ -452,6 +452,87 @@ describe("Database", () => {
     expect(snap).toBeNull();
   });
 
+  // linear_session_id
+  test("stores and retrieves linear_session_id", () => {
+    db.insertProject({
+      id: "proj-1",
+      name: "b",
+      repo_url: "u",
+      linear_project_name: "B",
+      base_branch: "main",
+    });
+    db.upsertWorkItem({
+      id: "wi-1",
+      linear_id: "lin-1",
+      linear_identifier: "BAC-1",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Add login",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "unclaimed",
+      linear_session_id: "session-abc",
+    });
+    const item = db.getWorkItem("wi-1");
+    expect(item!.linear_session_id).toBe("session-abc");
+  });
+
+  test("linear_session_id defaults to null when not provided", () => {
+    db.insertProject({
+      id: "proj-1",
+      name: "b",
+      repo_url: "u",
+      linear_project_name: "B",
+      base_branch: "main",
+    });
+    db.upsertWorkItem({
+      id: "wi-1",
+      linear_id: "lin-1",
+      linear_identifier: "BAC-1",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Add login",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "unclaimed",
+    });
+    const item = db.getWorkItem("wi-1");
+    expect(item!.linear_session_id).toBeNull();
+  });
+
+  test("updateWorkItemSessionId updates the session ID", () => {
+    db.insertProject({
+      id: "proj-1",
+      name: "b",
+      repo_url: "u",
+      linear_project_name: "B",
+      base_branch: "main",
+    });
+    db.upsertWorkItem({
+      id: "wi-1",
+      linear_id: "lin-1",
+      linear_identifier: "BAC-1",
+      project_id: "proj-1",
+      parent_work_item_id: null,
+      title: "Add login",
+      description: "",
+      state: "Todo",
+      priority: 1,
+      labels: [],
+      blocker_ids: [],
+      orchestration_state: "unclaimed",
+    });
+    db.updateWorkItemSessionId("wi-1", "session-new");
+    const item = db.getWorkItem("wi-1");
+    expect(item!.linear_session_id).toBe("session-new");
+  });
+
   // listWorkItemsByState
   test("lists work items by orchestration state", () => {
     db.insertProject({
