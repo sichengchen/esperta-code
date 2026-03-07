@@ -493,6 +493,10 @@ async function main() {
   }
 
   if (cmd.command === "auth") {
+    if (cmd.subcommand !== "linear") {
+      console.error("Usage: feliz auth linear [--client-id <id>] [--client-secret <secret>] [--port <port>]");
+      process.exit(1);
+    }
     const { runAuth } = await import("./auth.ts");
     await runAuth(configPath, cmd.flags);
     return;

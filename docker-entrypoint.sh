@@ -112,4 +112,5 @@ else
 fi
 
 # --- Run the requested command ---
-exec bun run src/cli/index.ts "$@" --config "$CONFIG_PATH"
+# --config before $@ so user-provided --config overrides the default
+exec bun run src/cli/index.ts --config "$CONFIG_PATH" "$@"

@@ -117,6 +117,11 @@ export function writeTokenToConfig(
   }
 }
 
+export function maskToken(token: string): string {
+  if (token.length <= 8) return "****";
+  return token.slice(0, 4) + "..." + token.slice(-4);
+}
+
 function tryOpenBrowser(url: string): void {
   const cmd = process.platform === "darwin" ? "open" : "xdg-open";
   try {
@@ -181,11 +186,13 @@ export async function runAuth(
   console.log(`Token saved to ${configPath}`);
 
   if (useEnvVar) {
+    const masked = maskToken(tokenResult.access_token);
     console.log("");
     console.log(
-      "Set the LINEAR_OAUTH_TOKEN environment variable to the token value:"
+      `Set the LINEAR_OAUTH_TOKEN environment variable to your token (${masked}).`
     );
-    console.log(`  export LINEAR_OAUTH_TOKEN=${tokenResult.access_token}`);
+    console.log("Add to your .env file or shell profile. The full token was");
+    console.log("shown only during the OAuth redirect — it is not stored in logs.");
   }
 
   console.log("");
@@ -198,12 +205,12 @@ export async function runAuth(
   console.log("  3. Start Feliz:   feliz start");
 }
 
-function waitForCallback(port: number): Promise<string> {
+export function waitForCallback(port: number, timeoutMs: number = TIMEOUT_MS): Promise<string> {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       server.stop();
       reject(new Error("OAuth callback timed out after 5 minutes"));
-    }, TIMEOUT_MS);
+    }, timeoutMs);
 
     const server = Bun.serve({
       port,
