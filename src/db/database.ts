@@ -580,6 +580,53 @@ export class Database {
     return rows.map((row) => this.rowToJob(row));
   }
 
+  updateJob(id: string, updates: {
+    status?: string;
+    agent_adapter?: string;
+    publish_policy?: string;
+    verification_commands?: string[];
+    write_mode?: string;
+    timeout_ms?: number;
+    retry_limit?: number;
+    metadata?: Record<string, unknown>;
+  }) {
+    this.db
+      .query(
+        `UPDATE jobs SET
+          status = COALESCE(?1, status),
+          agent_adapter = COALESCE(?2, agent_adapter),
+          publish_policy = COALESCE(?3, publish_policy),
+          verification_commands = COALESCE(?4, verification_commands),
+          write_mode = COALESCE(?5, write_mode),
+          timeout_ms = COALESCE(?6, timeout_ms),
+          retry_limit = COALESCE(?7, retry_limit),
+          metadata = COALESCE(?8, metadata),
+          started_at = CASE
+            WHEN ?1 = 'running' AND started_at IS NULL THEN datetime('now')
+            ELSE started_at
+          END,
+          finished_at = CASE
+            WHEN ?1 IN ('succeeded', 'failed', 'cancelled') THEN datetime('now')
+            ELSE finished_at
+          END,
+          updated_at = datetime('now')
+         WHERE id = ?9`
+      )
+      .run(
+        updates.status ?? null,
+        updates.agent_adapter ?? null,
+        updates.publish_policy ?? null,
+        updates.verification_commands
+          ? JSON.stringify(updates.verification_commands)
+          : null,
+        updates.write_mode ?? null,
+        updates.timeout_ms ?? null,
+        updates.retry_limit ?? null,
+        updates.metadata ? JSON.stringify(updates.metadata) : null,
+        id
+      );
+  }
+
   countActiveWriteJobsForThread(threadId: string): number {
     const row = this.db
       .query(
@@ -590,6 +637,19 @@ export class Database {
            AND status IN ('preparing', 'running', 'waiting_approval')`
       )
       .get(threadId) as { count: number };
+    return row.count;
+  }
+
+  countActiveJobsForProject(projectId: string): number {
+    const row = this.db
+      .query(
+        `SELECT COUNT(*) as count
+         FROM jobs
+         INNER JOIN threads ON threads.id = jobs.thread_id
+         WHERE threads.project_id = ?1
+           AND jobs.status IN ('preparing', 'running', 'waiting_approval')`
+      )
+      .get(projectId) as { count: number };
     return row.count;
   }
 
@@ -923,6 +983,10 @@ export class Database {
           verification_status = COALESCE(?4, verification_status),
           pr_url = COALESCE(?5, pr_url),
           worktree_id = COALESCE(?6, worktree_id),
+          started_at = CASE
+            WHEN ?1 = 'running' AND started_at IS NULL THEN datetime('now')
+            ELSE started_at
+          END,
           finished_at = CASE
             WHEN ?1 IN ('succeeded', 'failed', 'timed_out', 'cancelled') THEN datetime('now')
             ELSE finished_at
