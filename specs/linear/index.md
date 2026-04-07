@@ -1,224 +1,37 @@
-# Linear Integration
+# Linear Connector
 
-Feliz connects to Linear as an **Agent** using Linear's native [Agent API](https://linear.app/developers/agent-interaction) (Developer Preview). This gives Feliz its own bot identity in the workspace — users can `@Feliz` with autocomplete, delegate issues to it, and see its status updates as structured agent activities.
+Linear is a connector, not the core model.
 
-## Authentication
+Its responsibilities are:
 
-Feliz uses Linear's OAuth2 flow with `actor=app` to install as an app-level actor (not a personal user). Installation requires workspace admin permissions.
+- map Linear issues, comments, and agent-session events into threads, jobs, and external events
+- reflect Feliz state back to Linear as activities, comments, or state updates
+- store connector-specific identifiers in connector metadata and thread links rather than in the core schema
 
-**Required scopes**:
+## Connector mapping
 
-| Scope | Purpose |
-|---|---|
-| `app:mentionable` | Allow users to @-mention Feliz in issues, documents, and editor surfaces |
-| `app:assignable` | Allow users to delegate issues to Feliz (sets Feliz as `delegate`, not `assignee`) |
-| `read` | Read issues, comments, projects, labels, relations |
-| `write` | Update issue state, create comments, manage labels |
-| `issues:create` | Create sub-issues from decomposition |
+### Source mappings
 
-**Installation**:
+- initial Linear handoff or mention → create thread + initial job
+- follow-up comment or review input → append job or attach external event
+- CI or review webhook from a linked PR → attach external event to the thread
 
-1. Register Feliz as an [Application](https://linear.app/settings/api/applications/new) in Linear.
-2. Configure name ("Feliz") and icon — this is how the agent appears in workspace menus.
-3. Enable webhooks and select **Agent session events** (plus Inbox notifications and Permission changes).
-4. Complete the OAuth flow with `actor=app` to install into a workspace.
-5. Store the workspace-specific app user ID (from `viewer.id` query) alongside the access token.
+### Sink mappings
 
-The bot identity means:
-- Users see "Feliz" in mention autocomplete when typing `@`
-- Users can delegate (assign) issues directly to Feliz
-- Activities from Feliz show the app name/avatar, not a personal account
-- Feliz does not count as a billable user
+- job started / finished → Linear activity
+- blocked or waiting approval → Linear activity requesting input
+- publish result → PR link or branch metadata reflected back to Linear
 
-## Architecture
+## Storage rule
 
-```
-┌──────────────────────────────────────────────────┐
-│                   Feliz Server                    │
-│                                                   │
-│  ┌──────────────────┐  ┌──────────────────────┐  │
-│  │  Linear Client    │  │  Webhook Handler     │  │
-│  │  (GraphQL/OAuth)  │  │                      │  │
-│  │                   │  │  - AgentSession      │  │
-│  │  - Update state   │  │    created/updated   │  │
-│  │  - Create issues  │  │  - Permission        │  │
-│  │  - Manage labels  │  │    changes           │  │
-│  │  - Agent Activity │  │                      │  │
-│  └────────┬──────────┘  └──────────┬───────────┘  │
-│           │                        │              │
-│           └────────────┬───────────┘              │
-│                        │                          │
-│                  Orchestrator                      │
-└──────────────────────────────────────────────────┘
-```
+Linear-specific identifiers belong in:
 
-## Issue Discovery
+- connector metadata
+- `thread_links`
+- `external_events`
 
-Feliz does **not** poll for issues. Work enters Feliz through two mechanisms, both delivered via webhooks:
+They do not define the core thread/job schema.
 
-1. **Assignment (primary)** — a user assigns an issue to Feliz. This is the simplest workflow — no comment needed. Just assign and Feliz starts working.
-2. **Mention** — a user @-mentions `@Feliz` in an issue comment. Useful for commands (`@Feliz decompose`), providing guidance, or assigning with context.
+## Transition note
 
-Both trigger an `AgentSessionEvent` webhook with a `created` action, containing the `agentSession` object with the relevant issue, comment, and context.
-
-**How an issue enters Feliz**:
-
-1. A user creates or opens a Linear issue.
-2. The user assigns the issue to Feliz (simplest), or @-mentions `@Feliz` in a comment.
-3. Linear creates an Agent Session and fires a webhook to Feliz.
-4. Feliz creates a WorkItem record, emits a `thought` activity within 10 seconds to acknowledge, and begins processing.
-
-Issues that are never assigned/mentioned to Feliz are invisible to it. The user controls exactly which issues Feliz works on.
-
-**Delegate vs Assignee**: Assigning an issue to Feliz sets it as the `delegate`, not the `assignee` — the human maintains ownership while Feliz acts on their behalf. This is Linear's native model for agent collaboration.
-
-**Milestone support**: Users can optionally organize issues under Linear milestones. Feliz respects milestone grouping when decomposing large features — sub-issues are created under the same milestone as the parent.
-
-## Agent Sessions
-
-The [Agent Session](https://linear.app/developers/agent-interaction#agent-session) is the core interaction model. Linear automatically manages session lifecycle:
-
-- A session is **created** when Feliz is mentioned or delegated an issue.
-- Session state is **visible to users** and updated automatically based on Feliz's emitted activities.
-- The session provides `promptContext` — a pre-formatted string containing issue details, comments, and guidance.
-
-### Receiving webhooks
-
-Feliz subscribes to **Agent session events**. The primary entry point:
-
-```typescript
-// Webhook handler for AgentSessionEvent
-async function handleAgentSessionEvent(event: AgentSessionEvent) {
-  const { action, agentSession } = event;
-
-  if (action === 'created') {
-    // New session — Feliz was mentioned or delegated an issue
-    // Must emit a thought within 10 seconds to acknowledge
-    await emitThought(agentSession.id, 'Looking into this...');
-
-    const workItem = await findOrCreateWorkItem(agentSession);
-    const context = agentSession.promptContext; // pre-formatted issue context
-    await processWorkItem(workItem, agentSession, context);
-  }
-
-  if (action === 'updated') {
-    // Session updated — e.g., user replied with more context
-    const workItem = await findWorkItem(agentSession);
-    await handleSessionUpdate(workItem, agentSession);
-  }
-}
-```
-
-### Agent Activities
-
-Feliz communicates status back to Linear through **Agent Activities** rather than plain comments. Activities provide structured status visible in the session UI:
-
-| Activity type | When Feliz emits it |
-|---|---|
-| `thought` | Acknowledging a mention/delegation (within 10s). Intermediate status updates ("Started working on this"). |
-| `response` | Posting detailed results, spec drafts, decomposition proposals, questions for the user. |
-| `error` | Reporting terminal failures — agent run failed, stop signal received, unrecoverable errors. |
-
-```typescript
-// Acknowledge receipt
-await linearClient.agentActivity.create({
-  sessionId: session.id,
-  type: 'thought',
-  content: 'Looking into this...',
-});
-
-// Post detailed result
-await linearClient.agentActivity.create({
-  sessionId: session.id,
-  type: 'comment',
-  content: 'PR created: [link]. Summary of changes...',
-});
-```
-
-### Session ID Tracking
-
-The `agentSession.id` from each webhook event is stored on the WorkItem as `linear_session_id`. This allows the orchestrator to emit activities back to Linear at lifecycle transitions (run started, succeeded, failed) without needing direct access to the webhook payload.
-
-- On `created` events: stored when the WorkItem is first created.
-- On `prompted` events: always updated to the latest session ID, since Linear may create new sessions for the same issue.
-
-### Agent Signals
-
-Linear's [Agent Signals API](https://linear.app/developers/agent-signals) allows users to send signals to agents via the UI (e.g., clicking "Stop"). Signals arrive as part of the `AgentSessionEvent` webhook payload in the `agentSession.signal` field.
-
-| Signal | Effect |
-|---|---|
-| `stop` | Cancel the work item, cancel any running agent process, emit `error` activity |
-
-### Commands
-
-Commands are parsed from the mention text or follow-up comments in the session:
-
-| Command | Effect |
-|---|---|
-| (assign to Feliz) | Assign issue to Feliz. Creates WorkItem, starts processing. No comment needed. |
-| `@Feliz decompose` | Break down a large feature into sub-issues |
-| `@Feliz start` | Dispatch agent immediately (skip spec phase if enabled) |
-| `@Feliz plan` | Enter spec drafting phase (only when `specs.enabled`; ignored otherwise) |
-| `@Feliz retry` | Re-queue with incremented attempt |
-| `@Feliz status` | Reply with current orchestration state, last run info |
-| `@Feliz approve` | Approve spec/decomposition, transition to next state |
-| `@Feliz cancel` | Cancel running agent, release work item |
-| (free text after initial mention) | Treated as clarification/feedback; appended to context |
-
-### Acknowledgment protocol
-
-On **every** Feliz-related event (new session, session update), Feliz:
-
-1. Emits a `thought` activity within 10 seconds to acknowledge receipt
-2. Begins processing
-3. Emits further activities as status changes (started, completed, failed, needs input)
-
-This gives the user immediate visual feedback that Feliz received their message. Session state is automatically updated by Linear based on emitted activities.
-
-## Writing back to Linear
-
-### Status activities
-
-| Event | Activity |
-|---|---|
-| Issue assigned/delegated to Feliz | `thought`: "Looking into this..." |
-| Spec drafted | `response`: Spec summary + "Reply `@Feliz approve` to proceed" |
-| Decomposition proposed | `response`: Breakdown summary + "Reply `@Feliz approve` to create issues" |
-| Agent run started | `thought`: "Started working on this (attempt N)" |
-| Agent run succeeded | `response`: PR link + summary of changes |
-| Agent run failed | `response`: Failure summary + "Reply `@Feliz retry` to retry" |
-| Stop signal received | `error`: "Cancelled by user" — emitted when user clicks Stop in Linear UI |
-| Agent needs help | `response`: Description of problem + question for user |
-
-All activity emissions are best-effort (wrapped in try/catch). Linear API downtime must never block agent execution.
-
-### State transitions (via GraphQL)
-
-| Feliz event | Default Linear state change |
-|---|---|
-| Issue assigned to Feliz | → "In Progress" |
-| Run succeeded + PR created | → "In Review" |
-| Run failed | → (no change, activity only) |
-
-State transitions are configurable per-workflow in `.feliz/config.yml`.
-
-## GraphQL Mutations
-
-The Linear GraphQL API is used for mutations:
-
-- `issueUpdate` — update issue state, add labels
-- `issueCreate` — create sub-issues from decomposition
-- `agentActivity.create` — emit thoughts and comments in agent sessions
-
-All mutations pass dynamic values via GraphQL `variables` rather than string interpolation.
-
-### Scenario: Comment Body With Special Characters
-
-- **Given** a comment body containing quotes and newlines
-- **When** Feliz emits an agent activity
-- **Then** the raw body is passed through GraphQL variables without manual escaping logic in the query string
-
-## Future: GitHub Issues as alternative
-
-Linear's Agent API is the primary interface. A future phase could add GitHub Issues support using a similar webhook-based model with GitHub's bot/app APIs, reusing the same orchestration layer with a different event adapter.
+The repository still contains the existing Linear integration code under `src/linear/`. That code should be treated as a connector implementation to be adapted onto the new core model, not as the architecture to extend.

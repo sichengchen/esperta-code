@@ -18,6 +18,21 @@ Commands:
   init                     Interactive setup wizard
   stop                     Stop the daemon
   status                   Show daemon status
+  submit                   Create a thread with an initial job
+  continue <thread-id>     Append a job to an existing thread
+  thread create            Create a new thread
+  thread list              List threads
+  thread show <thread-id>  Show thread details
+  job list                 List jobs
+  job show <job-id>        Show a job
+  job logs <job-id>        Show job log artifact paths
+  job retry <job-id>       Re-queue a failed job
+  job cancel <job-id>      Cancel a job
+  job approve <job-id>     Approve a waiting job
+  worktree list            List tracked worktrees
+  worktree inspect <id>    Show worktree details
+  worktree prune           Prune expired retained worktrees
+  event attach <thread-id> Attach an external event to a thread
   config validate          Validate configuration
   config show              Print resolved configuration
   project list             List configured projects
@@ -80,6 +95,11 @@ async function main() {
 
   const configPath =
     cmd.flags.config ?? join(homedir(), ".feliz", "feliz.yml");
+
+  const { handleCoreCliCommand } = await import("./core.ts");
+  if (await handleCoreCliCommand(cmd, configPath)) {
+    return;
+  }
 
   if (cmd.command === "config" && cmd.subcommand === "validate") {
     try {

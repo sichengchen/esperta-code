@@ -163,7 +163,7 @@ export function gitCommitAndPush(repoPath: string, branch: string): void {
   };
   Bun.spawnSync(["git", "add", ".feliz/", "WORKFLOW.md"], { cwd: repoPath });
   const commit = Bun.spawnSync(
-    ["git", "commit", "-m", "chore: add feliz configuration"],
+    ["git", "-c", "commit.gpgsign=false", "commit", "-m", "chore: add feliz configuration"],
     { cwd: repoPath, env: { ...process.env, ...gitEnv } }
   );
   if (commit.exitCode !== 0) {

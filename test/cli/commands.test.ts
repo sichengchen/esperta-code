@@ -46,6 +46,50 @@ describe("CLI parseArgs", () => {
     expect(cmd.subcommand).toBe("list");
   });
 
+  test("parses 'submit' command with flags", () => {
+    const cmd = parseArgs([
+      "submit",
+      "--project",
+      "repo-a",
+      "--title",
+      "Implement queue runner",
+      "--goal",
+      "Build it",
+    ]);
+    expect(cmd.command).toBe("submit");
+    expect(cmd.flags.project).toBe("repo-a");
+    expect(cmd.flags.title).toBe("Implement queue runner");
+    expect(cmd.flags.goal).toBe("Build it");
+  });
+
+  test("parses 'continue <thread-id>' command", () => {
+    const cmd = parseArgs(["continue", "thread-123", "--title", "Follow up"]);
+    expect(cmd.command).toBe("continue");
+    expect(cmd.subcommand).toBe("thread-123");
+    expect(cmd.flags.title).toBe("Follow up");
+  });
+
+  test("parses 'thread show <id>' command", () => {
+    const cmd = parseArgs(["thread", "show", "thread-123"]);
+    expect(cmd.command).toBe("thread");
+    expect(cmd.subcommand).toBe("show");
+    expect(cmd.args).toEqual(["thread-123"]);
+  });
+
+  test("parses 'job retry <id>' command", () => {
+    const cmd = parseArgs(["job", "retry", "job-123"]);
+    expect(cmd.command).toBe("job");
+    expect(cmd.subcommand).toBe("retry");
+    expect(cmd.args).toEqual(["job-123"]);
+  });
+
+  test("parses 'worktree inspect <id>' command", () => {
+    const cmd = parseArgs(["worktree", "inspect", "wt-123"]);
+    expect(cmd.command).toBe("worktree");
+    expect(cmd.subcommand).toBe("inspect");
+    expect(cmd.args).toEqual(["wt-123"]);
+  });
+
   test("parses 'run show <id>' command", () => {
     const cmd = parseArgs(["run", "show", "run-123"]);
     expect(cmd.command).toBe("run");

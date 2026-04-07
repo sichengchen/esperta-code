@@ -1,107 +1,96 @@
 # Feliz
 
-Turn Linear issues into merged pull requests. Feliz is a self-hosted platform that orchestrates local coding agents (Claude Code, Codex) through configurable pipelines — from issue discovery to PR delivery.
+Feliz is a self-hosted remote coding job runner. It accepts jobs from multiple sources, executes them remotely in isolated git worktrees, and stores durable thread, job, run, worktree, and artifact state in SQLite plus the filesystem.
 
-## How it works
+## Core ideas
 
-Assign a Linear issue to Feliz (or `@Feliz` mention) and it runs a configurable agent pipeline — implementation, testing, review, and PR creation — all handled by local coding agents in isolated git worktrees.
+- Remote-first: jobs are queued and can keep running while the user is away.
+- Thread-centric: work continues by appending new jobs to the same thread.
+- One-agent-per-job: each job is a single agent invocation with one intent.
+- Worktree-first: every run gets a fresh isolated git worktree.
+- Connector-neutral: Linear, GitHub, CLI, webhooks, and automations all map into the same internal model.
+
+Linear support still exists in `src/linear/`, but it is now a connector concern rather than the core architecture.
+
+## Current implementation
+
+The repository now includes:
+
+- Durable core types for `project`, `thread`, `job`, `run`, `worktree`, `artifact`, `approval`, `external_event`, and `thread_link`
+- SQLite storage for the new core model
+- A single-agent execution path that creates a fresh run worktree, executes one adapter, captures artifacts, runs verification commands, and updates thread/job state
+- New CLI commands for thread, job, worktree, submit, continue, and event flows
+
+The legacy Linear-first orchestration path is still present during the transition.
 
 ## Quick start
-
-You can use the [`feliz-setup`](skills/feliz-setup/SKILL.md) and [`feliz-add-project`](skills/feliz-add-project/SKILL.md) agent skills:
-
-1. **`feliz-setup`** — installs Feliz, configures credentials (Linear OAuth, GitHub token), writes `feliz.yml`, starts the daemon
-2. **`feliz-add-project`** — adds a repo, configures `.feliz/pipeline.yml`, prompt templates, and `WORKFLOW.md`
-
-Or manually:
-
-```bash
-git clone git@github.com:sichengchen/feliz.git && cd feliz
-bun install
-
-# Authenticate with Linear (runs OAuth flow, opens browser)
-# Use --callback-url with your public URL (Linear blocks localhost)
-bun run src/cli/index.ts auth linear --callback-url https://<your-host>:3421/auth/callback
-
-export GITHUB_TOKEN="ghp_..."
-
-bun run src/cli/index.ts init         # set up central config
-bun run src/cli/index.ts project add  # add a project
-bun run src/cli/index.ts start        # start daemon
-```
-
-Or with Docker:
-
-```bash
-cp .env.example .env   # fill in credentials (see .env.example for guidance)
-docker compose up -d --build
-
-# Install an agent CLI (claude or codex):
-docker compose exec feliz bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
-
-# Add a project:
-docker compose exec feliz bun run src/cli/index.ts project add
-```
-
-## CLI
-
-```
-feliz start                    Start daemon
-feliz stop                     Stop daemon
-feliz status                   Show daemon health
-
-feliz init                     Set up central config
-feliz config validate          Check configuration
-feliz config show              Print resolved config
-
-feliz project list             List projects
-feliz project add              Add a project
-feliz project remove <name>    Remove a project
-
-feliz run list                 List recent runs
-feliz run show <id>            Show run details
-feliz run retry <identifier>   Retry a failed item
-
-feliz auth linear              Authenticate with Linear (OAuth)
-feliz agent list               Show available agents
-
-feliz context history <proj>   Project history
-feliz context show <item>      Work item context
-
-feliz e2e doctor               Check prerequisites
-feliz e2e smoke                Run smoke checks
-```
-
-## Configuration
-
-Two layers:
-
-1. **Central config** (`~/.feliz/feliz.yml`) — Linear OAuth token, webhook port, storage paths, project mappings, agent defaults.
-2. **Repo config** (`.feliz/config.yml` + `.feliz/pipeline.yml`) — agent behavior, pipeline steps, test/lint gates, hooks.
-
-See [docs/configuration.md](docs/configuration.md).
-
-## Documentation
-
-| Guide | Description |
-|---|---|
-| [Getting Started](docs/getting-started.md) | Install, configure, first run |
-| [Usage](docs/usage.md) | Day-to-day operation |
-| [Configuration](docs/configuration.md) | Central and repo config reference |
-| [Pipelines](docs/pipelines.md) | Multi-phase pipeline definition |
-| [Agents](docs/agents.md) | Agent adapters and custom agents |
-| [CLI](docs/cli.md) | Full command reference |
-| [Skills](docs/skills.md) | Claude Code skills for setup and project config |
-
-## Specs
-
-Design specifications live in [`specs/`](specs/index.md) — the source of truth for architecture, state machines, data types, and behavior.
-
-## Development
 
 ```bash
 bun install
 bun test
 bun run lint
-bun run build
 ```
+
+Create a config at `~/.feliz/feliz.yml`:
+
+```yaml
+runtime:
+  data_dir: ~/.feliz
+  max_concurrent_jobs: 4
+
+projects:
+  - name: repo-a
+    repo: git@github.com:org/repo-a.git
+    base_branch: main
+
+    worktrees:
+      retain_on_success_minutes: 30
+      retain_on_failure_hours: 24
+      prune_after_days: 7
+
+    concurrency:
+      max_jobs: 2
+
+    job_types:
+      implement:
+        agent: codex
+        system_prompt: .feliz/prompts/implement.md
+        verify:
+          - bun test
+        publish: draft_pr
+```
+
+Then use the new CLI flow:
+
+```bash
+feliz submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+feliz thread list
+feliz thread show <thread-id>
+feliz continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
+feliz job list
+feliz worktree list
+```
+
+## CLI
+
+```bash
+feliz submit
+feliz continue <thread-id>
+feliz thread create
+feliz thread list
+feliz thread show <thread-id>
+feliz job list
+feliz job show <job-id>
+feliz job logs <job-id>
+feliz job retry <job-id>
+feliz job cancel <job-id>
+feliz job approve <job-id>
+feliz worktree list
+feliz worktree inspect <id>
+feliz worktree prune
+feliz event attach <thread-id> --type ci_failed --source github --source-id 123
+```
+
+## Specs
+
+The source of truth lives in [`specs/`](specs/index.md).

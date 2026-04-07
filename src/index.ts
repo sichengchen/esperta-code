@@ -11,6 +11,29 @@ export type { FelizConfig, RepoConfig, PipelineDefinition, PipelinePhase, Pipeli
 // Domain
 export type { Project, WorkItem, Run, StepExecution, HistoryEntry, OrchestrationState, RunResult, StepResult, ContextSnapshot, ArtifactRef } from "./domain/types.ts";
 
+// Core
+export type {
+  Approval,
+  ApprovalState,
+  Artifact,
+  CoreProject,
+  ExternalEvent,
+  Job,
+  JobState,
+  JobTypeProfile,
+  PublishBehavior,
+  RunRecord,
+  RunState,
+  Thread,
+  ThreadLink,
+  ThreadState,
+  WorktreeRecord,
+  WorktreeState,
+  WriteMode,
+} from "./core/types.ts";
+export { ThreadService } from "./core/service.ts";
+export { JobExecutor } from "./core/executor.ts";
+
 // Linear
 export { LinearClient } from "./linear/client.ts";
 export type { LinearIssue, FetchResult } from "./linear/client.ts";
@@ -20,7 +43,11 @@ export { parseCommand } from "./linear/commands.ts";
 export type { FelizCommand } from "./linear/commands.ts";
 
 // Workspace
-export { WorkspaceManager, sanitizeIdentifier } from "./workspace/manager.ts";
+export {
+  WorkspaceManager,
+  computeRetentionDeadline,
+  sanitizeIdentifier,
+} from "./workspace/manager.ts";
 
 // Agents
 export type { AgentAdapter, AgentRunParams, AgentRunResult } from "./agents/adapter.ts";

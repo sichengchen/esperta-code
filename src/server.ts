@@ -75,8 +75,8 @@ export class FelizServer {
           id: newId(),
           name: proj.name,
           repo_url: proj.repo,
-          linear_project_name: proj.linear_project,
-          base_branch: proj.branch,
+          linear_project_name: proj.linear_project ?? proj.name,
+          base_branch: proj.branch ?? proj.base_branch ?? "main",
         });
         this.logger.info(`Registered project: ${proj.name}`);
 

@@ -1,37 +1,33 @@
 # Feliz Specification
 
-Feliz is a long-running orchestration service that connects Linear (as the primary user interface) to pluggable coding agents, managing the full lifecycle from mention-based issue assignment through spec authoring, agent execution, and PR delivery. Users assign issues to Feliz or @-mention it in Linear. Every pipeline step — including publishing — is an agent call with a prompt stored in the repo. Feliz maintains a persistent context layer (history, memory, scratchpad) so that knowledge accumulates across runs and agents never start from zero.
+Feliz is a neutral remote agent platform. It accepts coding jobs from multiple sources, runs exactly one coding agent per job in a fresh isolated worktree, and preserves durable thread history, branch state, worktree state, artifacts, approvals, and external events across restarts.
 
-## Core value proposition
+## Product definition
 
-1. **Linear as the single interface** — users interact with Feliz by @-mentioning or delegating issues. Feliz is a native Linear agent with its own bot identity. No separate UI needed.
-2. **Spec-driven development** (optional) — Feliz collaboratively authors specs (system design + behavioral cases) before coding, stored in the repo as structured markdown.
-3. **Persistent context** — a layered context model ensures project knowledge, past decisions, and run history are available to every agent run.
-4. **Pluggable agents** — an adapter interface allows any CLI-based coding agent to be dispatched. Includes a Claude Code adapter by default. Agent CLIs are installed separately.
-5. **Full automation** — agents handle the entire workflow (implementation, testing, committing, PR creation) with prompts stored in the repo. Feliz posts results to Linear and updates issue state autonomously.
+- Remote-first: jobs continue without an attached terminal session.
+- Neutral: core behavior does not depend on Linear, GitHub Issues, or any one client.
+- Thread-centric: a thread is the durable identity; new work is added by appending jobs.
+- One-agent-per-job: no internal multi-agent or multi-phase workflow inside a job.
+- Worktree-first: every run executes in a fresh isolated worktree.
+- Durable: jobs, runs, artifacts, thread links, and worktrees survive process restarts.
 
-## Non-goals for MVP
+## Connectors
 
-- Real-time streaming UI / web dashboard (Linear is the UI)
-- Multi-tenant SaaS deployment (single-operator, self-hosted)
-- Built-in code review (relies on existing PR review workflows)
+Linear remains supported, but as a connector layered on top of the core thread/job model rather than as the core architecture.
 
 ## Specification documents
 
 | Section | Description |
 |---|---|
-| [Architecture](architecture/index.md) | System architecture, runtime, domain model, data types |
-| [Configuration](configuration/index.md) | Central server config, per-repo config, pipeline definition |
-| [Linear Integration](linear/index.md) | Linear Agent API, mention/delegation discovery, Agent Sessions, GraphQL mutations |
-| [Context Management](context/index.md) | History, Memory, Scratchpad layers, storage, assembly |
-| [Context Lifecycle](context/lifecycle.md) | Detailed lifecycle of each context layer |
-| [Orchestration](orchestration/index.md) | State machine, pipeline execution, retry, concurrency, approvals |
-| [Spec-Driven Development](spec-driven-dev/index.md) | Spec structure, lifecycle, feature decomposition |
-| [Workspace Management](workspace/index.md) | Repo cloning, git worktrees, branch naming |
-| [Agent Dispatch](agents/index.md) | Adapter interface, Claude Code adapter, every-step-is-agent-call model, pipeline execution |
-| [Publishing](publishing/index.md) | Agent-handled PR creation via prompt, Linear status updates |
-| [CLI](cli/index.md) | CLI commands for managing Feliz |
-| [Testing](testing/index.md) | End-to-end validation plan from install through PR creation |
-| [Security](security/index.md) | Secrets, agent auth, Docker credentials, isolation, trust model |
-| [User Journey](user-journey/index.md) | Full project lifecycle walkthrough, from install to ongoing operations |
-| [Roadmap](roadmap/index.md) | Implementation phases |
+| [Architecture](architecture/index.md) | Core domain model, persistence, thread/job/run/worktree relationships |
+| [Configuration](configuration/index.md) | Runtime config, project config, job type profiles, retention and concurrency |
+| [Orchestration](orchestration/index.md) | Job scheduling, state transitions, execution envelope, approvals |
+| [Workspace Management](workspace/index.md) | Canonical repos, isolated worktrees, retention, pruning, branch leases |
+| [Agent Dispatch](agents/index.md) | Single-agent execution model and adapter contract |
+| [Linear Connector](linear/index.md) | Linear as a source and sink mapped onto threads, jobs, and events |
+| [CLI](cli/index.md) | Thread/job/worktree oriented CLI |
+| [Security](security/index.md) | Secrets, isolation, permissions, auditability |
+| [Testing](testing/index.md) | Validation strategy |
+| [Roadmap](roadmap/index.md) | Delivery sequencing |
+
+Legacy documents that describe the old Linear-first pipeline architecture are retained only as transition references and are not the source of truth for the new core model.

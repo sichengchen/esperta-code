@@ -573,6 +573,13 @@ export class Database {
     return this.rowToJob(row);
   }
 
+  listJobs(): Job[] {
+    const rows = this.db
+      .query("SELECT * FROM jobs ORDER BY created_at DESC, rowid DESC")
+      .all() as Record<string, unknown>[];
+    return rows.map((row) => this.rowToJob(row));
+  }
+
   listJobsForThread(threadId: string): Job[] {
     const rows = this.db
       .query("SELECT * FROM jobs WHERE thread_id = ?1 ORDER BY created_at ASC, rowid ASC")
@@ -963,6 +970,16 @@ export class Database {
     return this.rowToRunRecord(row);
   }
 
+  getLatestRunRecordForJob(jobId: string): RunRecord | null {
+    const row = this.db
+      .query(
+        "SELECT * FROM runs WHERE job_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT 1"
+      )
+      .get(jobId) as Record<string, unknown> | null;
+    if (!row) return null;
+    return this.rowToRunRecord(row);
+  }
+
   updateRunRecord(
     id: string,
     updates: {
@@ -1334,6 +1351,23 @@ export class Database {
     const rows = this.db
       .query("SELECT * FROM artifacts WHERE thread_id = ?1 ORDER BY created_at ASC, rowid ASC")
       .all(threadId) as Record<string, unknown>[];
+    return rows.map((row) => ({
+      id: row.id as string,
+      thread_id: row.thread_id as string,
+      job_id: (row.job_id as string | null) ?? null,
+      run_id: (row.run_id as string | null) ?? null,
+      kind: row.kind as string,
+      path: row.path as string,
+      summary: (row.summary as string | null) ?? null,
+      metadata: this.parseJsonObject(row.metadata, {}),
+      created_at: new Date(row.created_at as string),
+    }));
+  }
+
+  listArtifactsForJob(jobId: string): Artifact[] {
+    const rows = this.db
+      .query("SELECT * FROM artifacts WHERE job_id = ?1 ORDER BY created_at ASC, rowid ASC")
+      .all(jobId) as Record<string, unknown>[];
     return rows.map((row) => ({
       id: row.id as string,
       thread_id: row.thread_id as string,

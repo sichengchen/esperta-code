@@ -8,6 +8,21 @@ export const DEFAULT_PORT = 3421;
 const TIMEOUT_MS = 5 * 60 * 1000;
 const POLL_INTERVAL_MS = 500;
 
+interface WaitForCallbackDeps {
+  waitViaPolling?: (timeoutMs: number) => Promise<string>;
+  waitViaServer?: (port: number, timeoutMs: number) => Promise<string>;
+}
+
+interface RunAuthDeps {
+  exchangeCodeForTokenFn?: typeof exchangeCodeForToken;
+  verifyTokenFn?: typeof verifyToken;
+  waitForCallbackFn?: (
+    port: number,
+    timeoutMs?: number,
+    deps?: WaitForCallbackDeps
+  ) => Promise<string>;
+}
+
 export const AUTH_CODE_FILE = join(tmpdir(), "feliz-auth-code");
 
 export function writeAuthCode(code: string): void {
@@ -154,7 +169,8 @@ function tryOpenBrowser(url: string): void {
 export async function runAuth(
   configPath: string,
   flags: Record<string, string> = {},
-  promptFn: (msg?: string) => string | null = globalThis.prompt
+  promptFn: (msg?: string) => string | null = globalThis.prompt,
+  deps: RunAuthDeps = {}
 ): Promise<void> {
   const clientId =
     flags["client-id"] ?? promptFn("Linear OAuth App Client ID:");
@@ -176,10 +192,13 @@ export async function runAuth(
 
   tryOpenBrowser(authUrl);
 
-  const code = await waitForCallback(port);
+  const waitForCallbackFn = deps.waitForCallbackFn ?? waitForCallback;
+  const code = await waitForCallbackFn(port);
 
   console.log("Exchanging code for access token...");
-  const tokenResult = await exchangeCodeForToken({
+  const exchangeCodeForTokenFn =
+    deps.exchangeCodeForTokenFn ?? exchangeCodeForToken;
+  const tokenResult = await exchangeCodeForTokenFn({
     clientId,
     clientSecret,
     code,
@@ -187,7 +206,8 @@ export async function runAuth(
   });
 
   console.log("Verifying token...");
-  const viewer = await verifyToken(tokenResult.access_token);
+  const verifyTokenFn = deps.verifyTokenFn ?? verifyToken;
+  const viewer = await verifyTokenFn(tokenResult.access_token);
   if (viewer) {
     console.log(`Authenticated as: ${viewer.name} (${viewer.id})`);
   } else {
@@ -224,15 +244,21 @@ export async function runAuth(
   console.log("  3. Start Feliz:   feliz start");
 }
 
-export function waitForCallback(port: number, timeoutMs: number = TIMEOUT_MS): Promise<string> {
+export function waitForCallback(
+  port: number,
+  timeoutMs: number = TIMEOUT_MS,
+  deps: WaitForCallbackDeps = {}
+): Promise<string> {
   clearAuthCode();
+  const waitForServer = deps.waitViaServer ?? waitViaServer;
+  const waitForPolling = deps.waitViaPolling ?? waitViaPolling;
 
   try {
-    return waitViaServer(port, timeoutMs);
+    return waitForServer(port, timeoutMs);
   } catch (e: any) {
     if (e?.code === "EADDRINUSE") {
       console.log(`Port ${port} is in use (Feliz server running). Waiting for callback via server...`);
-      return waitViaPolling(timeoutMs);
+      return waitForPolling(timeoutMs);
     }
     throw e;
   }
