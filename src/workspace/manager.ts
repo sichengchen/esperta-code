@@ -1,5 +1,11 @@
 import { join } from "path";
 
+export interface WorktreeRetentionPolicy {
+  retain_on_success_minutes?: number;
+  retain_on_failure_hours?: number;
+  prune_after_days?: number;
+}
+
 export function injectGitHubToken(repoUrl: string, token?: string): string {
   if (!token) return repoUrl;
   try {
@@ -17,6 +23,26 @@ export function injectGitHubToken(repoUrl: string, token?: string): string {
 
 export function sanitizeIdentifier(id: string): string {
   return id.replace(/[^A-Za-z0-9._-]/g, "_");
+}
+
+export function computeRetentionDeadline(
+  policy: WorktreeRetentionPolicy,
+  outcome: "success" | "failure",
+  now: Date = new Date()
+): Date | null {
+  if (outcome === "success" && policy.retain_on_success_minutes) {
+    return new Date(
+      now.getTime() + policy.retain_on_success_minutes * 60 * 1000
+    );
+  }
+
+  if (outcome === "failure" && policy.retain_on_failure_hours) {
+    return new Date(
+      now.getTime() + policy.retain_on_failure_hours * 60 * 60 * 1000
+    );
+  }
+
+  return null;
 }
 
 export class WorkspaceManager {
@@ -41,6 +67,10 @@ export class WorkspaceManager {
 
   getBranchName(identifier: string): string {
     return `feliz/${identifier}`;
+  }
+
+  getThreadBranchName(threadId: string): string {
+    return `feliz/thread/${sanitizeIdentifier(threadId)}`;
   }
 
   async cloneRepo(projectName: string, repoUrl: string): Promise<string> {

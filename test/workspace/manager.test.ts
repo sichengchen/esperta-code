@@ -2,6 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import {
   WorkspaceManager,
   sanitizeIdentifier,
+  computeRetentionDeadline,
 } from "../../src/workspace/manager.ts";
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
@@ -68,6 +69,12 @@ describe("WorkspaceManager", () => {
     expect(manager.getBranchName("BAC-123")).toBe("feliz/BAC-123");
   });
 
+  test("getThreadBranchName returns thread-scoped branch", () => {
+    expect(manager.getThreadBranchName("thread-123")).toBe(
+      "feliz/thread/thread-123"
+    );
+  });
+
   test("createWorktree creates worktree from initialized repo", async () => {
     const repoPath = manager.getRepoPath("testproj");
     initTestRepo(repoPath);
@@ -115,6 +122,39 @@ describe("WorkspaceManager", () => {
     } catch (e: any) {
       expect(e.message).toContain("Failed to clone");
     }
+  });
+});
+
+describe("computeRetentionDeadline", () => {
+  test("uses success retention minutes", () => {
+    const now = new Date("2026-04-07T12:00:00.000Z");
+    const deadline = computeRetentionDeadline(
+      {
+        retain_on_success_minutes: 30,
+      },
+      "success",
+      now
+    );
+
+    expect(deadline?.toISOString()).toBe("2026-04-07T12:30:00.000Z");
+  });
+
+  test("uses failure retention hours", () => {
+    const now = new Date("2026-04-07T12:00:00.000Z");
+    const deadline = computeRetentionDeadline(
+      {
+        retain_on_failure_hours: 24,
+      },
+      "failure",
+      now
+    );
+
+    expect(deadline?.toISOString()).toBe("2026-04-08T12:00:00.000Z");
+  });
+
+  test("returns null when no policy is configured", () => {
+    const deadline = computeRetentionDeadline({}, "success", new Date());
+    expect(deadline).toBeNull();
   });
 });
 
