@@ -34,4 +34,4 @@ They do not define the core thread/job schema.
 
 ## Transition note
 
-The repository still contains the existing Linear integration code under `src/linear/`. That code should be treated as a connector implementation to be adapted onto the new core model, not as the architecture to extend.
+The Linear connector implementation lives under `src/connectors/linear/`.

@@ -1,5 +1,9 @@
 import { describe, expect, test, mock } from "bun:test";
-import { LinearClient, type LinearIssue, type LinearProject } from "../../src/linear/client.ts";
+import {
+  LinearClient,
+  type LinearIssue,
+  type LinearProject,
+} from "../../src/connectors/linear/client.ts";
 
 function makeConnection<T>(nodes: T[], hasNextPage = false) {
   return {

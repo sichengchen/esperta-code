@@ -1,4 +1,4 @@
-import { LINEAR_MENTION_ALIASES } from "../branding.ts";
+import { LINEAR_MENTION_ALIASES } from "../../branding.ts";
 
 export interface FelizCommand {
   command: string;

@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { parseCommand, type FelizCommand } from "../../src/linear/commands.ts";
+import {
+  parseCommand,
+  type FelizCommand,
+} from "../../src/connectors/linear/commands.ts";
 
 describe("Linear Comment Commands", () => {
   test("parses @esperta start", () => {

@@ -31,7 +31,10 @@ export class LinearClient {
   }
 
   async fetchProjects(): Promise<LinearProject[]> {
-    const connection = await this.sdk.projects({ first: 50, orderBy: "createdAt" as any });
+    const connection = await this.sdk.projects({
+      first: 50,
+      orderBy: "createdAt" as any,
+    });
 
     while (connection.pageInfo.hasNextPage) {
       await connection.fetchNext();

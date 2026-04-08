@@ -1,7 +1,7 @@
-import type { Database } from "../db/database.ts";
+import type { Database } from "../../db/database.ts";
+import { newId } from "../../id.ts";
 import type { LinearClient } from "./client.ts";
 import { parseCommand, type FelizCommand } from "./commands.ts";
-import { newId } from "../id.ts";
 
 export interface AgentSessionEvent {
   action: "created" | "prompted";

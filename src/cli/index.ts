@@ -454,7 +454,7 @@ async function main() {
         process.exit(1);
       }
       const config = loadProjectAddConfig(configPath);
-      const { LinearClient } = await import("../linear/client.ts");
+      const { LinearClient } = await import("../connectors/linear/client.ts");
       const { WorkspaceManager } = await import("../workspace/manager.ts");
       const { addProjectToConfig } = await import("./project.ts");
       const {

@@ -34,13 +34,15 @@ export type {
 export { ThreadService } from "./core/service.ts";
 export { JobExecutor } from "./core/executor.ts";
 
-// Linear
-export { LinearClient } from "./linear/client.ts";
-export type { LinearIssue, FetchResult } from "./linear/client.ts";
-export { WebhookHandler } from "./linear/webhook.ts";
-export type { AgentSessionEvent, WebhookResult } from "./linear/webhook.ts";
-export { parseCommand } from "./linear/commands.ts";
-export type { FelizCommand } from "./linear/commands.ts";
+// Connectors
+export { LinearClient, WebhookHandler, parseCommand } from "./connectors/linear/index.ts";
+export type {
+  FetchResult,
+  FelizCommand,
+  LinearIssue,
+  AgentSessionEvent,
+  WebhookResult,
+} from "./connectors/linear/index.ts";
 
 // Workspace
 export {

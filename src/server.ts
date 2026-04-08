@@ -1,6 +1,6 @@
 import { Database } from "./db/database.ts";
-import { LinearClient } from "./linear/client.ts";
-import { WebhookHandler } from "./linear/webhook.ts";
+import { LinearClient } from "./connectors/linear/client.ts";
+import { WebhookHandler } from "./connectors/linear/webhook.ts";
 import { WorkspaceManager } from "./workspace/manager.ts";
 import { Orchestrator } from "./orchestrator/orchestrator.ts";
 import { ClaudeCodeAdapter } from "./agents/claude-code.ts";
@@ -16,7 +16,7 @@ import type { AgentAdapter } from "./agents/adapter.ts";
 import { existsSync, readFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { writePidFile, removePidFile } from "./pid.ts";
-import type { AgentSessionEvent } from "./linear/webhook.ts";
+import type { AgentSessionEvent } from "./connectors/linear/webhook.ts";
 import { writeAuthCode, AUTH_CALLBACK_HTML } from "./cli/auth.ts";
 import { PRODUCT_NAME } from "./branding.ts";
 
