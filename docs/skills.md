@@ -4,30 +4,31 @@ The repository includes operator-oriented helper skills under `skills/`.
 
 ## Available Skills
 
-### `feliz-setup`
+### `esperta-code-setup`
 
-Location: `skills/feliz-setup/SKILL.md`
+Location: `skills/esperta-code-setup/SKILL.md`
 
 Use it to:
 
 - install prerequisites
-- configure credentials
-- set up Linear OAuth
-- write the central `feliz.yml`
+- install and build Esperta Code from a checkout
+- write or validate the central `feliz.yml`
+- set up the optional Linear connector
+- add the first project
 - start the service cleanly
 
-### `feliz-add-project`
+### `esperta-code-usage`
 
-Location: `skills/feliz-add-project/SKILL.md`
+Location: `skills/esperta-code-usage/SKILL.md`
 
 Use it to:
 
-- add a new project entry to `feliz.yml`
-- clone the target repo
-- scaffold `.feliz/` repo assets
-- set prompts and workflow defaults
+- submit and continue work through the CLI
+- inspect threads, jobs, runs, and worktrees
+- retry, cancel, approve, and attach external events
+- integrate local agent clients through `esperta-code json`
 
 ## Suggested Order
 
-1. `feliz-setup`
-2. `feliz-add-project`
+1. `esperta-code-setup`
+2. `esperta-code-usage`

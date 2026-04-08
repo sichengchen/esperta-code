@@ -100,6 +100,7 @@ echo '{"version":"v1","action":"capabilities"}' | esperta-code json
 - [CLI Reference](docs/cli.md)
 - [Local Agents](docs/local-agents.md)
 - [Agents](docs/agents.md)
+- [Skills](docs/skills.md)
 - [Repo Workflow Assets](docs/pipelines.md)
 
 ## Specs
