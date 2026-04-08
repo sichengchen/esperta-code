@@ -1,6 +1,6 @@
 # Agent Dispatch
 
-Feliz dispatches exactly one agent per job.
+Esperta Code dispatches exactly one agent per job.
 
 ## Adapter contract
 
@@ -52,4 +52,4 @@ Job types are single-agent profiles such as:
 - `publish`
 - `continue`
 
-The agent is responsible for the job’s single purpose. If the user wants another purpose, Feliz creates another job on the same thread.
+The agent is responsible for the job’s single purpose. If the user wants another purpose, Esperta Code creates another job on the same thread.

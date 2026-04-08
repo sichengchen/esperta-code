@@ -43,9 +43,9 @@ Supported policies:
 
 ## Administrative commands
 
-- `feliz worktree list`
-- `feliz worktree inspect <id>`
-- `feliz worktree prune`
+- `esperta-code worktree list`
+- `esperta-code worktree inspect <id>`
+- `esperta-code worktree prune`
 
 ## Garbage collection responsibilities
 

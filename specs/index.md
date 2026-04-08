@@ -1,6 +1,6 @@
-# Feliz Specification
+# Esperta Code Specification
 
-Feliz is a neutral remote agent platform. It accepts coding jobs from multiple sources, runs exactly one coding agent per job in a fresh isolated worktree, and preserves durable thread history, branch state, worktree state, artifacts, approvals, and external events across restarts.
+Esperta Code is a neutral remote agent platform. It accepts coding jobs from multiple sources, runs exactly one coding agent per job in a fresh isolated worktree, and preserves durable thread history, branch state, worktree state, artifacts, approvals, and external events across restarts.
 
 ## Product definition
 

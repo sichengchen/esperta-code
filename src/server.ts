@@ -18,6 +18,7 @@ import { join } from "path";
 import { writePidFile, removePidFile } from "./pid.ts";
 import type { AgentSessionEvent } from "./linear/webhook.ts";
 import { writeAuthCode, AUTH_CALLBACK_HTML } from "./cli/auth.ts";
+import { PRODUCT_NAME } from "./branding.ts";
 
 export class FelizServer {
   private config: FelizConfig;
@@ -60,7 +61,7 @@ export class FelizServer {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
 
-    this.logger.info("Feliz server started", {
+    this.logger.info(`${PRODUCT_NAME} server started`, {
       projects: this.config.projects.length,
       tick_interval: this.config.tick.interval_ms,
       webhook_port: this.config.webhook.port,
@@ -113,7 +114,7 @@ export class FelizServer {
       this.httpServer = null;
     }
     removePidFile(this.config.storage.data_dir);
-    this.logger.info("Feliz server stopping");
+    this.logger.info(`${PRODUCT_NAME} server stopping`);
     this.db.close();
   }
 

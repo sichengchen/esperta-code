@@ -99,11 +99,11 @@ describe("gitCommitAndPush", () => {
 
     // Verify the commit exists
     const log = Bun.spawnSync(["git", "log", "--oneline", "-1"], { cwd: CLONE_DIR });
-    expect(log.stdout.toString()).toContain("feliz");
+    expect(log.stdout.toString()).toContain("esperta code");
 
     // Verify push succeeded by checking bare repo
     const bareLog = Bun.spawnSync(["git", "log", "--oneline", "main"], { cwd: BARE_DIR });
-    expect(bareLog.stdout.toString()).toContain("feliz");
+    expect(bareLog.stdout.toString()).toContain("esperta code");
   });
 
   test("pushes using GITHUB_TOKEN when remote is HTTPS github URL", () => {
@@ -135,7 +135,7 @@ describe("gitCommitAndPush", () => {
         expect(e.message).toContain("Failed to push");
         // Verify commit was made
         const log = Bun.spawnSync(["git", "log", "--oneline", "-1"], { cwd: CLONE_DIR });
-        expect(log.stdout.toString()).toContain("feliz");
+        expect(log.stdout.toString()).toContain("esperta code");
       }
     } finally {
       if (origToken !== undefined) {
@@ -146,7 +146,7 @@ describe("gitCommitAndPush", () => {
     }
   });
 
-  test("commits with default Feliz identity when no git user configured", () => {
+  test("commits with default Esperta Code identity when no git user configured", () => {
     // Remove user identity to simulate Docker/CI
     Bun.spawnSync(["git", "config", "--unset", "user.email"], { cwd: CLONE_DIR });
     Bun.spawnSync(["git", "config", "--unset", "user.name"], { cwd: CLONE_DIR });
@@ -161,8 +161,8 @@ describe("gitCommitAndPush", () => {
 
     const log = Bun.spawnSync(["git", "log", "-1", "--format=%an"], { cwd: CLONE_DIR });
     const authorName = log.stdout.toString().trim();
-    // Uses GIT_AUTHOR_NAME env if set, otherwise defaults to "Feliz Bot"
-    expect(authorName).toBe(process.env.GIT_AUTHOR_NAME || "Feliz Bot");
+    // Uses GIT_AUTHOR_NAME env if set, otherwise defaults to "Esperta Code Bot"
+    expect(authorName).toBe(process.env.GIT_AUTHOR_NAME || "Esperta Code Bot");
   });
 });
 

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, mkdirSync, writeFileSync, unlinkSync } from "
 import { dirname, join } from "path";
 import { tmpdir } from "os";
 import { parse, stringify } from "yaml";
+import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../branding.ts";
 
 const SCOPES = "app:mentionable,app:assignable,read,write,issues:create";
 export const DEFAULT_PORT = 3421;
@@ -35,7 +36,7 @@ export function clearAuthCode(): void {
 
 export const AUTH_CALLBACK_HTML = `<!DOCTYPE html>
 <html>
-<head><title>Feliz</title></head>
+<head><title>${PRODUCT_NAME}</title></head>
 <body>
 <h1>Authorization complete</h1>
 <p>You can close this tab.</p>
@@ -185,7 +186,7 @@ export async function runAuth(
 
   const authUrl = buildAuthorizationUrl(clientId, redirectUri);
   console.log("");
-  console.log("Open this URL to authorize Feliz with Linear:");
+  console.log(`Open this URL to authorize ${PRODUCT_NAME} with Linear:`);
   console.log("");
   console.log(`  ${authUrl}`);
   console.log("");
@@ -240,8 +241,8 @@ export async function runAuth(
   console.log("     - Go to your Linear OAuth app settings");
   console.log("     - Enable webhooks and select 'Agent session events'");
   console.log(`     - Set webhook URL to: https://<your-host>:${port}/webhook/linear`);
-  console.log("  2. Add a project: feliz project add");
-  console.log("  3. Start Feliz:   feliz start");
+  console.log(`  2. Add a project: ${PRIMARY_CLI_NAME} project add`);
+  console.log(`  3. Start ${PRODUCT_NAME}:   ${PRIMARY_CLI_NAME} start`);
 }
 
 export function waitForCallback(
@@ -257,7 +258,9 @@ export function waitForCallback(
     return waitForServer(port, timeoutMs);
   } catch (e: any) {
     if (e?.code === "EADDRINUSE") {
-      console.log(`Port ${port} is in use (Feliz server running). Waiting for callback via server...`);
+      console.log(
+        `Port ${port} is in use (${PRODUCT_NAME} server running). Waiting for callback via server...`
+      );
       return waitForPolling(timeoutMs);
     }
     throw e;

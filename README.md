@@ -1,6 +1,6 @@
-# Feliz
+# Esperta Code
 
-Feliz is a self-hosted remote coding job runner. It accepts jobs from multiple sources, executes them remotely in isolated git worktrees, and stores durable thread, job, run, worktree, and artifact state in SQLite plus the filesystem.
+Esperta Code is a self-hosted remote coding job runner. It accepts jobs from multiple sources, executes them remotely in isolated git worktrees, and stores durable thread, job, run, worktree, and artifact state in SQLite plus the filesystem.
 
 ## Core ideas
 
@@ -33,6 +33,8 @@ bun run lint
 
 Create a config at `~/.feliz/feliz.yml`:
 
+The default config path remains `~/.feliz/feliz.yml` during the compatibility window.
+
 ```yaml
 runtime:
   data_dir: ~/.feliz
@@ -63,32 +65,34 @@ projects:
 Then use the new CLI flow:
 
 ```bash
-feliz submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
-feliz thread list
-feliz thread show <thread-id>
-feliz continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
-feliz job list
-feliz worktree list
+esperta-code submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+esperta-code thread list
+esperta-code thread show <thread-id>
+esperta-code continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
+esperta-code job list
+esperta-code worktree list
 ```
+
+The legacy `feliz` CLI name still works as an alias.
 
 ## CLI
 
 ```bash
-feliz submit
-feliz continue <thread-id>
-feliz thread create
-feliz thread list
-feliz thread show <thread-id>
-feliz job list
-feliz job show <job-id>
-feliz job logs <job-id>
-feliz job retry <job-id>
-feliz job cancel <job-id>
-feliz job approve <job-id>
-feliz worktree list
-feliz worktree inspect <id>
-feliz worktree prune
-feliz event attach <thread-id> --type ci_failed --source github --source-id 123
+esperta-code submit
+esperta-code continue <thread-id>
+esperta-code thread create
+esperta-code thread list
+esperta-code thread show <thread-id>
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+esperta-code job approve <job-id>
+esperta-code worktree list
+esperta-code worktree inspect <id>
+esperta-code worktree prune
+esperta-code event attach <thread-id> --type ci_failed --source github --source-id 123
 ```
 
 ## Specs

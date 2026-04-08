@@ -1,6 +1,6 @@
 # Agents
 
-Feliz dispatches coding agents through a pluggable adapter interface.
+Esperta Code dispatches coding agents through a pluggable adapter interface.
 
 ## Supported agents
 
@@ -27,7 +27,7 @@ Sandbox mode maps from `approval_policy`:
 ## Check availability
 
 ```bash
-bun run src/cli/index.ts agent list
+esperta-code agent list
 ```
 
 Reports whether each agent CLI is installed and runnable.

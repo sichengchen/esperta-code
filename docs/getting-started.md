@@ -1,6 +1,6 @@
 # Getting Started
 
-Install Feliz, configure your first project, and verify everything works.
+Install Esperta Code, configure your first project, and verify everything works.
 
 ## Prerequisites
 
@@ -14,8 +14,8 @@ Install Feliz, configure your first project, and verify everything works.
 ## Install
 
 ```bash
-git clone git@github.com:sichengchen/feliz.git
-cd feliz
+git clone git@github.com:sichengchen/esperta-code.git
+cd esperta-code
 bun install
 ```
 
@@ -74,7 +74,7 @@ Run the interactive wizard:
 bun run src/cli/index.ts init
 ```
 
-This prompts for the Linear OAuth token and writes `~/.feliz/feliz.yml` with default settings (webhook port, storage paths, agent defaults, and an empty `projects` list).
+This prompts for the Linear OAuth token and writes `~/.feliz/feliz.yml` with default settings (webhook port, storage paths, agent defaults, and an empty `projects` list). The legacy path remains the default for compatibility.
 
 Alternatively, run `start` without a config to scaffold a template you can edit manually.
 

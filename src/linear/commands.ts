@@ -1,3 +1,5 @@
+import { LINEAR_MENTION_ALIASES } from "../branding.ts";
+
 export interface FelizCommand {
   command: string;
   extraText: string;
@@ -16,7 +18,11 @@ const VALID_COMMANDS = [
 export function parseCommand(text: string): FelizCommand | null {
   if (!text) return null;
 
-  const match = text.match(/@feliz\s+(\w+)(.*)?/i);
+  const mentionPattern = new RegExp(
+    `@(?:${LINEAR_MENTION_ALIASES.map((alias) => alias.replace(/-/g, "\\-")).join("|")})\\s+(\\w+)(.*)?`,
+    "i"
+  );
+  const match = text.match(mentionPattern);
   if (!match) return null;
 
   const command = match[1]!.toLowerCase();

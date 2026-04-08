@@ -2,7 +2,7 @@
 
 ## Runtime config (`feliz.yml`)
 
-Feliz is configured from a single runtime file, typically `~/.feliz/feliz.yml`.
+Esperta Code is configured from a single runtime file, typically `~/.feliz/feliz.yml`. The legacy path remains the default for compatibility.
 
 ```yaml
 runtime:

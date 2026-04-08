@@ -13,31 +13,31 @@
 
 ### Daemon
 
-**`start`** — Start the Feliz daemon. Scaffolds a template config and exits if none exists.
+**`start`** — Start the Esperta Code daemon. Scaffolds a template config and exits if none exists.
 
 ```bash
-feliz start
-feliz start --config /path/to/feliz.yml
+esperta-code start
+esperta-code start --config /path/to/feliz.yml
 ```
 
 **`stop`** — Stop the daemon via PID file.
 
 ```bash
-feliz stop
+esperta-code stop
 ```
 
 **`status`** — Show daemon and project status.
 
 ```bash
-feliz status
+esperta-code status
 ```
 
 ### Setup
 
-**`init`** — Interactive setup wizard. Creates `feliz.yml` with Linear token, webhook port, storage paths, agent defaults, and an empty projects list. Add projects separately with `feliz project add`.
+**`init`** — Interactive setup wizard. Creates `feliz.yml` with Linear token, webhook port, storage paths, agent defaults, and an empty projects list. Add projects separately with `esperta-code project add`.
 
 ```bash
-feliz init
+esperta-code init
 ```
 
 ### Config
@@ -45,13 +45,13 @@ feliz init
 **`config validate`** — Validate central and repo configs.
 
 ```bash
-feliz config validate
+esperta-code config validate
 ```
 
 **`config show`** — Print resolved config with environment variables expanded.
 
 ```bash
-feliz config show
+esperta-code config show
 ```
 
 ### Projects
@@ -59,19 +59,19 @@ feliz config show
 **`project list`** — List project mappings.
 
 ```bash
-feliz project list
+esperta-code project list
 ```
 
 **`project add`** — Interactive project onboarding.
 
 ```bash
-feliz project add
+esperta-code project add
 ```
 
 **`project remove <name>`** — Remove a project mapping.
 
 ```bash
-feliz project remove backend-api
+esperta-code project remove backend-api
 ```
 
 ### Runs
@@ -79,19 +79,19 @@ feliz project remove backend-api
 **`run list`** — List recent runs.
 
 ```bash
-feliz run list
+esperta-code run list
 ```
 
 **`run show <run_id>`** — Show run details and step executions.
 
 ```bash
-feliz run show abc123
+esperta-code run show abc123
 ```
 
 **`run retry <identifier>`** — Retry a failed work item.
 
 ```bash
-feliz run retry BAC-123
+esperta-code run retry BAC-123
 ```
 
 ### Agents
@@ -99,7 +99,7 @@ feliz run retry BAC-123
 **`agent list`** — Show installed agent adapters and availability.
 
 ```bash
-feliz agent list
+esperta-code agent list
 ```
 
 ### Context
@@ -107,13 +107,13 @@ feliz agent list
 **`context history <project>`** — Show history events for a project.
 
 ```bash
-feliz context history backend-api
+esperta-code context history backend-api
 ```
 
 **`context show <identifier>`** — Show context snapshot for a work item.
 
 ```bash
-feliz context show BAC-123
+esperta-code context show BAC-123
 ```
 
 ### Authentication
@@ -121,9 +121,9 @@ feliz context show BAC-123
 **`auth linear`** — Authenticate with Linear via OAuth2. Starts a temporary local server on the webhook port, opens the browser for authorization, exchanges the code for a token, verifies the bot identity, and writes the token to `feliz.yml`.
 
 ```bash
-feliz auth linear
-feliz auth linear --client-id <id> --client-secret <secret>
-feliz auth linear --callback-url https://my-host.com/auth/callback
+esperta-code auth linear
+esperta-code auth linear --client-id <id> --client-secret <secret>
+esperta-code auth linear --callback-url https://my-host.com/auth/callback
 ```
 
 | Flag | Description |
@@ -131,7 +131,7 @@ feliz auth linear --callback-url https://my-host.com/auth/callback
 | `--client-id <id>` | Linear OAuth app client ID (or prompt interactively) |
 | `--client-secret <secret>` | Linear OAuth app client secret (or prompt interactively) |
 | `--port <port>` | Callback server port (default: `3421`, same as webhook port) |
-| `--callback-url <url>` | Public callback URL for Linear redirect (default: `http://localhost:<port>/auth/callback`). Use this when exposing Feliz to the internet, since Linear blocks `localhost` callback URLs. |
+| `--callback-url <url>` | Public callback URL for Linear redirect (default: `http://localhost:<port>/auth/callback`). Use this when exposing Esperta Code to the internet, since Linear blocks `localhost` callback URLs. |
 
 After authentication, the command prints next steps for configuring Linear webhooks.
 
@@ -140,20 +140,20 @@ After authentication, the command prints next steps for configuring Linear webho
 **`e2e doctor`** — Check prerequisites (tools, auth, config).
 
 ```bash
-feliz e2e doctor
+esperta-code e2e doctor
 ```
 
 **`e2e smoke`** — Run preflight smoke checks.
 
 ```bash
-feliz e2e smoke
-feliz e2e smoke --json --out /tmp/report.json
+esperta-code e2e smoke
+esperta-code e2e smoke --json --out /tmp/report.json
 ```
 
 ## Helper scripts
 
 ```bash
-bun run e2e:doctor    # runs feliz e2e doctor
+bun run e2e:doctor    # runs esperta-code e2e doctor
 bun run e2e:smoke     # runs scripts/e2e-smoke.sh
 bun run e2e:real      # runs scripts/e2e-real.sh
 ```

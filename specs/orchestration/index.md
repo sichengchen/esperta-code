@@ -2,7 +2,7 @@
 
 ## Scheduling model
 
-Feliz schedules jobs, not pipeline phases.
+Esperta Code schedules jobs, not pipeline phases.
 
 Rules:
 

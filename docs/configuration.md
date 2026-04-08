@@ -1,6 +1,6 @@
 # Configuration
 
-Feliz is configured from `feliz.yml`, usually at `~/.feliz/feliz.yml`.
+Esperta Code is configured from `feliz.yml`, usually at `~/.feliz/feliz.yml`. The legacy path and filename remain the default for compatibility.
 
 ```yaml
 runtime:

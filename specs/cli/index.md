@@ -5,36 +5,36 @@ The CLI exposes the durable thread/job/worktree model directly.
 ## Core commands
 
 ```bash
-feliz submit --project <name> --title <title> --goal <goal>
-feliz continue <thread-id> --title <title> --goal <goal>
+esperta-code submit --project <name> --title <title> --goal <goal>
+esperta-code continue <thread-id> --title <title> --goal <goal>
 
-feliz thread create --project <name> --title <title>
-feliz thread list
-feliz thread show <thread-id>
+esperta-code thread create --project <name> --title <title>
+esperta-code thread list
+esperta-code thread show <thread-id>
 
-feliz job list
-feliz job show <job-id>
-feliz job logs <job-id>
-feliz job retry <job-id>
-feliz job cancel <job-id>
-feliz job approve <job-id>
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+esperta-code job approve <job-id>
 
-feliz worktree list
-feliz worktree inspect <id>
-feliz worktree prune
+esperta-code worktree list
+esperta-code worktree inspect <id>
+esperta-code worktree prune
 
-feliz event attach <thread-id> --type ci_failed --source github --source-id 123
+esperta-code event attach <thread-id> --type ci_failed --source github --source-id 123
 ```
 
 ## Operational commands
 
 Legacy daemon-oriented commands still exist during the transition:
 
-- `feliz start`
-- `feliz stop`
-- `feliz status`
-- `feliz config validate`
-- `feliz config show`
+- `esperta-code start`
+- `esperta-code stop`
+- `esperta-code status`
+- `esperta-code config validate`
+- `esperta-code config show`
 
 ## Behavioral expectations
 

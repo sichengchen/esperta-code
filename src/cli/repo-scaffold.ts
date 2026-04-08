@@ -9,6 +9,12 @@ import {
 import { loadPipelineConfig, loadRepoConfig } from "../config/loader.ts";
 import { newId } from "../id.ts";
 import type { AgentAdapter } from "../agents/adapter.ts";
+import {
+  DEFAULT_BOT_EMAIL,
+  DEFAULT_BOT_NAME,
+  PRIMARY_CLI_NAME,
+  PRODUCT_NAME,
+} from "../branding.ts";
 import { injectGitHubToken } from "../workspace/manager.ts";
 
 export function repoHasFelizConfig(repoPath: string): boolean {
@@ -42,7 +48,7 @@ export interface AgentScaffoldResult {
 
 function buildAgentScaffoldPrompt(answers: RepoScaffoldAnswers): string {
   const sections: string[] = [];
-  sections.push(`Create Feliz starter config files for this repository.
+  sections.push(`Create ${PRODUCT_NAME} starter config files for this repository.
 
 You must create these paths:
 - .feliz/config.yml
@@ -76,13 +82,13 @@ WORKFLOW.md MUST contain these exact template variables:
 - {{ issue.description }} — the issue description
 
 WORKFLOW.md MUST contain a "Context" section with these instructions:
-- Run \`feliz context read\` to see history and prior step outputs.
-- Run \`feliz context write <message>\` to leave findings for the next step.
+- Run \`${PRIMARY_CLI_NAME} context read\` to see history and prior step outputs.
+- Run \`${PRIMARY_CLI_NAME} context write <message>\` to leave findings for the next step.
 - Project memory is in \`.feliz/context/memory/\` — read and write files there directly.
 - Specs are in \`specs/\`.
 
 Do NOT use template variables like {{ specs }}, {{ previous_failure }}, or {{ previous_review }}.
-Agents access context via the \`feliz context\` CLI, not through prompt templates.
+Agents access context via the \`${PRIMARY_CLI_NAME} context\` CLI, not through prompt templates.
 
 Only modify the listed scaffold files/directories.`);
 
@@ -156,14 +162,23 @@ export async function writeRepoScaffoldWithAgent(
 
 export function gitCommitAndPush(repoPath: string, branch: string): void {
   const gitEnv = {
-    GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || "Feliz Bot",
-    GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || "feliz@localhost",
-    GIT_COMMITTER_NAME: process.env.GIT_COMMITTER_NAME || process.env.GIT_AUTHOR_NAME || "Feliz Bot",
-    GIT_COMMITTER_EMAIL: process.env.GIT_COMMITTER_EMAIL || process.env.GIT_AUTHOR_EMAIL || "feliz@localhost",
+    GIT_AUTHOR_NAME: process.env.GIT_AUTHOR_NAME || DEFAULT_BOT_NAME,
+    GIT_AUTHOR_EMAIL: process.env.GIT_AUTHOR_EMAIL || DEFAULT_BOT_EMAIL,
+    GIT_COMMITTER_NAME:
+      process.env.GIT_COMMITTER_NAME || process.env.GIT_AUTHOR_NAME || DEFAULT_BOT_NAME,
+    GIT_COMMITTER_EMAIL:
+      process.env.GIT_COMMITTER_EMAIL || process.env.GIT_AUTHOR_EMAIL || DEFAULT_BOT_EMAIL,
   };
   Bun.spawnSync(["git", "add", ".feliz/", "WORKFLOW.md"], { cwd: repoPath });
   const commit = Bun.spawnSync(
-    ["git", "-c", "commit.gpgsign=false", "commit", "-m", "chore: add feliz configuration"],
+    [
+      "git",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-m",
+      "chore: add esperta code configuration",
+    ],
     { cwd: repoPath, env: { ...process.env, ...gitEnv } }
   );
   if (commit.exitCode !== 0) {

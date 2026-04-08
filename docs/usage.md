@@ -3,7 +3,7 @@
 ## Submit work
 
 ```bash
-feliz submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+esperta-code submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
 ```
 
 This creates a thread and queues its first job.
@@ -11,7 +11,7 @@ This creates a thread and queues its first job.
 ## Continue work on a thread
 
 ```bash
-feliz continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
+esperta-code continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
 ```
 
 This appends a new job to the same thread.
@@ -19,25 +19,25 @@ This appends a new job to the same thread.
 ## Inspect state
 
 ```bash
-feliz thread list
-feliz thread show <thread-id>
-feliz job list
-feliz job show <job-id>
-feliz job logs <job-id>
-feliz worktree list
-feliz worktree inspect <id>
+esperta-code thread list
+esperta-code thread show <thread-id>
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
+esperta-code worktree list
+esperta-code worktree inspect <id>
 ```
 
 ## Handle failures
 
 ```bash
-feliz job retry <job-id>
-feliz job cancel <job-id>
-feliz worktree prune
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+esperta-code worktree prune
 ```
 
 ## Attach external events
 
 ```bash
-feliz event attach <thread-id> --type ci_failed --source github --source-id 123
+esperta-code event attach <thread-id> --type ci_failed --source github --source-id 123
 ```

@@ -1,10 +1,10 @@
 # Pipelines
 
-A pipeline defines the sequence of work Feliz performs for each issue. Pipelines are ordered phases, each containing ordered steps.
+A pipeline defines the sequence of work Esperta Code performs for each issue. Pipelines are ordered phases, each containing ordered steps.
 
 Location: `.feliz/pipeline.yml`
 
-If absent, Feliz uses a default pipeline: run agent with `WORKFLOW.md` prompt, then create PR.
+If absent, Esperta Code uses a default pipeline: run agent with `WORKFLOW.md` prompt, then create PR.
 
 ## Example
 
@@ -76,7 +76,7 @@ repeat:
 
 ## Execution sequence
 
-For each step, Feliz:
+For each step, Esperta Code:
 
 1. Renders the prompt template with issue, context, and cycle variables.
 2. Runs `hooks.before_run` if configured.

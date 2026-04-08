@@ -5,7 +5,7 @@ Linear is a connector, not the core model.
 Its responsibilities are:
 
 - map Linear issues, comments, and agent-session events into threads, jobs, and external events
-- reflect Feliz state back to Linear as activities, comments, or state updates
+- reflect Esperta Code state back to Linear as activities, comments, or state updates
 - store connector-specific identifiers in connector metadata and thread links rather than in the core schema
 
 ## Connector mapping

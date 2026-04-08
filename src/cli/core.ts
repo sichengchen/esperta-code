@@ -8,6 +8,7 @@ import type { CliCommand } from "./commands.ts";
 import { ThreadService } from "../core/service.ts";
 import { WorkspaceManager } from "../workspace/manager.ts";
 import { sanitizeIdentifier } from "../workspace/manager.ts";
+import { PRIMARY_CLI_NAME } from "../branding.ts";
 
 function projectIdFromName(name: string): string {
   return `project:${sanitizeIdentifier(name)}`;
@@ -153,17 +154,17 @@ export async function handleCoreCliCommand(
       const projectName = requireFlag(
         cmd.flags,
         "project",
-        "Usage: feliz submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
       );
       const title = requireFlag(
         cmd.flags,
         "title",
-        "Usage: feliz submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
       );
       const goal = requireFlag(
         cmd.flags,
         "goal",
-        "Usage: feliz submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
       );
 
       findProjectConfig(config, projectName);
@@ -195,19 +196,19 @@ export async function handleCoreCliCommand(
       const threadId = cmd.subcommand ?? cmd.args[0];
       if (!threadId) {
         throw new Error(
-          "Usage: feliz continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+          `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
         );
       }
 
       const title = requireFlag(
         cmd.flags,
         "title",
-        "Usage: feliz continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
       );
       const goal = requireFlag(
         cmd.flags,
         "goal",
-        "Usage: feliz continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
       );
 
       const job = threadService.continueThread(threadId, {
@@ -231,12 +232,12 @@ export async function handleCoreCliCommand(
       const projectName = requireFlag(
         cmd.flags,
         "project",
-        "Usage: feliz thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]`
       );
       const title = requireFlag(
         cmd.flags,
         "title",
-        "Usage: feliz thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]"
+        `Usage: ${PRIMARY_CLI_NAME} thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]`
       );
 
       findProjectConfig(config, projectName);
@@ -288,7 +289,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "thread" && cmd.subcommand === "show") {
       const threadId = cmd.args[0];
       if (!threadId) {
-        throw new Error("Usage: feliz thread show <thread-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} thread show <thread-id>`);
       }
 
       const thread = db.getThread(threadId);
@@ -339,7 +340,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "job" && cmd.subcommand === "show") {
       const jobId = cmd.args[0];
       if (!jobId) {
-        throw new Error("Usage: feliz job show <job-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} job show <job-id>`);
       }
 
       const job = db.getJob(jobId);
@@ -368,7 +369,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "job" && cmd.subcommand === "logs") {
       const jobId = cmd.args[0];
       if (!jobId) {
-        throw new Error("Usage: feliz job logs <job-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} job logs <job-id>`);
       }
 
       const artifacts = db.listArtifactsForJob(jobId).filter((artifact) =>
@@ -388,7 +389,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "job" && cmd.subcommand === "retry") {
       const jobId = cmd.args[0];
       if (!jobId) {
-        throw new Error("Usage: feliz job retry <job-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} job retry <job-id>`);
       }
 
       const job = db.getJob(jobId);
@@ -409,7 +410,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "job" && cmd.subcommand === "cancel") {
       const jobId = cmd.args[0];
       if (!jobId) {
-        throw new Error("Usage: feliz job cancel <job-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} job cancel <job-id>`);
       }
 
       const job = db.getJob(jobId);
@@ -426,7 +427,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "job" && cmd.subcommand === "approve") {
       const jobId = cmd.args[0];
       if (!jobId) {
-        throw new Error("Usage: feliz job approve <job-id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} job approve <job-id>`);
       }
 
       const job = db.getJob(jobId);
@@ -461,7 +462,7 @@ export async function handleCoreCliCommand(
     if (cmd.command === "worktree" && cmd.subcommand === "inspect") {
       const worktreeId = cmd.args[0];
       if (!worktreeId) {
-        throw new Error("Usage: feliz worktree inspect <id>");
+        throw new Error(`Usage: ${PRIMARY_CLI_NAME} worktree inspect <id>`);
       }
 
       const worktree = db.getWorktreeRecord(worktreeId);
@@ -514,7 +515,7 @@ export async function handleCoreCliCommand(
       const threadId = cmd.args[0];
       if (!threadId) {
         throw new Error(
-          "Usage: feliz event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]"
+          `Usage: ${PRIMARY_CLI_NAME} event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]`
         );
       }
 
@@ -522,17 +523,17 @@ export async function handleCoreCliCommand(
         source_kind: requireFlag(
           cmd.flags,
           "source",
-          "Usage: feliz event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]"
+          `Usage: ${PRIMARY_CLI_NAME} event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]`
         ),
         source_id: requireFlag(
           cmd.flags,
           "source-id",
-          "Usage: feliz event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]"
+          `Usage: ${PRIMARY_CLI_NAME} event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]`
         ),
         event_type: requireFlag(
           cmd.flags,
           "type",
-          "Usage: feliz event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]"
+          `Usage: ${PRIMARY_CLI_NAME} event attach <thread-id> --type <type> --source <kind> --source-id <id> [--body <text>]`
         ),
         payload: {
           body: cmd.flags.body ?? "",

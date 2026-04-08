@@ -1,3 +1,4 @@
+import { PRIMARY_CLI_NAME } from "../branding.ts";
 import { writeFileSync } from "fs";
 import {
   runE2EDoctor,
@@ -32,7 +33,7 @@ function defaultDeps(): E2ECommandDeps {
 }
 
 function usage(): string {
-  return "Usage: feliz e2e <doctor|smoke> [--config <path>] [--json] [--out <path>]";
+  return `Usage: ${PRIMARY_CLI_NAME} e2e <doctor|smoke> [--config <path>] [--json] [--out <path>]`;
 }
 
 function printDoctor(report: E2EDoctorReport, deps: E2ECommandDeps): void {
