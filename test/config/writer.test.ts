@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, readFileSync, rmSync } from "fs";
 import { join } from "path";
+import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../../src/branding.ts";
 import {
   CONFIG_TEMPLATE,
   generateConfig,
@@ -23,7 +24,7 @@ describe("CONFIG_TEMPLATE", () => {
   });
 
   test("contains comment header", () => {
-    expect(CONFIG_TEMPLATE).toContain("# Esperta Code configuration");
+    expect(CONFIG_TEMPLATE).toContain(`# ${PRODUCT_NAME} configuration`);
   });
 });
 
@@ -142,8 +143,8 @@ describe("generateWorkflowMd", () => {
 
   test("contains context system instructions", () => {
     const md = generateWorkflowMd();
-    expect(md).toContain("esperta-code context read");
-    expect(md).toContain("esperta-code context write");
+    expect(md).toContain(`${PRIMARY_CLI_NAME} thread read`);
+    expect(md).toContain(`${PRIMARY_CLI_NAME} thread write`);
   });
 
   test("does not contain old template variables", () => {

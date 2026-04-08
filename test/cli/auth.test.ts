@@ -266,9 +266,11 @@ describe("waitForCallback", () => {
     const { waitForCallback } = await import("../../src/cli/auth.ts");
 
     await expect(
-      waitForCallback(3421, 50, {
-        waitViaServer: async () => {
-          throw new Error("OAuth callback timed out after 5 minutes");
+      waitForCallback(0, 50, {
+        waitViaServer: () => {
+          const error = new Error("port in use") as Error & { code?: string };
+          error.code = "EADDRINUSE";
+          throw error;
         },
       })
     ).rejects.toThrow(
@@ -276,24 +278,27 @@ describe("waitForCallback", () => {
     );
   });
 
-  test("resolves with code from callback", async () => {
+  test("resolves with code from callback server", async () => {
     const { waitForCallback } = await import("../../src/cli/auth.ts");
-    const code = await waitForCallback(3421, 5000, {
-      waitViaServer: async () => "test_code_123",
+
+    const code = await waitForCallback(18374, 5000, {
+      waitViaServer: async (_port, _timeoutMs) => "test_code_123",
     });
+
     expect(code).toBe("test_code_123");
   });
 
   test("falls back to polling code file when port is in use", async () => {
-    const { waitForCallback } = await import("../../src/cli/auth.ts");
+    const { waitForCallback } =
+      await import("../../src/cli/auth.ts");
 
-    const code = await waitForCallback(3421, 3000, {
+    const code = await waitForCallback(18377, 3000, {
       waitViaServer: () => {
-        const error = new Error("in use") as Error & { code?: string };
+        const error = new Error("port in use") as Error & { code?: string };
         error.code = "EADDRINUSE";
         throw error;
       },
-      waitViaPolling: async () => "polled_code_456",
+      waitViaPolling: async (_timeoutMs) => "polled_code_456",
     });
 
     expect(code).toBe("polled_code_456");
@@ -313,71 +318,88 @@ describe("runAuth", () => {
   test("full flow with injected dependencies", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
     const configPath = join(TEST_DIR, "feliz.yml");
-    const port = 3421;
 
     const promptAnswers = ["n"]; // "n" = store literal token, not env var
     let promptIdx = 0;
     const promptFn = (_msg?: string) => promptAnswers[promptIdx++] ?? null;
 
-    // Start runAuth in background — it will wait for callback
-    const authPromise = runAuth(
+    let savedConfig:
+      | { path: string; token: string; useEnvVar: boolean; viewerId?: string }
+      | undefined;
+
+    await runAuth(
       configPath,
       {
         "client-id": "test_client",
         "client-secret": "test_secret",
-        port: String(port),
       },
       promptFn,
       {
-        exchangeCodeForTokenFn: async () => {
-          throw new Error("Token exchange failed: test");
+        waitForCallback: async () => "test_auth_code",
+        exchangeCodeForToken: async ({ redirectUri }) => {
+          expect(redirectUri).toBe("http://localhost:3421/auth/callback");
+          return {
+            access_token: "lin_oauth_test123",
+            token_type: "Bearer",
+            expires_in: 315360000,
+            scope: ["read", "write"],
+          };
         },
-        waitForCallbackFn: async () => "test_auth_code",
+        verifyToken: async () => ({ id: "viewer_1", name: "Feliz Bot" }),
+        writeTokenToConfig: (path, token, useEnvVar, viewerId) => {
+          savedConfig = { path, token, useEnvVar, viewerId };
+        },
+        openBrowser: () => {},
+        console: { log: () => {}, warn: () => {} },
       }
     );
 
-    // The flow will try to exchange the code — we can't mock fetch in runAuth
-    // since it uses globalThis.fetch. So this will fail at token exchange.
-    // That's expected — we're testing the orchestration up to that point.
-    try {
-      await authPromise;
-    } catch (e: any) {
-      expect(e.message).toContain("Token exchange failed");
-    }
+    expect(savedConfig).toEqual({
+      path: configPath,
+      token: "lin_oauth_test123",
+      useEnvVar: false,
+      viewerId: "viewer_1",
+    });
   });
 
   test("uses --callback-url for redirect_uri", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
     const configPath = join(TEST_DIR, "feliz.yml");
-    const port = 3421;
 
     const promptAnswers = ["n"];
     let promptIdx = 0;
     const promptFn = (_msg?: string) => promptAnswers[promptIdx++] ?? null;
 
-    const authPromise = runAuth(
+    let capturedRedirectUri = "";
+
+    await runAuth(
       configPath,
       {
         "client-id": "test_client",
         "client-secret": "test_secret",
-        port: String(port),
+        port: "18376",
         "callback-url": "https://my-host.com/auth/callback",
       },
       promptFn,
       {
-        exchangeCodeForTokenFn: async () => {
-          throw new Error("Token exchange failed: test");
+        waitForCallback: async () => "test_auth_code",
+        exchangeCodeForToken: async ({ redirectUri }) => {
+          capturedRedirectUri = redirectUri;
+          return {
+            access_token: "lin_oauth_test123",
+            token_type: "Bearer",
+            expires_in: 315360000,
+            scope: ["read", "write"],
+          };
         },
-        waitForCallbackFn: async () => "test_auth_code",
+        verifyToken: async () => null,
+        writeTokenToConfig: () => {},
+        openBrowser: () => {},
+        console: { log: () => {}, warn: () => {} },
       }
     );
 
-    try {
-      await authPromise;
-    } catch (e: any) {
-      // Token exchange will fail, but we verify it tried with the right redirect_uri
-      expect(e.message).toContain("Token exchange failed");
-    }
+    expect(capturedRedirectUri).toBe("https://my-host.com/auth/callback");
   });
 
   test("defaults to port 3421 (webhook port)", async () => {

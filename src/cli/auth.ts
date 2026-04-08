@@ -9,21 +9,6 @@ export const DEFAULT_PORT = 3421;
 const TIMEOUT_MS = 5 * 60 * 1000;
 const POLL_INTERVAL_MS = 500;
 
-interface WaitForCallbackDeps {
-  waitViaPolling?: (timeoutMs: number) => Promise<string>;
-  waitViaServer?: (port: number, timeoutMs: number) => Promise<string>;
-}
-
-interface RunAuthDeps {
-  exchangeCodeForTokenFn?: typeof exchangeCodeForToken;
-  verifyTokenFn?: typeof verifyToken;
-  waitForCallbackFn?: (
-    port: number,
-    timeoutMs?: number,
-    deps?: WaitForCallbackDeps
-  ) => Promise<string>;
-}
-
 export const AUTH_CODE_FILE = join(tmpdir(), "feliz-auth-code");
 
 export function writeAuthCode(code: string): void {
@@ -158,6 +143,25 @@ export function maskToken(token: string): string {
   return token.slice(0, 4) + "..." + token.slice(-4);
 }
 
+interface WaitForCallbackDeps {
+  waitViaServer?: (port: number, timeoutMs: number) => Promise<string>;
+  waitViaPolling?: (timeoutMs: number) => Promise<string>;
+  log?: Pick<typeof console, "log">;
+}
+
+interface RunAuthDeps {
+  waitForCallback?: (
+    port: number,
+    timeoutMs?: number,
+    deps?: WaitForCallbackDeps
+  ) => Promise<string>;
+  exchangeCodeForToken?: typeof exchangeCodeForToken;
+  verifyToken?: typeof verifyToken;
+  writeTokenToConfig?: typeof writeTokenToConfig;
+  openBrowser?: (url: string) => void;
+  console?: Pick<typeof console, "log" | "warn">;
+}
+
 function tryOpenBrowser(url: string): void {
   const cmd = process.platform === "darwin" ? "open" : "xdg-open";
   try {
@@ -173,6 +177,7 @@ export async function runAuth(
   promptFn: (msg?: string) => string | null = globalThis.prompt,
   deps: RunAuthDeps = {}
 ): Promise<void> {
+  const logger = deps.console ?? console;
   const clientId =
     flags["client-id"] ?? promptFn("Linear OAuth App Client ID:");
   if (!clientId) throw new Error("Client ID is required");
@@ -185,34 +190,30 @@ export async function runAuth(
   const redirectUri = flags["callback-url"] ?? `http://localhost:${port}/auth/callback`;
 
   const authUrl = buildAuthorizationUrl(clientId, redirectUri);
-  console.log("");
-  console.log(`Open this URL to authorize ${PRODUCT_NAME} with Linear:`);
-  console.log("");
-  console.log(`  ${authUrl}`);
-  console.log("");
+  logger.log("");
+  logger.log(`Open this URL to authorize ${PRODUCT_NAME} with Linear:`);
+  logger.log("");
+  logger.log(`  ${authUrl}`);
+  logger.log("");
 
-  tryOpenBrowser(authUrl);
+  (deps.openBrowser ?? tryOpenBrowser)(authUrl);
 
-  const waitForCallbackFn = deps.waitForCallbackFn ?? waitForCallback;
-  const code = await waitForCallbackFn(port);
+  const code = await (deps.waitForCallback ?? waitForCallback)(port);
 
-  console.log("Exchanging code for access token...");
-  const exchangeCodeForTokenFn =
-    deps.exchangeCodeForTokenFn ?? exchangeCodeForToken;
-  const tokenResult = await exchangeCodeForTokenFn({
+  logger.log("Exchanging code for access token...");
+  const tokenResult = await (deps.exchangeCodeForToken ?? exchangeCodeForToken)({
     clientId,
     clientSecret,
     code,
     redirectUri,
   });
 
-  console.log("Verifying token...");
-  const verifyTokenFn = deps.verifyTokenFn ?? verifyToken;
-  const viewer = await verifyTokenFn(tokenResult.access_token);
+  logger.log("Verifying token...");
+  const viewer = await (deps.verifyToken ?? verifyToken)(tokenResult.access_token);
   if (viewer) {
-    console.log(`Authenticated as: ${viewer.name} (${viewer.id})`);
+    logger.log(`Authenticated as: ${viewer.name} (${viewer.id})`);
   } else {
-    console.warn(
+    logger.warn(
       "Warning: Could not verify token via viewer query. Saving token anyway."
     );
   }
@@ -223,26 +224,31 @@ export async function runAuth(
     ) ?? "Y";
   const useEnvVar = storeChoice.toLowerCase() !== "n";
 
-  writeTokenToConfig(configPath, tokenResult.access_token, useEnvVar, viewer?.id);
-  console.log(`Token saved to ${configPath}`);
+  (deps.writeTokenToConfig ?? writeTokenToConfig)(
+    configPath,
+    tokenResult.access_token,
+    useEnvVar,
+    viewer?.id
+  );
+  logger.log(`Token saved to ${configPath}`);
 
   if (useEnvVar) {
-    console.log("");
-    console.log("Set the LINEAR_OAUTH_TOKEN environment variable:");
-    console.log("");
-    console.log(`  export LINEAR_OAUTH_TOKEN="${tokenResult.access_token}"`);
-    console.log("");
-    console.log("Add this to your .env file or shell profile.");
+    logger.log("");
+    logger.log("Set the LINEAR_OAUTH_TOKEN environment variable:");
+    logger.log("");
+    logger.log(`  export LINEAR_OAUTH_TOKEN="${tokenResult.access_token}"`);
+    logger.log("");
+    logger.log("Add this to your .env file or shell profile.");
   }
 
-  console.log("");
-  console.log("Next steps:");
-  console.log("  1. Configure Linear webhooks:");
-  console.log("     - Go to your Linear OAuth app settings");
-  console.log("     - Enable webhooks and select 'Agent session events'");
-  console.log(`     - Set webhook URL to: https://<your-host>:${port}/webhook/linear`);
-  console.log(`  2. Add a project: ${PRIMARY_CLI_NAME} project add`);
-  console.log(`  3. Start ${PRODUCT_NAME}:   ${PRIMARY_CLI_NAME} start`);
+  logger.log("");
+  logger.log("Next steps:");
+  logger.log("  1. Configure Linear webhooks:");
+  logger.log("     - Go to your Linear OAuth app settings");
+  logger.log("     - Enable webhooks and select 'Agent session events'");
+  logger.log(`     - Set webhook URL to: https://<your-host>:${port}/webhook/linear`);
+  logger.log(`  2. Add a project: ${PRIMARY_CLI_NAME} project add`);
+  logger.log(`  3. Start ${PRODUCT_NAME}:   ${PRIMARY_CLI_NAME} start`);
 }
 
 export function waitForCallback(
@@ -251,17 +257,18 @@ export function waitForCallback(
   deps: WaitForCallbackDeps = {}
 ): Promise<string> {
   clearAuthCode();
-  const waitForServer = deps.waitViaServer ?? waitViaServer;
-  const waitForPolling = deps.waitViaPolling ?? waitViaPolling;
+  const log = deps.log ?? console;
+  const viaServer = deps.waitViaServer ?? waitViaServer;
+  const viaPolling = deps.waitViaPolling ?? waitViaPolling;
 
   try {
-    return waitForServer(port, timeoutMs);
+    return viaServer(port, timeoutMs);
   } catch (e: any) {
     if (e?.code === "EADDRINUSE") {
-      console.log(
-        `Port ${port} is in use (${PRODUCT_NAME} server running). Waiting for callback via server...`
+      log.log(
+        `Port ${port} is in use (${PRODUCT_NAME} server running). Waiting for callback via auth code file...`
       );
-      return waitForPolling(timeoutMs);
+      return viaPolling(timeoutMs);
     }
     throw e;
   }

@@ -1,489 +1,209 @@
-import { describe, expect, test, beforeEach, afterEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { FelizServer } from "../src/server.ts";
-import { existsSync, readFileSync, rmSync, mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
-import type { FelizConfig } from "../src/config/types.ts";
-import type { AgentAdapter } from "../src/agents/adapter.ts";
 import { AUTH_CODE_FILE, clearAuthCode } from "../src/cli/auth.ts";
 
-const TEST_DATA_DIR = "/tmp/feliz-server-test-data";
-const TEST_WORKSPACE_DIR = "/tmp/feliz-server-test-workspace";
+const TEST_ROOT = "/tmp/feliz-server-test";
 
-function makeConfig(overrides?: Partial<FelizConfig>): FelizConfig {
+function makeConfig() {
   return {
-    linear: { oauth_token: "test-oauth-token" },
-    webhook: { port: 0 },
-    tick: { interval_ms: 5000 },
-    storage: { data_dir: TEST_DATA_DIR, workspace_root: TEST_WORKSPACE_DIR },
-    agent: { default: "claude-code", max_concurrent: 1 },
+    linear: {
+      oauth_token: "test-token",
+    },
+    webhook: {
+      port: 0,
+    },
+    tick: {
+      interval_ms: 100,
+    },
+    storage: {
+      data_dir: join(TEST_ROOT, "data"),
+      workspace_root: join(TEST_ROOT, "workspaces"),
+    },
+    agent: {
+      default: "claude-code",
+      max_concurrent: 2,
+    },
     projects: [
       {
-        name: "test-project",
-        repo: "git@github.com:org/test.git",
-        linear_project: "Test",
+        name: "backend",
+        repo: "git@github.com:org/backend.git",
+        linear_project: "Backend",
         branch: "main",
       },
     ],
-    ...overrides,
   };
 }
 
 describe("FelizServer", () => {
   beforeEach(() => {
-    if (existsSync(TEST_DATA_DIR)) rmSync(TEST_DATA_DIR, { recursive: true });
-    if (existsSync(TEST_WORKSPACE_DIR))
-      rmSync(TEST_WORKSPACE_DIR, { recursive: true });
+    rmSync(TEST_ROOT, { recursive: true, force: true });
+    clearAuthCode();
   });
 
-  afterEach(() => {
-    if (existsSync(TEST_DATA_DIR)) rmSync(TEST_DATA_DIR, { recursive: true });
-    if (existsSync(TEST_WORKSPACE_DIR))
-      rmSync(TEST_WORKSPACE_DIR, { recursive: true });
+  test("constructs and creates required directories", () => {
+    const server = new FelizServer(makeConfig() as any);
+    const anyServer = server as any;
+
+    expect(anyServer.db).toBeDefined();
+    expect(anyServer.workspace).toBeDefined();
   });
 
-  test("constructs without error", () => {
-    const server = new FelizServer(makeConfig());
-    expect(server).toBeDefined();
-    server.stop();
+  test("handles /auth/callback by writing the code file", async () => {
+    const server = new FelizServer(makeConfig() as any);
+    const response = await server.handleRequest(
+      new Request("http://localhost/auth/callback?code=test-code")
+    );
+
+    expect(response.status).toBe(200);
+    expect(readFileSync(AUTH_CODE_FILE, "utf-8")).toBe("test-code");
   });
 
-  test("stop cleans up resources", async () => {
-    const server = new FelizServer(makeConfig());
-
-    // Write a PID file to simulate what start() would do
-    const { writePidFile } = await import("../src/pid.ts");
-    writePidFile(TEST_DATA_DIR);
-    expect(existsSync(join(TEST_DATA_DIR, "feliz.pid"))).toBe(true);
-
-    await server.stop();
-    expect(existsSync(join(TEST_DATA_DIR, "feliz.pid"))).toBe(false);
-  });
-
-  test("creates required directories on construction", () => {
-    const server = new FelizServer(makeConfig());
-
-    expect(existsSync(join(TEST_DATA_DIR, "db"))).toBe(true);
-    expect(existsSync(TEST_WORKSPACE_DIR)).toBe(true);
-
-    server.stop();
-  });
-
-  test("promotes due retry_queued items and dispatches them in tick cycle", async () => {
-    const server = new FelizServer(makeConfig());
+  test("tickCycle dispatches pending threads", async () => {
+    const server = new FelizServer(makeConfig() as any);
     const anyServer = server as any;
     const db = anyServer.db;
 
-    const project = {
+    db.insertProject({
       id: "proj-1",
-      name: "test-project",
-      repo_url: "git@github.com:org/test.git",
-      linear_project_name: "Test",
+      name: "backend",
+      repo_url: "git@github.com:org/backend.git",
+      linear_project_name: "Backend",
       base_branch: "main",
-    };
-    db.insertProject(project);
-
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "lin-1",
-      linear_identifier: "T-1",
-      project_id: project.id,
-      parent_work_item_id: null,
-      title: "Retry me",
-      description: "Needs retry",
-      state: "Todo",
+    });
+    db.upsertThread({
+      id: "thread-1",
+      project_id: "proj-1",
+      linear_issue_id: "lin-1",
+      linear_identifier: "BAC-1",
+      linear_session_id: "session-1",
+      title: "Fix auth flow",
+      description: "Repair the login callback handling.",
+      issue_state: "Todo",
       priority: 1,
       labels: [],
       blocker_ids: [],
-      orchestration_state: "retry_queued",
-    });
-    db.insertRun({
-      id: "run-1",
-      work_item_id: "wi-1",
-      attempt: 1,
-      current_phase: "execute",
-      current_step: "run",
-      context_snapshot_id: "snap-1",
-    });
-    db.updateRunResult("run-1", "failed", "boom", null);
-    db.appendHistory({
-      id: "h-1",
-      project_id: project.id,
-      work_item_id: "wi-1",
-      run_id: "run-1",
-      event_type: "run.failed",
-      payload: {
-        attempt: 1,
-        retry_ready_at: "2020-01-01T00:00:00.000Z",
-      },
+      worktree_path: null,
+      branch_name: null,
+      status: "pending",
     });
 
-    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
+    const repoPath = join(TEST_ROOT, "workspaces", "backend", "repo");
     mkdirSync(repoPath, { recursive: true });
-    writeFileSync(join(repoPath, "WORKFLOW.md"), "Issue {{ issue.title }}", "utf-8");
+    writeFileSync(join(repoPath, "WORKFLOW.md"), "Fix {{ issue.title }}");
 
+    anyServer.adapters = {
+      "claude-code": {
+        name: "claude-code",
+        isAvailable: async () => true,
+        execute: async () => ({
+          status: "succeeded",
+          exitCode: 0,
+          stdout: "done",
+          stderr: "",
+          filesChanged: [],
+        }),
+        cancel: async () => {},
+      },
+      codex: {
+        name: "codex",
+        isAvailable: async () => true,
+        execute: async () => ({
+          status: "succeeded",
+          exitCode: 0,
+          stdout: "done",
+          stderr: "",
+          filesChanged: [],
+        }),
+        cancel: async () => {},
+      },
+    };
     anyServer.workspace = {
       getRepoPath: () => repoPath,
-    };
-
-    const successAdapter: AgentAdapter = {
-      name: "claude-code",
-      isAvailable: async () => true,
-      execute: async () => ({
-        status: "succeeded",
-        exitCode: 0,
-        stdout: "ok",
-        stderr: "",
-        filesChanged: [],
-      }),
-      cancel: async () => {},
-    };
-    anyServer.adapters = {
-      "claude-code": successAdapter,
-      "codex": successAdapter,
+      createWorktree: async () => repoPath,
+      getBranchName: (identifier: string) => `feliz/${identifier}`,
     };
 
     await anyServer.tickCycle();
 
-    const wi = db.getWorkItem("wi-1");
-    expect(wi.orchestration_state).toBe("completed");
-
-    await server.stop();
+    expect(db.getThread("thread-1").status).toBe("completed");
   });
 
-  test("Given a work item in spec_drafting When tickCycle runs Then it advances to spec_review", async () => {
-    const server = new FelizServer(makeConfig());
+  test("stop signal stops the active thread and emits an error activity", async () => {
+    const server = new FelizServer(makeConfig() as any);
     const anyServer = server as any;
     const db = anyServer.db;
 
-    const project = {
-      id: "proj-spec",
-      name: "test-project",
-      repo_url: "git@github.com:org/test.git",
-      linear_project_name: "Test",
+    db.insertProject({
+      id: "proj-1",
+      name: "backend",
+      repo_url: "git@github.com:org/backend.git",
+      linear_project_name: "Backend",
       base_branch: "main",
-    };
-    db.insertProject(project);
-    db.upsertWorkItem({
-      id: "wi-spec",
-      linear_id: "lin-spec",
-      linear_identifier: "T-20",
-      project_id: project.id,
-      parent_work_item_id: null,
-      title: "Draft spec",
-      description: "Need a spec",
-      state: "Todo",
+    });
+    db.upsertThread({
+      id: "thread-1",
+      project_id: "proj-1",
+      linear_issue_id: "lin-1",
+      linear_identifier: "BAC-1",
+      linear_session_id: "session-1",
+      title: "Fix auth flow",
+      description: "Repair the login callback handling.",
+      issue_state: "Todo",
       priority: 1,
       labels: [],
       blocker_ids: [],
-      orchestration_state: "spec_drafting",
+      worktree_path: null,
+      branch_name: null,
+      status: "running",
     });
 
-    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
-    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
-    writeFileSync(
-      join(repoPath, ".feliz", "config.yml"),
-      `specs:
-  enabled: true
-  directory: specs
-  approval_required: true
-agent:
-  adapter: claude-code
-`,
-      "utf-8"
-    );
-
-    anyServer.workspace = { getRepoPath: () => repoPath };
-    const specAdapter: AgentAdapter = {
-      name: "claude-code",
-      isAvailable: async () => true,
-      execute: async () => ({
-        status: "succeeded",
-        exitCode: 0,
-        stdout: "spec drafted",
-        stderr: "",
-        filesChanged: ["specs/new-feature.md"],
-      }),
-      cancel: async () => {},
-    };
-    anyServer.adapters = { "claude-code": specAdapter, codex: specAdapter };
-
-    await anyServer.tickCycle();
-
-    const wi = db.getWorkItem("wi-spec");
-    expect(wi.orchestration_state).toBe("spec_review");
-
-    await server.stop();
-  });
-
-  test("handles /auth/callback by writing code to file", async () => {
-    clearAuthCode();
-
-    const server = new FelizServer(makeConfig());
-    const anyServer = server as any;
-
-    try {
-      const resp = await anyServer.handleRequest(
-        new Request("http://localhost/auth/callback?code=srv_test_code")
-      );
-      expect(resp.status).toBe(200);
-      const html = await resp.text();
-      expect(html).toContain("Authorization complete");
-
-      expect(existsSync(AUTH_CODE_FILE)).toBe(true);
-      expect(readFileSync(AUTH_CODE_FILE, "utf-8")).toBe("srv_test_code");
-    } finally {
-      await server.stop();
-      clearAuthCode();
-    }
-  });
-
-  test("returns 400 for /auth/callback without code", async () => {
-    const server = new FelizServer(makeConfig());
-    const anyServer = server as any;
-
-    try {
-      const resp = await anyServer.handleRequest(
-        new Request("http://localhost/auth/callback")
-      );
-      expect(resp.status).toBe(400);
-    } finally {
-      await server.stop();
-    }
-  });
-
-  test("Given a work item in decomposing When tickCycle runs Then it advances to decompose_review", async () => {
-    const server = new FelizServer(makeConfig());
-    const anyServer = server as any;
-    const db = anyServer.db;
-
-    const project = {
-      id: "proj-decomp",
-      name: "test-project",
-      repo_url: "git@github.com:org/test.git",
-      linear_project_name: "Test",
-      base_branch: "main",
-    };
-    db.insertProject(project);
-    db.upsertWorkItem({
-      id: "wi-decomp",
-      linear_id: "lin-decomp",
-      linear_identifier: "T-30",
-      project_id: project.id,
-      parent_work_item_id: null,
-      title: "Large feature",
-      description: "Break down this epic",
-      state: "Todo",
-      priority: 1,
-      labels: ["epic"],
-      blocker_ids: [],
-      orchestration_state: "decomposing",
-    });
-
-    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
-    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
-    writeFileSync(
-      join(repoPath, ".feliz", "config.yml"),
-      `specs:
-  enabled: false
-agent:
-  adapter: claude-code
-`,
-      "utf-8"
-    );
-
-    anyServer.workspace = { getRepoPath: () => repoPath };
-    const decompAdapter: AgentAdapter = {
-      name: "claude-code",
-      isAvailable: async () => true,
-      execute: async () => ({
-        status: "succeeded",
-        exitCode: 0,
-        stdout: JSON.stringify({
-          sub_issues: [
-            {
-              title: "Part 1",
-              description: "First part",
-              dependencies: [],
-            },
-          ],
-        }),
-        stderr: "",
-        filesChanged: [],
-      }),
-      cancel: async () => {},
-    };
-    anyServer.adapters = { "claude-code": decompAdapter, codex: decompAdapter };
-
-    await anyServer.tickCycle();
-
-    const wi = db.getWorkItem("wi-decomp");
-    expect(wi.orchestration_state).toBe("decompose_review");
-
-    await server.stop();
-  });
-
-  test("stop signal cancels work item and emits error activity", async () => {
-    const server = new FelizServer(makeConfig());
-    const anyServer = server as any;
-    const db = anyServer.db;
-
-    const project = {
-      id: "proj-stop",
-      name: "test-project",
-      repo_url: "git@github.com:org/test.git",
-      linear_project_name: "Test",
-      base_branch: "main",
-    };
-    db.insertProject(project);
-
-    db.upsertWorkItem({
-      id: "wi-stop",
-      linear_id: "lin-stop",
-      linear_identifier: "T-STOP",
-      project_id: project.id,
-      parent_work_item_id: null,
-      title: "Stop me",
-      description: "Should be stopped",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
-      linear_session_id: "session-stop",
-    });
-
-    const mockLinearClient = {
-      emitThought: async () => {},
-      emitComment: async () => {},
-      emitError: async () => {},
-    };
-    anyServer.linearClient = mockLinearClient;
-
-    const emitErrorCalls: string[][] = [];
-    mockLinearClient.emitError = async (...args: any[]) => {
-      emitErrorCalls.push(args as string[]);
-    };
-
-    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
-    mkdirSync(repoPath, { recursive: true });
-    anyServer.workspace = { getRepoPath: () => repoPath };
-
-    const event = {
-      action: "prompted",
-      type: "AgentSession",
-      agentSession: {
-        id: "session-stop",
-        issueId: "lin-stop",
-        issue: {
-          id: "lin-stop",
-          identifier: "T-STOP",
-          title: "Stop me",
-          description: "Should be stopped",
-          priority: 1,
-          state: { name: "Todo" },
-          labels: { nodes: [] },
-          url: "https://linear.app/org/issue/T-STOP",
-        },
-        promptContext: "",
-        signal: "stop",
-      },
-    };
-
-    try {
-      const resp = await anyServer.handleRequest(
-        new Request("http://localhost/webhook/linear", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(event),
-        })
-      );
-      expect(resp.status).toBe(200);
-
-      const wi = db.getWorkItem("wi-stop");
-      expect(wi.orchestration_state).toBe("cancelled");
-
-      expect(emitErrorCalls).toHaveLength(1);
-      expect(emitErrorCalls[0]![0]).toBe("session-stop");
-      expect(emitErrorCalls[0]![1]).toContain("Cancelled by user");
-    } finally {
-      await server.stop();
-    }
-  });
-
-  test("cancels work item when @feliz cancel command received via webhook", async () => {
-    const server = new FelizServer(makeConfig());
-    const anyServer = server as any;
-    const db = anyServer.db;
-
-    const project = {
-      id: "proj-cancel",
-      name: "test-project",
-      repo_url: "git@github.com:org/test.git",
-      linear_project_name: "Test",
-      base_branch: "main",
-    };
-    db.insertProject(project);
-
-    db.upsertWorkItem({
-      id: "wi-cancel",
-      linear_id: "lin-cancel",
-      linear_identifier: "T-99",
-      project_id: project.id,
-      parent_work_item_id: null,
-      title: "Cancel me",
-      description: "Should be cancelled",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    // Mock the linearClient to avoid real API calls
     anyServer.linearClient = {
-      emitThought: async () => {},
-      emitComment: async () => {},
+      emitThought: mock(async () => {}),
+      emitComment: mock(async () => {}),
+      emitError: mock(async () => {}),
+    };
+    anyServer.webhookHandler = {
+      handleEvent: mock(async () => ({
+        threadId: "thread-1",
+        signal: "stop",
+      })),
     };
 
-    const repoPath = join(TEST_WORKSPACE_DIR, "test-project", "repo");
-    mkdirSync(repoPath, { recursive: true });
-    anyServer.workspace = { getRepoPath: () => repoPath };
+    const response = await server.handleRequest(
+      new Request("http://localhost/webhook/linear", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "AgentSession",
+          action: "prompted",
+          agentSession: {
+            id: "session-2",
+            issueId: "lin-1",
+            issue: {
+              id: "lin-1",
+              identifier: "BAC-1",
+              title: "Fix auth flow",
+              description: "",
+              priority: 1,
+              state: { name: "Todo" },
+              labels: { nodes: [] },
+              project: { name: "Backend" },
+              team: { name: "Backend", key: "BAC" },
+              url: "https://linear.app/acme/issue/BAC-1",
+            },
+            promptContext: "",
+            signal: "stop",
+          },
+        }),
+      })
+    );
 
-    const event = {
-      action: "prompted",
-      type: "AgentSession",
-      agentSession: {
-        id: "session-cancel",
-        issueId: "lin-cancel",
-        issue: {
-          id: "lin-cancel",
-          identifier: "T-99",
-          title: "Cancel me",
-          description: "Should be cancelled",
-          priority: 1,
-          state: { name: "Todo" },
-          labels: { nodes: [] },
-          url: "https://linear.app/org/issue/T-99",
-        },
-        promptContext: "",
-        comment: { body: "@feliz cancel" },
-      },
-    };
-
-    try {
-      const resp = await anyServer.handleRequest(
-        new Request("http://localhost/webhook/linear", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(event),
-        })
-      );
-      expect(resp.status).toBe(200);
-
-      const wi = db.getWorkItem("wi-cancel");
-      expect(wi.orchestration_state).toBe("cancelled");
-    } finally {
-      await server.stop();
-    }
+    expect(response.status).toBe(200);
+    expect(db.getThread("thread-1").status).toBe("stopped");
+    expect(anyServer.linearClient.emitError).toHaveBeenCalledWith(
+      "session-1",
+      "Cancelled by user"
+    );
   });
 });

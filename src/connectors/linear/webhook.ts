@@ -1,7 +1,6 @@
 import type { Database } from "../../db/database.ts";
-import { newId } from "../../id.ts";
 import type { LinearClient } from "./client.ts";
-import { parseCommand, type FelizCommand } from "./commands.ts";
+import { newId } from "../../id.ts";
 
 export interface AgentSessionEvent {
   action: "created" | "prompted";
@@ -28,16 +27,21 @@ export interface AgentSessionEvent {
 }
 
 export interface WebhookResult {
-  workItemId: string;
-  command: FelizCommand | null;
+  threadId: string;
   signal?: string;
 }
 
 export class WebhookHandler {
   private db: Database;
-  private linearClient: LinearClient;
+  private linearClient: Pick<
+    LinearClient,
+    "emitThought" | "emitComment" | "emitError"
+  >;
 
-  constructor(db: Database, linearClient: LinearClient) {
+  constructor(
+    db: Database,
+    linearClient: Pick<LinearClient, "emitThought" | "emitComment" | "emitError">
+  ) {
     this.db = db;
     this.linearClient = linearClient;
   }
@@ -48,61 +52,113 @@ export class WebhookHandler {
   ): Promise<WebhookResult> {
     const session = event.agentSession;
     const issue = session.issue;
-    const command = session.comment?.body
-      ? parseCommand(session.comment.body)
-      : null;
+    const body = normalizeJobBody(session.comment?.body);
 
     if (event.action === "created") {
       await this.linearClient.emitThought(session.id, "Looking into this...");
     }
 
-    const existing = this.db.getWorkItemByLinearId(issue.id);
+    const existing = this.db.getThreadByLinearIssueId(issue.id);
     if (existing) {
-      this.db.updateWorkItemSessionId(existing.id, session.id);
-      return { workItemId: existing.id, command, signal: session.signal };
+      this.db.updateThreadSessionId(existing.id, session.id);
+      this.refreshThreadFromIssue(existing.id, issue);
+
+      if (body) {
+        this.db.appendJob({
+          id: newId(),
+          thread_id: existing.id,
+          body,
+          author: "human",
+        });
+        this.bumpThreadForNewJob(existing.id);
+      }
+
+      return { threadId: existing.id, signal: session.signal };
     }
 
-    const workItemId = this.createWorkItem(session, issue, projectId);
-    return { workItemId, command, signal: session.signal };
-  }
-
-  private createWorkItem(
-    session: AgentSessionEvent["agentSession"],
-    issue: AgentSessionEvent["agentSession"]["issue"],
-    projectId: string
-  ): string {
-    const workItemId = newId();
-    this.db.upsertWorkItem({
-      id: workItemId,
-      linear_id: issue.id,
-      linear_identifier: issue.identifier,
+    const threadId = newId();
+    this.db.upsertThread({
+      id: threadId,
       project_id: projectId,
-      parent_work_item_id: null,
+      linear_issue_id: issue.id,
+      linear_identifier: issue.identifier,
+      linear_session_id: session.id,
       title: issue.title,
       description: issue.description || "",
-      state: issue.state?.name || "Unknown",
+      issue_state: issue.state?.name || "Unknown",
       priority: issue.priority ?? 0,
-      labels: issue.labels?.nodes.map((l) => l.name) || [],
+      labels: issue.labels?.nodes.map((label) => label.name) || [],
       blocker_ids: [],
-      orchestration_state: "unclaimed",
-      linear_session_id: session.id,
+      worktree_path: null,
+      branch_name: null,
+      status: "pending",
     });
 
     this.db.appendHistory({
       id: newId(),
       project_id: projectId,
-      work_item_id: workItemId,
-      run_id: null,
-      event_type: "issue.discovered",
+      thread_id: threadId,
+      event_type: "thread.created",
       payload: {
-        source: "webhook",
-        session_id: session.id,
-        linear_id: issue.id,
+        linear_issue_id: issue.id,
         identifier: issue.identifier,
         title: issue.title,
       },
     });
 
-    return workItemId;
+    if (body) {
+      this.db.appendJob({
+        id: newId(),
+        thread_id: threadId,
+        body,
+        author: "human",
+      });
+    }
+
+    return { threadId, signal: session.signal };
   }
+
+  private refreshThreadFromIssue(
+    threadId: string,
+    issue: AgentSessionEvent["agentSession"]["issue"]
+  ) {
+    const existing = this.db.getThread(threadId);
+    if (!existing) return;
+
+    this.db.upsertThread({
+      id: existing.id,
+      project_id: existing.project_id,
+      linear_issue_id: existing.linear_issue_id,
+      linear_identifier: issue.identifier,
+      linear_session_id: existing.linear_session_id,
+      title: issue.title,
+      description: issue.description || "",
+      issue_state: issue.state?.name || existing.issue_state,
+      priority: issue.priority ?? existing.priority,
+      labels: issue.labels?.nodes.map((label) => label.name) || existing.labels,
+      blocker_ids: existing.blocker_ids,
+      worktree_path: existing.worktree_path,
+      branch_name: existing.branch_name,
+      status: existing.status,
+    });
+  }
+
+  private bumpThreadForNewJob(threadId: string) {
+    const thread = this.db.getThread(threadId);
+    if (!thread) return;
+
+    if (thread.status === "running" || thread.status === "running_dirty") {
+      this.db.updateThreadStatus(threadId, "running_dirty");
+      return;
+    }
+
+    this.db.updateThreadStatus(threadId, "pending");
+  }
+}
+
+function normalizeJobBody(body?: string): string | null {
+  if (!body) return null;
+
+  const normalized = body.replace(/^\s*@feliz\b[\s:,-]*/i, "").trim();
+  return normalized.length > 0 ? normalized : null;
 }

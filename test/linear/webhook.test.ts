@@ -1,235 +1,110 @@
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Database } from "../../src/db/database.ts";
 import {
   WebhookHandler,
   type AgentSessionEvent,
 } from "../../src/connectors/linear/webhook.ts";
-import { existsSync, unlinkSync } from "fs";
-
-const TEST_DB = "/tmp/feliz-webhook-test.db";
-
-function makeEvent(
-  overrides: Partial<AgentSessionEvent> = {}
-): AgentSessionEvent {
-  return {
-    action: "created",
-    type: "AgentSession",
-    agentSession: {
-      id: "session-1",
-      issueId: "lin-1",
-      issue: {
-        id: "lin-1",
-        identifier: "BAC-1",
-        title: "Add login",
-        description: "Implement login flow",
-        priority: 1,
-        state: { name: "Todo" },
-        labels: { nodes: [{ name: "feliz" }] },
-        url: "https://linear.app/org/issue/BAC-1",
-      },
-      promptContext: "",
-    },
-    ...overrides,
-  };
-}
-
-function makeLinearClient() {
-  return {
-    emitThought: mock(async () => {}),
-    emitComment: mock(async () => {}),
-  };
-}
 
 describe("WebhookHandler", () => {
   let db: Database;
+  let handler: WebhookHandler;
+  let emitThought: ReturnType<typeof mock>;
 
   beforeEach(() => {
-    if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
-    db = new Database(TEST_DB);
+    db = new Database(":memory:");
     db.insertProject({
       id: "proj-1",
       name: "backend",
       repo_url: "git@github.com:org/backend.git",
-      linear_project_name: "Backend API",
+      linear_project_name: "Backend",
       base_branch: "main",
     });
+
+    emitThought = mock(async () => {});
+    handler = new WebhookHandler(db, {
+      emitThought,
+      emitComment: mock(async () => {}),
+      emitError: mock(async () => {}),
+    } as any);
   });
 
-  afterEach(() => {
-    db.close();
-    if (existsSync(TEST_DB)) unlinkSync(TEST_DB);
+  function buildEvent(body?: string): AgentSessionEvent {
+    return {
+      action: "created",
+      type: "AgentSession",
+      agentSession: {
+        id: "session-1",
+        issueId: "lin-1",
+        issue: {
+          id: "lin-1",
+          identifier: "BAC-1",
+          title: "Fix auth flow",
+          description: "Repair the login callback handling.",
+          priority: 2,
+          state: { name: "Todo" },
+          labels: { nodes: [{ name: "bug" }] },
+          project: { name: "Backend" },
+          team: { name: "Backend", key: "BAC" },
+          url: "https://linear.app/acme/issue/BAC-1/fix-auth-flow",
+        },
+        promptContext: "",
+        comment: body ? { body } : undefined,
+      },
+    };
+  }
+
+  test("creates a thread for a new issue", async () => {
+    const result = await handler.handleEvent(buildEvent(), "proj-1");
+
+    const thread = db.getThread(result.threadId);
+
+    expect(thread).not.toBeNull();
+    expect(thread!.linear_issue_id).toBe("lin-1");
+    expect(thread!.status).toBe("pending");
+    expect(emitThought).toHaveBeenCalledWith("session-1", "Looking into this...");
   });
 
-  test("creates work item on session created event", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const result = await handler.handleEvent(makeEvent(), "proj-1");
-
-    expect(result.workItemId).toBeDefined();
-    expect(result.command).toBeNull();
-
-    const wi = db.getWorkItemByLinearId("lin-1");
-    expect(wi).not.toBeNull();
-    expect(wi!.title).toBe("Add login");
-    expect(wi!.orchestration_state).toBe("unclaimed");
-    expect(wi!.labels).toEqual(["feliz"]);
-  });
-
-  test("emits thought acknowledgment on session created", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    await handler.handleEvent(makeEvent(), "proj-1");
-
-    expect(client.emitThought).toHaveBeenCalledTimes(1);
-    expect(client.emitThought).toHaveBeenCalledWith(
-      "session-1",
-      "Looking into this..."
+  test("strips the leading mention and appends the initial job", async () => {
+    const result = await handler.handleEvent(
+      buildEvent("@Feliz please keep the fix minimal"),
+      "proj-1"
     );
+
+    const jobs = db.listJobs(result.threadId);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]!.body).toBe("please keep the fix minimal");
+    expect(jobs[0]!.author).toBe("human");
   });
 
-  test("parses command from comment body", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
+  test("reuses the existing thread for follow-up comments", async () => {
+    const first = await handler.handleEvent(buildEvent(), "proj-1");
+    const followUp = buildEvent("The callback also needs a regression test.");
+    followUp.agentSession.id = "session-2";
+    followUp.action = "prompted";
 
-    const event = makeEvent({
-      agentSession: {
-        ...makeEvent().agentSession,
-        comment: { body: "@feliz start" },
-      },
-    });
+    const second = await handler.handleEvent(followUp, "proj-1");
 
-    const result = await handler.handleEvent(event, "proj-1");
+    const thread = db.getThread(first.threadId);
+    const jobs = db.listJobs(first.threadId);
 
-    expect(result.command).not.toBeNull();
-    expect(result.command!.command).toBe("start");
+    expect(second.threadId).toBe(first.threadId);
+    expect(thread!.linear_session_id).toBe("session-2");
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]!.body).toContain("regression test");
   });
 
-  test("returns existing work item on duplicate session created", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
+  test("marks a completed thread pending when a new job arrives", async () => {
+    const result = await handler.handleEvent(buildEvent(), "proj-1");
+    db.updateThreadStatus(result.threadId, "completed");
 
-    const result1 = await handler.handleEvent(makeEvent(), "proj-1");
-    const result2 = await handler.handleEvent(makeEvent(), "proj-1");
+    const followUp = buildEvent("Handle expired OAuth state too.");
+    followUp.agentSession.id = "session-2";
+    followUp.action = "prompted";
 
-    expect(result1.workItemId).toBe(result2.workItemId);
-  });
+    await handler.handleEvent(followUp, "proj-1");
 
-  test("handles prompted event for existing work item", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    await handler.handleEvent(makeEvent(), "proj-1");
-
-    const updateEvent = makeEvent({
-      action: "prompted",
-      agentSession: {
-        ...makeEvent().agentSession,
-        comment: { body: "@feliz retry" },
-      },
-    });
-
-    const result = await handler.handleEvent(updateEvent, "proj-1");
-    expect(result.command).not.toBeNull();
-    expect(result.command!.command).toBe("retry");
-  });
-
-  test("creates work item on prompted event when none exists", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const event = makeEvent({ action: "prompted" });
-    const result = await handler.handleEvent(event, "proj-1");
-
-    expect(result.workItemId).toBeDefined();
-    const wi = db.getWorkItemByLinearId("lin-1");
-    expect(wi).not.toBeNull();
-    expect(wi!.orchestration_state).toBe("unclaimed");
-
-    const history = db.getHistory("proj-1", result.workItemId);
-    expect(history).toHaveLength(1);
-    expect(history[0]!.event_type).toBe("issue.discovered");
-  });
-
-  test("does not emit thought on prompted event", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const event = makeEvent({ action: "prompted" });
-    await handler.handleEvent(event, "proj-1");
-
-    expect(client.emitThought).not.toHaveBeenCalled();
-  });
-
-  test("stores session ID on new work item", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const result = await handler.handleEvent(makeEvent(), "proj-1");
-
-    const wi = db.getWorkItemByLinearId("lin-1");
-    expect(wi!.linear_session_id).toBe("session-1");
-  });
-
-  test("updates session ID on prompted event for existing work item", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    await handler.handleEvent(makeEvent(), "proj-1");
-
-    const updateEvent = makeEvent({
-      action: "prompted",
-      agentSession: {
-        ...makeEvent().agentSession,
-        id: "session-2",
-        comment: { body: "@feliz retry" },
-      },
-    });
-
-    await handler.handleEvent(updateEvent, "proj-1");
-
-    const wi = db.getWorkItemByLinearId("lin-1");
-    expect(wi!.linear_session_id).toBe("session-2");
-  });
-
-  test("detects stop signal from webhook event", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    // First create the work item
-    await handler.handleEvent(makeEvent(), "proj-1");
-
-    const stopEvent = makeEvent({
-      action: "prompted",
-      agentSession: {
-        ...makeEvent().agentSession,
-        id: "session-stop",
-        signal: "stop",
-      },
-    });
-
-    const result = await handler.handleEvent(stopEvent, "proj-1");
-    expect(result.signal).toBe("stop");
-  });
-
-  test("signal is undefined when not present", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const result = await handler.handleEvent(makeEvent(), "proj-1");
-    expect(result.signal).toBeUndefined();
-  });
-
-  test("records history on session created", async () => {
-    const client = makeLinearClient();
-    const handler = new WebhookHandler(db, client as any);
-
-    const result = await handler.handleEvent(makeEvent(), "proj-1");
-
-    const history = db.getHistory("proj-1", result.workItemId);
-    expect(history).toHaveLength(1);
-    expect(history[0]!.event_type).toBe("issue.discovered");
-    expect(history[0]!.payload.source).toBe("webhook");
+    const thread = db.getThread(result.threadId);
+    expect(thread!.status).toBe("pending");
   });
 });

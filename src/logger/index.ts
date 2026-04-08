@@ -6,8 +6,7 @@ export interface LogEntry {
   component: string;
   message: string;
   project_id?: string;
-  work_item_id?: string;
-  run_id?: string;
+  thread_id?: string;
   [key: string]: unknown;
 }
 

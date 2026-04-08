@@ -1,109 +1,49 @@
-import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
-import { Orchestrator } from "../../src/orchestrator/orchestrator.ts";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Database } from "../../src/db/database.ts";
+import { Orchestrator } from "../../src/orchestrator/orchestrator.ts";
 import type { AgentAdapter } from "../../src/agents/adapter.ts";
-import type { RepoConfig, PipelineDefinition } from "../../src/config/types.ts";
-import { existsSync, unlinkSync, mkdirSync, rmSync, writeFileSync } from "fs";
+import type { RepoConfig } from "../../src/config/types.ts";
+import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DB = "/tmp/feliz-orch-test.db";
-const TEST_SCRATCH = "/tmp/feliz-orch-scratch";
-const TEST_WORK_DIR = "/tmp/feliz-orch-workdir";
+const TEST_ROOT = "/tmp/feliz-orchestrator-test";
 
-function makeSuccessAdapter(): AgentAdapter {
-  return {
-    name: "test-agent",
-    isAvailable: async () => true,
-    execute: mock(async () => ({
-      status: "succeeded" as const,
-      exitCode: 0,
-      stdout: "done",
-      stderr: "",
-      filesChanged: [],
-    })),
-    cancel: mock(async () => {}),
-  };
-}
-
-function makeRepoConfig(overrides: Partial<RepoConfig> = {}): RepoConfig {
+function makeRepoConfig(): RepoConfig {
   return {
     agent: {
-      adapter: "test-agent",
+      adapter: "mock-agent",
       approval_policy: "auto",
       max_turns: 20,
       timeout_ms: 600000,
     },
     hooks: {},
-    specs: { enabled: false, directory: "specs", approval_required: true },
+    specs: {
+      enabled: true,
+      directory: "specs",
+      approval_required: false,
+    },
     gates: {},
     concurrency: {},
-    ...overrides,
   };
 }
 
-function makeFailAdapter(): AgentAdapter {
+function makeAdapter(
+  execute?: AgentAdapter["execute"],
+  cancel?: AgentAdapter["cancel"]
+): AgentAdapter {
   return {
-    name: "test-agent",
+    name: "mock-agent",
     isAvailable: async () => true,
-    execute: mock(async () => ({
-      status: "failed" as const,
-      exitCode: 1,
-      stdout: "",
-      stderr: "error",
-      filesChanged: [],
-    })),
-    cancel: mock(async () => {}),
-  };
-}
-
-function makeCapturingAdapter(calls: string[]): AgentAdapter {
-  return {
-    name: "test-agent",
-    isAvailable: async () => true,
-    execute: mock(async (params: { prompt: string }) => {
-      calls.push(params.prompt);
-      return {
-        status: "succeeded" as const,
+    execute:
+      execute ??
+      (async () => ({
+        status: "succeeded",
         exitCode: 0,
-        stdout: "done",
+        stdout: "approved",
         stderr: "",
         filesChanged: [],
-      };
-    }),
-    cancel: mock(async () => {}),
-  };
-}
-
-function makeSimplePipeline(): PipelineDefinition {
-  return {
-    phases: [
-      {
-        name: "execute",
-        steps: [
-          {
-            name: "run",
-            agent: "test-agent",
-            success: { always: true },
-          },
-        ],
-      },
-    ],
-  };
-}
-
-function makeFailablePipeline(): PipelineDefinition {
-  return {
-    phases: [
-      {
-        name: "execute",
-        steps: [
-          {
-            name: "run",
-            agent: "test-agent",
-          },
-        ],
-      },
-    ],
+      })),
+    cancel: cancel ?? (async () => {}),
   };
 }
 
@@ -111,1024 +51,219 @@ describe("Orchestrator", () => {
   let db: Database;
 
   beforeEach(() => {
-    for (const p of [TEST_DB, TEST_DB + "-wal", TEST_DB + "-shm"]) {
-      if (existsSync(p)) unlinkSync(p);
-    }
-    if (existsSync(TEST_SCRATCH)) rmSync(TEST_SCRATCH, { recursive: true });
-    if (existsSync(TEST_WORK_DIR)) rmSync(TEST_WORK_DIR, { recursive: true });
-    mkdirSync(TEST_SCRATCH, { recursive: true });
-    mkdirSync(TEST_WORK_DIR, { recursive: true });
-    db = new Database(TEST_DB);
-
+    rmSync(TEST_ROOT, { recursive: true, force: true });
+    mkdirSync(TEST_ROOT, { recursive: true });
+    db = new Database(":memory:");
     db.insertProject({
       id: "proj-1",
-      name: "test",
-      repo_url: "u",
-      linear_project_name: "T",
+      name: "backend",
+      repo_url: "git@github.com:org/backend.git",
+      linear_project_name: "Backend",
       base_branch: "main",
     });
   });
 
-  afterEach(() => {
-    db.close();
-    for (const p of [TEST_DB, TEST_DB + "-wal", TEST_DB + "-shm"]) {
-      if (existsSync(p)) unlinkSync(p);
-    }
-    if (existsSync(TEST_SCRATCH)) rmSync(TEST_SCRATCH, { recursive: true });
-    if (existsSync(TEST_WORK_DIR)) rmSync(TEST_WORK_DIR, { recursive: true });
-  });
-
-  test("transitions new issue to queued when specs disabled", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
+  function insertThread(id: string, overrides: Record<string, unknown> = {}) {
+    db.upsertThread({
+      id,
       project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
+      linear_issue_id: `lin-${id}`,
+      linear_identifier: `BAC-${id}`,
+      linear_session_id: null,
+      title: `Thread ${id}`,
+      description: "Handle the task.",
+      issue_state: "Todo",
       priority: 1,
       labels: [],
       blocker_ids: [],
-      orchestration_state: "unclaimed",
-    });
+      worktree_path: null,
+      branch_name: null,
+      status: "pending",
+      ...overrides,
+    } as any);
+  }
 
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.processNewIssue("wi-1");
+  test("dispatches a pending thread, creates a worktree, and completes it on success", async () => {
+    insertThread("1");
+    const repoPath = join(TEST_ROOT, "backend", "repo");
+    const worktreePath = join(TEST_ROOT, "backend", "worktrees", "BAC-1");
+    mkdirSync(repoPath, { recursive: true });
+    writeFileSync(join(repoPath, "WORKFLOW.md"), "Fix {{ issue.title }}");
 
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("queued");
-  });
-
-  test("transitions new issue to spec_drafting when specs enabled", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "unclaimed",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig({
-        specs: { enabled: true, directory: "specs", approval_required: true },
-      }),
-      TEST_SCRATCH,
-      5
-    );
-    orch.processNewIssue("wi-1");
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("spec_drafting");
-  });
-
-  test("dispatches queued item to running", async () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const adapter = makeSuccessAdapter();
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": adapter },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-
-    const dispatched = await orch.dispatchQueued(
-      "proj-1",
-      makeSimplePipeline(),
-      TEST_WORK_DIR
-    );
-
-    expect(dispatched).toHaveLength(1);
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("completed");
-  });
-
-  test("does not dispatch queued work item when blocker linear issue is not terminal", async () => {
-    db.upsertWorkItem({
-      id: "wi-blocker",
-      linear_id: "lin-blocker",
-      linear_identifier: "T-2",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Blocker",
-      description: "",
-      state: "In Progress",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
-    });
-
-    db.upsertWorkItem({
-      id: "wi-blocked",
-      linear_id: "lin-blocked",
-      linear_identifier: "T-3",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Blocked item",
-      description: "",
-      state: "Todo",
-      priority: 2,
-      labels: [],
-      blocker_ids: ["lin-blocker"],
-      orchestration_state: "queued",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-
-    const dispatched = await orch.dispatchQueued(
-      "proj-1",
-      makeSimplePipeline(),
-      TEST_WORK_DIR
-    );
-
-    expect(dispatched).toEqual([]);
-    const blocked = db.getWorkItem("wi-blocked");
-    expect(blocked!.orchestration_state).toBe("queued");
-  });
-
-  test("renders step prompt from configured template path", async () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Prompt title",
-      description: "Prompt body",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const promptPath = join(TEST_WORK_DIR, ".feliz", "prompts");
-    mkdirSync(promptPath, { recursive: true });
-    writeFileSync(
-      join(promptPath, "write_code.md"),
-      "Issue {{ issue.identifier }}: {{ issue.title }}\n{{ issue.description }}",
-      "utf-8"
-    );
-
-    const pipeline: PipelineDefinition = {
-      phases: [
-        {
-          name: "implement",
-          steps: [
-            {
-              name: "write_code",
-              agent: "test-agent",
-              prompt: ".feliz/prompts/write_code.md",
-              success: { always: true },
-            },
-          ],
-        },
-      ],
-    };
-
-    const prompts: string[] = [];
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeCapturingAdapter(prompts) },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-
-    await orch.dispatchQueued("proj-1", pipeline, TEST_WORK_DIR);
-
-    expect(prompts).toHaveLength(1);
-    expect(prompts[0]).toContain("Issue T-1: Prompt title");
-    expect(prompts[0]).toContain("Prompt body");
-  });
-
-  test("respects max_concurrent limit", async () => {
-    // Create 2 items
-    for (let i = 1; i <= 2; i++) {
-      db.upsertWorkItem({
-        id: `wi-${i}`,
-        linear_id: `l${i}`,
-        linear_identifier: `T-${i}`,
-        project_id: "proj-1",
-        parent_work_item_id: null,
-        title: `Item ${i}`,
-        description: "",
-        state: "Todo",
-        priority: i,
-        labels: [],
-        blocker_ids: [],
-        orchestration_state: "queued",
-      });
-    }
-
-    const adapter = makeSuccessAdapter();
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": adapter },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      1 // max_concurrent = 1
-    );
-
-    // Only 1 should be dispatched at a time
-    const dispatched = await orch.dispatchQueued(
-      "proj-1",
-      makeSimplePipeline(),
-      TEST_WORK_DIR
-    );
-
-    expect(dispatched).toHaveLength(1);
-  });
-
-  test("Given per-state concurrency limit reached When dispatching queued items Then item remains queued", async () => {
-    db.upsertWorkItem({
-      id: "wi-running",
-      linear_id: "l-running",
-      linear_identifier: "T-10",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Running item",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
-    });
-
-    db.upsertWorkItem({
-      id: "wi-queued",
-      linear_id: "l-queued",
-      linear_identifier: "T-11",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Queued item",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig({
-        concurrency: {
-          max_per_state: { Todo: 1 },
-        },
-      }),
-      TEST_SCRATCH,
-      5
-    );
-
-    const dispatched = await orch.dispatchQueued(
-      "proj-1",
-      makeSimplePipeline(),
-      TEST_WORK_DIR
-    );
-
-    expect(dispatched).toEqual([]);
-    const wi = db.getWorkItem("wi-queued");
-    expect(wi!.orchestration_state).toBe("queued");
-  });
-
-  test("Given a queued work item When a run starts Then the context snapshot is linked to the same run id", async () => {
-    db.upsertWorkItem({
-      id: "wi-ctx",
-      linear_id: "l-ctx",
-      linear_identifier: "T-CTX",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Context linkage",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
-
-    const run = db.getLatestRunForWorkItem("wi-ctx");
-    expect(run).toBeDefined();
-
-    const snapshot = db.getContextSnapshot(run!.context_snapshot_id);
-    expect(snapshot).toBeDefined();
-    expect(snapshot!.run_id).toBe(run!.id);
-  });
-
-  test("Given workspace manager is configured When dispatching Then agent runs in worktree and cleanup occurs", async () => {
-    db.upsertWorkItem({
-      id: "wi-wt",
-      linear_id: "l-wt",
-      linear_identifier: "T-WT",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Worktree item",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const worktreeDir = join(TEST_WORK_DIR, "worktrees", "T-WT");
-    mkdirSync(worktreeDir, { recursive: true });
-
-    const adapter = makeSuccessAdapter();
     const workspace = {
-      createWorktree: mock(async () => worktreeDir),
-      removeWorktree: mock(async () => {}),
-      getBranchName: (_identifier: string) => "feliz/T-WT",
-      runHook: mock(async () => ({ exitCode: 0, stdout: "", stderr: "" })),
+      createWorktree: mock(async () => {
+        mkdirSync(worktreePath, { recursive: true });
+        writeFileSync(join(worktreePath, "WORKFLOW.md"), "Fix {{ issue.title }}");
+        return worktreePath;
+      }),
+      getBranchName: mock((identifier: string) => `feliz/${identifier}`),
     };
 
-    const orch = new Orchestrator(
+    const orchestrator = new Orchestrator(
       db,
-      { "test-agent": adapter },
+      { "mock-agent": makeAdapter() },
       makeRepoConfig(),
-      TEST_SCRATCH,
-      5,
-      { workspace: workspace as any }
+      1,
+      { workspace, dataDir: TEST_ROOT }
     );
 
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
+    const dispatched = await orchestrator.dispatchPending(
+      "proj-1",
+      {
+        phases: [
+          {
+            name: "execute",
+            steps: [{ name: "run", agent: "mock-agent" }],
+          },
+        ],
+      },
+      repoPath
+    );
 
-    const call = (adapter.execute as ReturnType<typeof mock>).mock.calls[0]![0] as {
-      workDir: string;
-    };
-    expect(call.workDir).toBe(worktreeDir);
+    const thread = db.getThread("1");
+    expect(dispatched).toEqual(["1"]);
     expect(workspace.createWorktree).toHaveBeenCalledTimes(1);
-    expect(workspace.removeWorktree).toHaveBeenCalledTimes(1);
+    expect(thread!.status).toBe("completed");
+    expect(thread!.worktree_path).toBe(worktreePath);
+    expect(thread!.branch_name).toBe("feliz/BAC-1");
   });
 
-  test("cancels work item", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
+  test("does not dispatch a pending thread with non-terminal blockers", async () => {
+    insertThread("blocker", { status: "pending" });
+    insertThread("child", {
+      blocker_ids: ["lin-blocker"],
     });
 
-    const orch = new Orchestrator(
+    const orchestrator = new Orchestrator(
       db,
-      { "test-agent": makeSuccessAdapter() },
+      { "mock-agent": makeAdapter() },
       makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.cancelWorkItem("wi-1");
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("cancelled");
-  });
-
-  test("computes retry delay with exponential backoff", () => {
-    const orch = new Orchestrator(
-      db,
-      {},
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    const delay1 = orch.computeRetryDelay(1);
-    const delay2 = orch.computeRetryDelay(2);
-    const delay3 = orch.computeRetryDelay(3);
-
-    // Base delay: 10000 * 2^(attempt-1)
-    expect(delay1).toBeGreaterThanOrEqual(10000);
-    expect(delay1).toBeLessThanOrEqual(12000); // +jitter up to 2000
-    expect(delay2).toBeGreaterThanOrEqual(20000);
-    expect(delay3).toBeGreaterThanOrEqual(40000);
-  });
-
-  test("transitions new issue to decomposing when epic label", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Epic feature",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: ["epic"],
-      blocker_ids: [],
-      orchestration_state: "unclaimed",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.processNewIssue("wi-1");
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("decomposing");
-  });
-
-  test("transitions to retry_queued when pipeline fails and attempt < max", async () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const adapter = makeFailAdapter();
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": adapter },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
+      1,
+      { dataDir: TEST_ROOT }
     );
 
-    await orch.dispatchQueued("proj-1", makeFailablePipeline(), TEST_WORK_DIR);
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("retry_queued");
-
-    const runs = db.listRuns();
-    const run = runs.find((r) => r.work_item_id === "wi-1");
-    expect(run).toBeDefined();
-    expect(run!.result).toBe("failed");
-
-    const history = db.getHistory("proj-1", "wi-1");
-    const eventTypes = history.map((h) => h.event_type);
-    expect(eventTypes).toContain("run.started");
-    expect(eventTypes).toContain("run.failed");
-  });
-
-  test("promotes retry_queued to queued when retry backoff elapsed", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Retry item",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "retry_queued",
-    });
-
-    db.insertRun({
-      id: "run-1",
-      work_item_id: "wi-1",
-      attempt: 1,
-      current_phase: "execute",
-      current_step: "run",
-      context_snapshot_id: "snap-1",
-    });
-    db.updateRunResult("run-1", "failed", "error", null);
-    db.appendHistory({
-      id: "hist-1",
-      project_id: "proj-1",
-      work_item_id: "wi-1",
-      run_id: "run-1",
-      event_type: "run.failed",
-      payload: {
-        attempt: 1,
-        retry_ready_at: "2020-01-01T00:00:00.000Z",
+    const dispatched = await orchestrator.dispatchPending(
+      "proj-1",
+      {
+        phases: [
+          {
+            name: "execute",
+            steps: [{ name: "run", agent: "mock-agent" }],
+          },
+        ],
       },
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
+      TEST_ROOT
     );
 
-    orch.promoteRetryQueued("proj-1", new Date("2020-01-01T00:00:01.000Z"));
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("queued");
+    expect(dispatched).toEqual(["blocker"]);
+    expect(db.getThread("child")!.status).toBe("pending");
   });
 
-  test("keeps retry_queued when retry backoff has not elapsed", () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Retry item",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "retry_queued",
-    });
+  test("stopThread marks the thread stopped and cancels the active adapter", () => {
+    insertThread("1", { status: "running" });
+    const cancel = mock(async () => {});
+    const orchestrator = new Orchestrator(
+      db,
+      { "mock-agent": makeAdapter(undefined, cancel) },
+      makeRepoConfig(),
+      1
+    );
 
-    db.insertRun({
-      id: "run-1",
-      work_item_id: "wi-1",
-      attempt: 1,
-      current_phase: "execute",
-      current_step: "run",
-      context_snapshot_id: "snap-1",
-    });
-    db.updateRunResult("run-1", "failed", "error", null);
-    db.appendHistory({
-      id: "hist-1",
-      project_id: "proj-1",
-      work_item_id: "wi-1",
-      run_id: "run-1",
-      event_type: "run.failed",
-      payload: {
-        attempt: 1,
-        retry_ready_at: "2020-01-01T00:00:10.000Z",
+    orchestrator.stopThread("1");
+
+    expect(db.getThread("1")!.status).toBe("stopped");
+    expect(cancel).toHaveBeenCalledWith("1");
+  });
+
+  test("appends a review job when the review step is not approved", async () => {
+    insertThread("1");
+    const worktreePath = join(TEST_ROOT, "backend", "worktrees", "BAC-1");
+    mkdirSync(join(worktreePath, ".feliz", "prompts"), { recursive: true });
+    writeFileSync(join(worktreePath, ".feliz", "prompts", "review.md"), "Review");
+    const repoPath = join(TEST_ROOT, "backend", "repo");
+    mkdirSync(repoPath, { recursive: true });
+
+    db.updateThreadWorkspace("1", worktreePath, "feliz/BAC-1");
+
+    const orchestrator = new Orchestrator(
+      db,
+      {
+        "mock-agent": makeAdapter(async () => ({
+          status: "succeeded",
+          exitCode: 0,
+          stdout: "Needs a regression test.",
+          stderr: "",
+          filesChanged: [],
+        })),
       },
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
       makeRepoConfig(),
-      TEST_SCRATCH,
-      5
+      1,
+      { dataDir: TEST_ROOT }
     );
 
-    orch.promoteRetryQueued("proj-1", new Date("2020-01-01T00:00:01.000Z"));
+    await orchestrator.dispatchPending(
+      "proj-1",
+      {
+        phases: [
+          {
+            name: "review",
+            steps: [
+              {
+                name: "review",
+                agent: "mock-agent",
+                success: { agent_verdict: "approved" },
+              },
+            ],
+          },
+        ],
+      },
+      repoPath
+    );
 
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("retry_queued");
+    const jobs = db.listJobs("1");
+    expect(db.getThread("1")!.status).toBe("failed");
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]!.body).toContain("Needs a regression test.");
   });
 
-  test("transitions to failed when pipeline fails and attempt >= max", async () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
+  test("requeues the thread when new jobs arrive during execution", async () => {
+    insertThread("1");
+    const repoPath = join(TEST_ROOT, "backend", "repo");
+    mkdirSync(repoPath, { recursive: true });
+    writeFileSync(join(repoPath, "WORKFLOW.md"), "Fix {{ issue.title }}");
 
-    // Insert 2 prior failed runs so the next attempt will be 3
-    db.insertRun({
-      id: "run-1",
-      work_item_id: "wi-1",
-      attempt: 1,
-      current_phase: "x",
-      current_step: "x",
-      context_snapshot_id: "",
-    });
-    db.updateRunResult("run-1", "failed", "err", null);
-    db.insertRun({
-      id: "run-2",
-      work_item_id: "wi-1",
-      attempt: 2,
-      current_phase: "x",
-      current_step: "x",
-      context_snapshot_id: "",
-    });
-    db.updateRunResult("run-2", "failed", "err", null);
-
-    const adapter = makeFailAdapter();
-    const orch = new Orchestrator(
+    const orchestrator = new Orchestrator(
       db,
-      { "test-agent": adapter },
+      {
+        "mock-agent": makeAdapter(async () => {
+          db.updateThreadStatus("1", "running_dirty");
+          return {
+            status: "succeeded",
+            exitCode: 0,
+            stdout: "done",
+            stderr: "",
+            filesChanged: [],
+          };
+        }),
+      },
       makeRepoConfig(),
-      TEST_SCRATCH,
-      5
+      1,
+      { dataDir: TEST_ROOT }
     );
 
-    await orch.dispatchQueued("proj-1", makeFailablePipeline(), TEST_WORK_DIR);
-
-    const wi = db.getWorkItem("wi-1");
-    expect(wi!.orchestration_state).toBe("failed");
-  });
-
-  test("records run.started and run.completed history events on success", async () => {
-    db.upsertWorkItem({
-      id: "wi-1",
-      linear_id: "l1",
-      linear_identifier: "T-1",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const adapter = makeSuccessAdapter();
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": adapter },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
+    await orchestrator.dispatchPending(
+      "proj-1",
+      {
+        phases: [
+          {
+            name: "execute",
+            steps: [{ name: "run", agent: "mock-agent" }],
+          },
+        ],
+      },
+      repoPath
     );
 
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
-
-    const history = db.getHistory("proj-1", "wi-1");
-    const eventTypes = history.map((h) => h.event_type);
-    expect(eventTypes).toContain("run.started");
-    expect(eventTypes).toContain("run.completed");
-  });
-
-  test("checkParentCompletion completes parent when all children completed", () => {
-    db.upsertWorkItem({
-      id: "parent-1",
-      linear_id: "lp",
-      linear_identifier: "T-P",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Parent",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "decompose_review",
-    });
-
-    db.upsertWorkItem({
-      id: "child-1",
-      linear_id: "lc1",
-      linear_identifier: "T-C1",
-      project_id: "proj-1",
-      parent_work_item_id: "parent-1",
-      title: "Child 1",
-      description: "",
-      state: "Done",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "completed",
-    });
-
-    db.upsertWorkItem({
-      id: "child-2",
-      linear_id: "lc2",
-      linear_identifier: "T-C2",
-      project_id: "proj-1",
-      parent_work_item_id: "parent-1",
-      title: "Child 2",
-      description: "",
-      state: "Done",
-      priority: 2,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "completed",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.checkParentCompletion("parent-1");
-
-    const parent = db.getWorkItem("parent-1");
-    expect(parent!.orchestration_state).toBe("completed");
-
-    const history = db.getHistory("proj-1", "parent-1");
-    const eventTypes = history.map((h) => h.event_type);
-    expect(eventTypes).toContain("parent.auto_completed");
-  });
-
-  test("emits thought on run started when linearClient provided", async () => {
-    db.upsertWorkItem({
-      id: "wi-emit",
-      linear_id: "l-emit",
-      linear_identifier: "T-EMIT",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Emit test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-      linear_session_id: "session-emit",
-    });
-
-    const linearClient = {
-      emitThought: mock(async () => {}),
-      emitComment: mock(async () => {}),
-      emitError: mock(async () => {}),
-    };
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5,
-      { linearClient }
-    );
-
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
-
-    expect(linearClient.emitThought).toHaveBeenCalledWith(
-      "session-emit",
-      "Started working on this"
-    );
-  });
-
-  test("emits comment on run succeeded when linearClient provided", async () => {
-    db.upsertWorkItem({
-      id: "wi-succ",
-      linear_id: "l-succ",
-      linear_identifier: "T-SUCC",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Success test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-      linear_session_id: "session-succ",
-    });
-
-    const linearClient = {
-      emitThought: mock(async () => {}),
-      emitComment: mock(async () => {}),
-      emitError: mock(async () => {}),
-    };
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5,
-      { linearClient }
-    );
-
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
-
-    expect(linearClient.emitComment).toHaveBeenCalledWith(
-      "session-succ",
-      "Completed successfully"
-    );
-  });
-
-  test("emits comment on run failed when linearClient provided", async () => {
-    db.upsertWorkItem({
-      id: "wi-fail",
-      linear_id: "l-fail",
-      linear_identifier: "T-FAIL",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Fail test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-      linear_session_id: "session-fail",
-    });
-
-    const linearClient = {
-      emitThought: mock(async () => {}),
-      emitComment: mock(async () => {}),
-      emitError: mock(async () => {}),
-    };
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeFailAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5,
-      { linearClient }
-    );
-
-    await orch.dispatchQueued("proj-1", makeFailablePipeline(), TEST_WORK_DIR);
-
-    expect(linearClient.emitComment).toHaveBeenCalled();
-    const call = (linearClient.emitComment as ReturnType<typeof mock>).mock.calls[0]!;
-    expect(call[0]).toBe("session-fail");
-    expect((call[1] as string)).toContain("Run failed");
-  });
-
-  test("skips emission when no session ID", async () => {
-    db.upsertWorkItem({
-      id: "wi-nosess",
-      linear_id: "l-nosess",
-      linear_identifier: "T-NOSESS",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "No session test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "queued",
-    });
-
-    const linearClient = {
-      emitThought: mock(async () => {}),
-      emitComment: mock(async () => {}),
-      emitError: mock(async () => {}),
-    };
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5,
-      { linearClient }
-    );
-
-    await orch.dispatchQueued("proj-1", makeSimplePipeline(), TEST_WORK_DIR);
-
-    expect(linearClient.emitThought).not.toHaveBeenCalled();
-    expect(linearClient.emitComment).not.toHaveBeenCalled();
-  });
-
-  test("cancelWorkItem calls adapter.cancel for running agent", () => {
-    const adapter = makeSuccessAdapter();
-    db.upsertWorkItem({
-      id: "wi-cancel-agent",
-      linear_id: "l-cancel-agent",
-      linear_identifier: "T-CA",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Cancel agent test",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
-    });
-    db.insertRun({
-      id: "run-ca",
-      work_item_id: "wi-cancel-agent",
-      attempt: 1,
-      current_phase: "execute",
-      current_step: "run",
-      context_snapshot_id: "snap-ca",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": adapter },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.cancelWorkItem("wi-cancel-agent");
-
-    expect(adapter.cancel).toHaveBeenCalledWith("run-ca");
-  });
-
-  test("checkParentCompletion does NOT complete parent when children still running", () => {
-    db.upsertWorkItem({
-      id: "parent-1",
-      linear_id: "lp",
-      linear_identifier: "T-P",
-      project_id: "proj-1",
-      parent_work_item_id: null,
-      title: "Parent",
-      description: "",
-      state: "Todo",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "decompose_review",
-    });
-
-    db.upsertWorkItem({
-      id: "child-1",
-      linear_id: "lc1",
-      linear_identifier: "T-C1",
-      project_id: "proj-1",
-      parent_work_item_id: "parent-1",
-      title: "Child 1",
-      description: "",
-      state: "Done",
-      priority: 1,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "completed",
-    });
-
-    db.upsertWorkItem({
-      id: "child-2",
-      linear_id: "lc2",
-      linear_identifier: "T-C2",
-      project_id: "proj-1",
-      parent_work_item_id: "parent-1",
-      title: "Child 2",
-      description: "",
-      state: "InProgress",
-      priority: 2,
-      labels: [],
-      blocker_ids: [],
-      orchestration_state: "running",
-    });
-
-    const orch = new Orchestrator(
-      db,
-      { "test-agent": makeSuccessAdapter() },
-      makeRepoConfig(),
-      TEST_SCRATCH,
-      5
-    );
-    orch.checkParentCompletion("parent-1");
-
-    const parent = db.getWorkItem("parent-1");
-    expect(parent!.orchestration_state).toBe("decompose_review");
+    expect(db.getThread("1")!.status).toBe("pending");
   });
 });

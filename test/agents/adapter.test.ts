@@ -35,7 +35,7 @@ describe("ClaudeCodeAdapter", () => {
   test("builds correct command args", () => {
     const adapter = new ClaudeCodeAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Fix the bug",
       timeout_ms: 600000,

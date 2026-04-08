@@ -47,18 +47,18 @@ export interface E2EHarnessDeps {
   runCommand: (cmd: string, args: string[]) => E2ECommandResult;
 }
 
-const REQUIRED_TABLES = ["projects", "work_items", "runs", "history"];
+const REQUIRED_TABLES = ["projects", "threads", "jobs", "history"];
 
 const SCENARIO_TITLES = [
   "Issue Discovery",
   "Spec Draft Progression",
   "Decomposition Progression",
-  "Dispatch and Run Recording",
+  "Thread Dispatch",
   "Publishing",
-  "Retry",
+  "Thread Re-entry",
   "Blocker Enforcement",
   "Per-State Concurrency",
-  "Context Snapshot Traceability",
+  "Thread Context Readback",
   "Worktree Lifecycle",
 ];
 

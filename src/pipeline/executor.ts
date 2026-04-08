@@ -1,7 +1,5 @@
-import type { Database } from "../db/database.ts";
-import type { AgentAdapter } from "../agents/adapter.ts";
+import type { AgentAdapter, AgentRunResult } from "../agents/adapter.ts";
 import type { PipelineDefinition, SuccessCondition } from "../config/types.ts";
-import { newId } from "../id.ts";
 import { existsSync } from "fs";
 import { join } from "path";
 
@@ -21,12 +19,13 @@ export interface StepResult {
   phaseName: string;
   stepName: string;
   cycle: number;
-  agentResult: { status: string; exitCode: number; stdout: string; stderr: string; filesChanged: string[] } | null;
+  attempt: number;
+  agentResult: AgentRunResult | null;
   success: boolean;
 }
 
 export interface ExecuteParams {
-  runId: string;
+  threadId: string;
   workDir: string;
   pipeline: PipelineDefinition;
   promptRenderer: (phaseName: string, stepName: string, cycle: number) => string;
@@ -38,21 +37,19 @@ export interface ExecuteResult {
   success: boolean;
   failureReason?: string;
   warnings: string[];
+  lastAgentResult?: AgentRunResult | null;
 }
 
 export class PipelineExecutor {
-  private db: Database;
   private adapters: Record<string, AgentAdapter>;
   private agentConfig: AgentConfig;
   private hooks: HooksConfig;
 
   constructor(
-    db: Database,
     adapters: Record<string, AgentAdapter>,
     agentConfig?: AgentConfig,
     hooks?: HooksConfig
   ) {
-    this.db = db;
     this.adapters = adapters;
     this.agentConfig = agentConfig ?? {
       approval_policy: "auto",
@@ -64,6 +61,7 @@ export class PipelineExecutor {
 
   async execute(params: ExecuteParams): Promise<ExecuteResult> {
     const warnings: string[] = [];
+    let lastAgentResult: AgentRunResult | null = null;
 
     for (const phase of params.pipeline.phases) {
       const maxCycles = phase.repeat?.max ?? 1;
@@ -72,88 +70,16 @@ export class PipelineExecutor {
         let allStepsSucceeded = true;
 
         for (const step of phase.steps) {
-          this.db.updateRunProgress(params.runId, phase.name, step.name);
-
           const maxAttempts = step.max_attempts ?? 1;
           let stepSucceeded = false;
 
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const seId = newId();
-            this.db.insertStepExecution({
-              id: seId,
-              run_id: params.runId,
-              phase_name: phase.name,
-              step_name: step.name,
-              cycle,
-              step_attempt: attempt,
-              agent_adapter: step.agent || this.agentConfig.defaultAgent || null,
-            });
-
-            let agentResult: {
-              status: string;
-              exitCode: number;
-              stdout: string;
-              stderr: string;
-              filesChanged: string[];
-            } | null = null;
-
-            // Run before_run hook
             if (this.hooks.before_run) {
               runHook(this.hooks.before_run, params.workDir);
             }
 
             const agentName = step.agent || this.agentConfig.defaultAgent;
-            if (agentName) {
-              const adapter = this.adapters[agentName];
-              if (!adapter) {
-                this.db.updateStepResult(
-                  seId,
-                  "failed",
-                  -1,
-                  `Agent adapter "${agentName}" not found`
-                );
-                return {
-                  success: false,
-                  failureReason: `Agent adapter "${agentName}" not found`,
-                  warnings,
-                };
-              }
-
-              const prompt = params.promptRenderer(phase.name, step.name, cycle);
-              const result = await adapter.execute({
-                runId: params.runId,
-                workDir: params.workDir,
-                prompt,
-                timeout_ms: this.agentConfig.timeout_ms,
-                maxTurns: this.agentConfig.max_turns,
-                approvalPolicy: this.agentConfig.approval_policy,
-                env: params.env ?? {},
-              });
-
-              agentResult = result;
-
-              // Run after_run hook
-              if (this.hooks.after_run) {
-                runHook(this.hooks.after_run, params.workDir);
-              }
-
-              if (result.status === "failed" || result.status === "timed_out") {
-                this.db.updateStepResult(
-                  seId,
-                  result.status,
-                  result.exitCode,
-                  `Agent ${result.status}`
-                );
-                if (attempt < maxAttempts) continue;
-              }
-            } else {
-              // No agent configured at all — fail
-              this.db.updateStepResult(
-                seId,
-                "failed",
-                -1,
-                `No agent configured for step "${step.name}"`
-              );
+            if (!agentName) {
               return {
                 success: false,
                 failureReason: `No agent configured for step "${step.name}" and no defaultAgent set`,
@@ -161,38 +87,48 @@ export class PipelineExecutor {
               };
             }
 
-            // Evaluate success condition
+            const adapter = this.adapters[agentName];
+            if (!adapter) {
+              return {
+                success: false,
+                failureReason: `Agent adapter "${agentName}" not found`,
+                warnings,
+              };
+            }
+
+            const prompt = params.promptRenderer(phase.name, step.name, cycle);
+            const agentResult = await adapter.execute({
+              threadId: params.threadId,
+              workDir: params.workDir,
+              prompt,
+              timeout_ms: this.agentConfig.timeout_ms,
+              maxTurns: this.agentConfig.max_turns,
+              approvalPolicy: this.agentConfig.approval_policy,
+              env: params.env ?? {},
+            });
+            lastAgentResult = agentResult;
+
+            if (this.hooks.after_run) {
+              runHook(this.hooks.after_run, params.workDir);
+            }
+
             const success = step.success
               ? await evaluateSuccess(step.success, params.workDir, agentResult)
-              : agentResult
-                ? agentResult.status === "succeeded"
-                : true;
+              : agentResult.status === "succeeded";
 
-            this.db.updateStepResult(
-              seId,
-              success ? "succeeded" : "failed",
-              agentResult?.exitCode ?? 0,
-              success ? null : "Success condition not met"
-            );
-
-            if (params.afterStep) {
-              params.afterStep({
-                phaseName: phase.name,
-                stepName: step.name,
-                cycle,
-                agentResult: agentResult
-                  ? { status: agentResult.status, exitCode: agentResult.exitCode, stdout: agentResult.stdout, stderr: agentResult.stderr, filesChanged: agentResult.filesChanged }
-                  : null,
-                success,
-              });
-            }
+            params.afterStep?.({
+              phaseName: phase.name,
+              stepName: step.name,
+              cycle,
+              attempt,
+              agentResult,
+              success,
+            });
 
             if (success) {
               stepSucceeded = true;
               break;
             }
-
-            if (attempt >= maxAttempts) break;
           }
 
           if (!stepSucceeded) {
@@ -211,18 +147,19 @@ export class PipelineExecutor {
               `Phase "${phase.name}" exhausted max cycles (${maxCycles}), auto-passing`
             );
             break;
-          } else {
-            return {
-              success: false,
-              failureReason: `Phase "${phase.name}" failed after ${maxCycles} cycles`,
-              warnings,
-            };
           }
+
+          return {
+            success: false,
+            failureReason: `Phase "${phase.name}" failed after ${maxCycles} cycles`,
+            warnings,
+            lastAgentResult,
+          };
         }
       }
     }
 
-    return { success: true, warnings };
+    return { success: true, warnings, lastAgentResult };
   }
 }
 
@@ -233,7 +170,7 @@ function runHook(command: string, workDir: string): void {
 async function evaluateSuccess(
   condition: SuccessCondition,
   workDir: string,
-  agentResult: { status: string; exitCode: number; stdout: string } | null
+  agentResult: AgentRunResult | null
 ): Promise<boolean> {
   if (condition.always) return true;
 
@@ -251,8 +188,7 @@ async function evaluateSuccess(
   }
 
   if (condition.file_exists) {
-    const filePath = join(workDir, condition.file_exists);
-    return existsSync(filePath);
+    return existsSync(join(workDir, condition.file_exists));
   }
 
   return agentResult ? agentResult.exitCode === 0 : true;

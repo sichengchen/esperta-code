@@ -8,7 +8,7 @@ Address the review feedback for this issue.
 
 ## Context
 
-Run `feliz context read` to see the review feedback from the previous step.
+Run `feliz thread read` to see the full thread jobs, including review feedback.
 
 ## Instructions
 

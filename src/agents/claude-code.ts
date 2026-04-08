@@ -82,7 +82,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       stderr: "pipe",
     });
 
-    this.runningProcesses.set(params.runId, {
+    this.runningProcesses.set(params.threadId, {
       kill: () => proc.kill(),
     });
 
@@ -97,7 +97,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       const stdout = await new Response(proc.stdout).text();
       const stderr = await new Response(proc.stderr).text();
 
-      this.runningProcesses.delete(params.runId);
+      this.runningProcesses.delete(params.threadId);
 
       // Detect if it was killed by timeout
       if (exitCode === 137 || exitCode === null) {
@@ -126,7 +126,7 @@ export class ClaudeCodeAdapter implements AgentAdapter {
       return result;
     } catch {
       clearTimeout(timeoutId);
-      this.runningProcesses.delete(params.runId);
+      this.runningProcesses.delete(params.threadId);
       return {
         status: "failed",
         exitCode: -1,
@@ -137,11 +137,11 @@ export class ClaudeCodeAdapter implements AgentAdapter {
     }
   }
 
-  async cancel(runId: string): Promise<void> {
-    const proc = this.runningProcesses.get(runId);
+  async cancel(threadId: string): Promise<void> {
+    const proc = this.runningProcesses.get(threadId);
     if (proc) {
       proc.kill();
-      this.runningProcesses.delete(runId);
+      this.runningProcesses.delete(threadId);
     }
   }
 }
