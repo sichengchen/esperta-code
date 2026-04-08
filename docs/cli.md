@@ -14,10 +14,10 @@
 ```bash
 esperta-code json
 
-esperta-code submit --project <name> --title <title> --goal <goal>
-esperta-code continue <thread-id> --title <title> --goal <goal>
+esperta-code thread start --project <name> --instruction <text>
+esperta-code thread continue <thread-id> --instruction <text>
 
-esperta-code thread create --project <name> --title <title>
+esperta-code thread create --project <name> --summary <text>
 esperta-code thread list
 esperta-code thread show <thread-id>
 
@@ -49,7 +49,7 @@ Request shape:
     "name": "esperta-base",
     "cwd": "~/src/sa"
   },
-  "action": "submit",
+  "action": "thread.start",
   "input": {}
 }
 ```
@@ -60,7 +60,7 @@ Response shape:
 {
   "version": "v1",
   "id": "req-123",
-  "action": "submit",
+  "action": "thread.start",
   "ok": true,
   "result": {}
 }
@@ -72,13 +72,13 @@ Supported actions:
 |---|---|
 | `capabilities` | Discover supported actions |
 | `project.list` | List configured projects |
-| `submit` | Create a thread and first job |
-| `continue` | Append a job to an existing thread |
+| `thread.start` | Create a thread and first job |
+| `thread.continue` | Append a job to an existing thread |
 | `thread.list`, `thread.get` | Inspect threads |
 | `job.list`, `job.get` | Inspect jobs |
 | `job.retry`, `job.cancel`, `job.approve` | Control job lifecycle |
 | `worktree.list`, `worktree.get` | Inspect worktrees |
-| `event.attach` | Attach an external event |
+| `thread.event.attach` | Attach an external event |
 
 Example:
 
@@ -87,6 +87,8 @@ echo '{"version":"v1","action":"capabilities"}' | esperta-code json
 ```
 
 See [Local Agents](local-agents.md) for the full contract and examples.
+
+For `thread start` and `thread continue`, `--instruction` is required. `--summary` is optional; if omitted, Esperta Code derives one from the instruction.
 
 ## Setup and Operations
 

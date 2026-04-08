@@ -23,7 +23,7 @@ Location: `skills/esperta-code-usage/SKILL.md`
 
 Use it to:
 
-- submit and continue work through the CLI
+- start and continue thread work through the CLI
 - inspect threads, jobs, runs, and worktrees
 - retry, cancel, approve, and attach external events
 - integrate local agent clients through `esperta-code json`

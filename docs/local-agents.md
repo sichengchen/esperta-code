@@ -25,7 +25,7 @@ echo '{"version":"v1","action":"capabilities"}' | esperta-code json
     "name": "esperta-base",
     "cwd": "~/src/sa"
   },
-  "action": "submit",
+  "action": "thread.start",
   "input": {}
 }
 ```
@@ -48,7 +48,7 @@ Success:
 {
   "version": "v1",
   "id": "req-123",
-  "action": "submit",
+  "action": "thread.start",
   "ok": true,
   "result": {}
 }
@@ -60,11 +60,11 @@ Error:
 {
   "version": "v1",
   "id": "req-123",
-  "action": "submit",
+  "action": "thread.start",
   "ok": false,
   "error": {
     "code": "invalid_request",
-    "message": "Missing required string field: title"
+    "message": "Missing required string field: instruction"
   }
 }
 ```
@@ -82,8 +82,8 @@ Error codes:
 |---|---|
 | `capabilities` | Discover protocol metadata and supported actions |
 | `project.list` | List configured projects and job types |
-| `submit` | Create a new thread and initial job |
-| `continue` | Append a new job to an existing thread |
+| `thread.start` | Create a new thread and initial job |
+| `thread.continue` | Append a new job to an existing thread |
 | `thread.list` | List threads, optionally filtered by project or status |
 | `thread.get` | Fetch the current thread snapshot with jobs, events, links, artifacts, approvals, and worktrees |
 | `job.list` | List all jobs or jobs for one thread |
@@ -93,7 +93,7 @@ Error codes:
 | `job.approve` | Release a waiting approval gate |
 | `worktree.list` | List tracked worktrees |
 | `worktree.get` | Fetch one worktree with thread and latest run context |
-| `event.attach` | Attach an external event to a thread |
+| `thread.event.attach` | Attach an external event to a thread |
 
 ## Example Flow
 
@@ -103,22 +103,19 @@ List capabilities:
 echo '{"version":"v1","id":"req-1","client":{"name":"esperta-base"},"action":"capabilities"}' | esperta-code json
 ```
 
-Submit a new thread:
+Start a new thread:
 
 ```bash
 echo '{
   "version": "v1",
   "id": "req-2",
   "client": { "name": "esperta-base", "cwd": "~/src/sa" },
-  "action": "submit",
+  "action": "thread.start",
   "input": {
     "project": "repo-a",
     "job_type": "implement",
-    "title": "Implement queue runner",
-    "goal": "Build the queue runner",
-    "prompt_payload": {
-      "prompt": "Build the queue runner"
-    }
+    "summary": "Implement queue runner",
+    "instruction": "Build the queue runner"
   }
 }' | esperta-code json
 ```
@@ -128,11 +125,11 @@ Continue an existing thread:
 ```bash
 echo '{
   "version": "v1",
-  "action": "continue",
+  "action": "thread.continue",
   "input": {
     "thread_id": "thread-123",
-    "title": "Address review feedback",
-    "goal": "Add the requested tests"
+    "summary": "Address review feedback",
+    "instruction": "Add the requested tests"
   }
 }' | esperta-code json
 ```
@@ -154,7 +151,7 @@ Attach a CI failure:
 ```bash
 echo '{
   "version": "v1",
-  "action": "event.attach",
+  "action": "thread.event.attach",
   "input": {
     "thread_id": "thread-123",
     "source_kind": "github",
@@ -171,6 +168,7 @@ echo '{
 ## Design Notes
 
 - The JSON CLI is a client interface, not an agent adapter. It is for tools that want to drive Esperta Code, not for code-execution backends.
+- `summary` is optional on `thread.start` and `thread.continue`. If omitted, Esperta Code derives one from `instruction`.
 - `thread.get` is the most useful polling call for local agents because it returns the current thread snapshot in one round-trip.
 - Dates are serialized as ISO 8601 strings.
 - The interface is intentionally request/response and single-shot. Long-running job execution stays inside Esperta Code.

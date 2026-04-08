@@ -94,10 +94,10 @@ $EC status
 $EC config validate
 ```
 
-## Submit Work
+## Start Work
 
 ```bash
-$EC submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+$EC thread start --project repo-a --instruction "Build cache invalidation for user updates"
 $EC thread list
 ```
 

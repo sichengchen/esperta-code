@@ -1,6 +1,6 @@
 ---
 name: esperta-code-usage
-description: Use this skill when operating Esperta Code after setup. Covers the human CLI for submitting and continuing work, inspecting threads/jobs/worktrees, retries and approvals, attaching external events, and the JSON stdin/stdout CLI for local agent clients such as Esperta Base.
+description: Use this skill when operating Esperta Code after setup. Covers the human CLI for starting and continuing thread work, inspecting threads/jobs/worktrees, retries and approvals, attaching external events, and the JSON stdin/stdout CLI for local agent clients such as Esperta Base.
 ---
 
 # Esperta Code Usage
@@ -21,14 +21,16 @@ Do not mix them unless the user explicitly wants both.
 ### Start new work
 
 ```bash
-esperta-code submit --project <name> --title <title> --goal <goal>
+esperta-code thread start --project <name> --instruction <text>
 ```
 
 ### Continue a thread
 
 ```bash
-esperta-code continue <thread-id> --title <title> --goal <goal>
+esperta-code thread continue <thread-id> --instruction <text>
 ```
+
+Use `--summary` when you want a custom short label. Otherwise Esperta Code derives one from the instruction.
 
 ### Inspect state
 
@@ -87,7 +89,7 @@ Protocol rules:
     "name": "esperta-base",
     "cwd": "~/src/sa"
   },
-  "action": "submit",
+  "action": "thread.start",
   "input": {}
 }
 ```
@@ -98,7 +100,7 @@ Protocol rules:
 {
   "version": "v1",
   "id": "req-123",
-  "action": "submit",
+  "action": "thread.start",
   "ok": true,
   "result": {}
 }
@@ -108,17 +110,17 @@ Protocol rules:
 
 1. `capabilities`
 2. `project.list`
-3. `submit` or `continue`
+3. `thread.start` or `thread.continue`
 4. `thread.get` for polling and state refresh
-5. `event.attach` when outside systems produce new signals
+5. `thread.event.attach` when outside systems produce new signals
 
 ### Most useful actions
 
-- `submit`
-- `continue`
+- `thread.start`
+- `thread.continue`
 - `thread.get`
 - `job.get`
-- `event.attach`
+- `thread.event.attach`
 
 Prefer `thread.get` when the caller needs the current thread snapshot in one round-trip.
 
@@ -126,8 +128,8 @@ Prefer `thread.get` when the caller needs the current thread snapshot in one rou
 
 - `capabilities`
 - `project.list`
-- `submit`
-- `continue`
+- `thread.start`
+- `thread.continue`
 - `thread.list`
 - `thread.get`
 - `job.list`
@@ -137,14 +139,14 @@ Prefer `thread.get` when the caller needs the current thread snapshot in one rou
 - `job.approve`
 - `worktree.list`
 - `worktree.get`
-- `event.attach`
+- `thread.event.attach`
 
 ## Guardrails
 
 - Use `esperta-code`, not old Feliz command names, unless the user explicitly asks for the alias.
 - Do not tell callers to mutate the database directly.
 - For machine integrations, use the JSON CLI instead of scraping plain-text output.
-- Treat `thread` as the durable identity and append jobs with `continue` instead of starting over.
+- Treat `thread` as the durable identity and append jobs with `thread continue` instead of starting over.
 
 ## Read next if needed
 

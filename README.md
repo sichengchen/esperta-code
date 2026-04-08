@@ -76,13 +76,13 @@ projects:
         publish: draft_pr
 ```
 
-Submit work and inspect the resulting thread:
+Start work and inspect the resulting thread:
 
 ```bash
-esperta-code submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+esperta-code thread start --project repo-a --instruction "Build cache invalidation for user updates"
 esperta-code thread list
 esperta-code thread show <thread-id>
-esperta-code continue <thread-id> --title "Address review feedback" --goal "Apply requested changes"
+esperta-code thread continue <thread-id> --instruction "Apply requested changes from review feedback"
 esperta-code worktree list
 ```
 

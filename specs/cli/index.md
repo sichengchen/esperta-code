@@ -7,10 +7,10 @@ The CLI exposes the durable thread/job/worktree model directly.
 ```bash
 esperta-code json
 
-esperta-code submit --project <name> --title <title> --goal <goal>
-esperta-code continue <thread-id> --title <title> --goal <goal>
+esperta-code thread start --project <name> --instruction <text>
+esperta-code thread continue <thread-id> --instruction <text>
 
-esperta-code thread create --project <name> --title <title>
+esperta-code thread create --project <name> --summary <text>
 esperta-code thread list
 esperta-code thread show <thread-id>
 
@@ -57,7 +57,7 @@ Request envelope:
     "name": "esperta-base",
     "cwd": "~/src/sa"
   },
-  "action": "submit",
+  "action": "thread.start",
   "input": {}
 }
 ```
@@ -68,7 +68,7 @@ Response envelope:
 {
   "version": "v1",
   "id": "req-123",
-  "action": "submit",
+  "action": "thread.start",
   "ok": true,
   "result": {}
 }
@@ -78,8 +78,8 @@ Supported actions:
 
 - `capabilities`
 - `project.list`
-- `submit`
-- `continue`
+- `thread.start`
+- `thread.continue`
 - `thread.list`
 - `thread.get`
 - `job.list`
@@ -89,12 +89,14 @@ Supported actions:
 - `job.approve`
 - `worktree.list`
 - `worktree.get`
-- `event.attach`
+- `thread.event.attach`
 
 ## Behavioral expectations
 
-- `submit` creates a new thread and queues the first job
-- `continue` appends a new job to an existing thread
+- `thread start` creates a new thread and queues the first job
+- `thread continue` appends a new job to an existing thread
+- `instruction` is the required work request
+- `summary` is an optional short label derived from `instruction` when omitted
 - `job retry` re-queues a failed job
 - `worktree prune` deletes expired retained worktrees
 - `json` provides a stable request/response contract for local clients without exposing internal modules

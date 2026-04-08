@@ -5,10 +5,9 @@ Esperta Code is thread-centric. A thread is the durable identity for a unit of w
 ## Start New Work
 
 ```bash
-esperta-code submit \
+esperta-code thread start \
   --project repo-a \
-  --title "Implement cache invalidation" \
-  --goal "Build cache invalidation for user updates"
+  --instruction "Build cache invalidation for user updates"
 ```
 
 This creates:
@@ -20,10 +19,11 @@ This creates:
 ## Continue Existing Work
 
 ```bash
-esperta-code continue <thread-id> \
-  --title "Address review feedback" \
-  --goal "Apply requested changes"
+esperta-code thread continue <thread-id> \
+  --instruction "Apply requested changes"
 ```
+
+Use `--summary` when you want a custom short label in thread and job lists. If you omit it, Esperta Code derives a summary from the instruction.
 
 Use this when:
 
