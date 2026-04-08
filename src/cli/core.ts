@@ -4,6 +4,7 @@ import { ThreadService } from "../core/service.ts";
 import { WorkspaceManager } from "../workspace/manager.ts";
 import { PRIMARY_CLI_NAME } from "../branding.ts";
 import {
+  deriveSummaryFromInstruction,
   findProjectConfig,
   openCoreDb,
   projectIdFromName,
@@ -17,12 +18,34 @@ function requireFlag(flags: Record<string, string>, key: string, usage: string):
   return value;
 }
 
+function requireInstructionFlag(
+  flags: Record<string, string>,
+  usage: string
+): string {
+  const instruction = flags.instruction ?? flags.goal;
+  if (!instruction) {
+    throw new Error(usage);
+  }
+  return instruction;
+}
+
+function resolveSummaryFlag(
+  flags: Record<string, string>,
+  instruction?: string
+): string | undefined {
+  const summary = flags.summary ?? flags.title;
+  if (summary) {
+    return summary;
+  }
+  return instruction ? deriveSummaryFromInstruction(instruction) : undefined;
+}
+
 function printThread(thread: ReturnType<Database["getThread"]>) {
   if (!thread) return;
   console.log(`Thread:   ${thread.id}`);
   console.log(`Project:  ${thread.project_id}`);
   console.log(`Status:   ${thread.status}`);
-  console.log(`Title:    ${thread.title}`);
+  console.log(`Summary:  ${thread.title}`);
   console.log(`Branch:   ${thread.branch_name}`);
   console.log(`Base:     ${thread.base_branch}`);
   if (thread.current_pr_url) {
@@ -46,37 +69,37 @@ export async function handleCoreCliCommand(
   const threadService = new ThreadService(db);
 
   try {
-    if (cmd.command === "submit") {
+    const isThreadStart =
+      (cmd.command === "thread" && cmd.subcommand === "start") ||
+      cmd.command === "submit";
+    const isThreadContinue =
+      (cmd.command === "thread" && cmd.subcommand === "continue") ||
+      cmd.command === "continue";
+
+    if (isThreadStart) {
+      const usage = `Usage: ${PRIMARY_CLI_NAME} thread start --project <name> --instruction <text> [--summary <text>] [--job-type <type>] [--prompt <prompt>]`;
       const projectName = requireFlag(
         cmd.flags,
         "project",
-        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
+        usage
       );
-      const title = requireFlag(
-        cmd.flags,
-        "title",
-        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
-      );
-      const goal = requireFlag(
-        cmd.flags,
-        "goal",
-        `Usage: ${PRIMARY_CLI_NAME} submit --project <name> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
-      );
+      const instruction = requireInstructionFlag(cmd.flags, usage);
+      const summary = resolveSummaryFlag(cmd.flags, instruction)!;
 
       findProjectConfig(config, projectName);
       const created = threadService.createThread({
         project_id: projectIdFromName(projectName),
-        title,
+        title: summary,
         requested_by: {
           type: "cli",
           id: process.env.USER ?? "cli",
         },
         initial_job: {
           job_type: cmd.flags["job-type"] ?? "implement",
-          title,
-          goal,
+          title: summary,
+          goal: instruction,
           prompt_payload: {
-            prompt: cmd.flags.prompt ?? goal,
+            prompt: cmd.flags.prompt ?? instruction,
           },
         },
       });
@@ -88,31 +111,23 @@ export async function handleCoreCliCommand(
       return true;
     }
 
-    if (cmd.command === "continue") {
-      const threadId = cmd.subcommand ?? cmd.args[0];
+    if (isThreadContinue) {
+      const usage = `Usage: ${PRIMARY_CLI_NAME} thread continue <thread-id> --instruction <text> [--summary <text>] [--job-type <type>] [--prompt <prompt>]`;
+      const threadId =
+        cmd.command === "continue" ? cmd.subcommand ?? cmd.args[0] : cmd.args[0];
       if (!threadId) {
-        throw new Error(
-          `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
-        );
+        throw new Error(usage);
       }
 
-      const title = requireFlag(
-        cmd.flags,
-        "title",
-        `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
-      );
-      const goal = requireFlag(
-        cmd.flags,
-        "goal",
-        `Usage: ${PRIMARY_CLI_NAME} continue <thread-id> --title <title> --goal <goal> [--job-type <type>] [--prompt <prompt>]`
-      );
+      const instruction = requireInstructionFlag(cmd.flags, usage);
+      const summary = resolveSummaryFlag(cmd.flags, instruction)!;
 
       const job = threadService.continueThread(threadId, {
         job_type: cmd.flags["job-type"] ?? "continue",
-        title,
-        goal,
+        title: summary,
+        goal: instruction,
         prompt_payload: {
-          prompt: cmd.flags.prompt ?? goal,
+          prompt: cmd.flags.prompt ?? instruction,
         },
         requested_by: {
           type: "cli",
@@ -125,33 +140,34 @@ export async function handleCoreCliCommand(
     }
 
     if (cmd.command === "thread" && cmd.subcommand === "create") {
+      const usage = `Usage: ${PRIMARY_CLI_NAME} thread create --project <name> --summary <text> [--instruction <text>] [--job-type <type>] [--prompt <prompt>]`;
       const projectName = requireFlag(
         cmd.flags,
         "project",
-        `Usage: ${PRIMARY_CLI_NAME} thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]`
+        usage
       );
-      const title = requireFlag(
-        cmd.flags,
-        "title",
-        `Usage: ${PRIMARY_CLI_NAME} thread create --project <name> --title <title> [--goal <goal>] [--job-type <type>] [--prompt <prompt>]`
-      );
+      const instruction = cmd.flags.instruction ?? cmd.flags.goal;
+      const summary = resolveSummaryFlag(cmd.flags, instruction);
+      if (!summary) {
+        throw new Error(usage);
+      }
 
       findProjectConfig(config, projectName);
       const created = threadService.createThread({
         project_id: projectIdFromName(projectName),
-        title,
+        title: summary,
         requested_by: {
           type: "cli",
           id: process.env.USER ?? "cli",
         },
-        ...(cmd.flags.goal
+        ...(instruction
           ? {
               initial_job: {
                 job_type: cmd.flags["job-type"] ?? "implement",
-                title,
-                goal: cmd.flags.goal,
+                title: summary,
+                goal: instruction,
                 prompt_payload: {
-                  prompt: cmd.flags.prompt ?? cmd.flags.goal,
+                  prompt: cmd.flags.prompt ?? instruction,
                 },
               },
             }
@@ -172,7 +188,7 @@ export async function handleCoreCliCommand(
         return true;
       }
 
-      console.log("ID            Status         Project           Title");
+      console.log("ID            Status         Project           Summary");
       console.log("─".repeat(90));
       for (const thread of threads) {
         console.log(
@@ -250,7 +266,8 @@ export async function handleCoreCliCommand(
       console.log(`Type:     ${job.job_type}`);
       console.log(`Agent:    ${job.agent_adapter}`);
       console.log(`Write:    ${job.write_mode}`);
-      console.log(`Goal:     ${job.goal}`);
+      console.log(`Summary:  ${job.title}`);
+      console.log(`Instruction: ${job.goal}`);
       const run = db.getLatestRunRecordForJob(job.id);
       if (run) {
         console.log(`Run:      ${run.id} (${run.status})`);

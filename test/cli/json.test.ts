@@ -108,12 +108,13 @@ describe("JSON CLI interface", () => {
     }>(lines);
     expect(response.ok).toBe(true);
     expect(response.id).toBe("req-1");
-    expect(response.result.actions).toContain("submit");
+    expect(response.result.actions).toContain("thread.start");
+    expect(response.result.actions).toContain("thread.continue");
     expect(response.result.actions).toContain("thread.get");
     expect(response.result.actions).toContain("worktree.get");
   });
 
-  test("submit creates a thread and job with local-agent metadata", async () => {
+  test("thread.start creates a thread and job with local-agent metadata", async () => {
     const { result, lines } = await captureLogs(() =>
       handleJsonCliCommand(
         parseArgs(["json"]),
@@ -125,15 +126,11 @@ describe("JSON CLI interface", () => {
             name: "esperta-base",
             cwd: "~/src/sa",
           },
-          action: "submit",
+          action: "thread.start",
           input: {
             project: "repo-a",
             job_type: "implement",
-            title: "Implement queue runner",
-            goal: "Build the queue runner",
-            prompt_payload: {
-              prompt: "Build the queue runner",
-            },
+            instruction: "Build the queue runner",
           },
         })
       )
@@ -145,9 +142,12 @@ describe("JSON CLI interface", () => {
       result: {
         thread: {
           id: string;
+          summary: string;
         };
         job: {
           id: string;
+          summary: string;
+          instruction: string;
           requested_by: {
             type: string;
             id: string;
@@ -159,6 +159,9 @@ describe("JSON CLI interface", () => {
       };
     }>(lines);
     expect(response.ok).toBe(true);
+    expect(response.result.thread.summary).toBe("Build the queue runner");
+    expect(response.result.job.summary).toBe("Build the queue runner");
+    expect(response.result.job.instruction).toBe("Build the queue runner");
     expect(response.result.job.requested_by.type).toBe("local_agent");
     expect(response.result.job.requested_by.id).toBe("esperta-base");
     expect(response.result.job.requested_by.client.cwd).toBe("~/src/sa");
@@ -169,18 +172,17 @@ describe("JSON CLI interface", () => {
     db.close();
   });
 
-  test("continue appends a job to an existing thread", async () => {
+  test("thread.continue appends a job to an existing thread", async () => {
     const submit = await captureLogs(() =>
       handleJsonCliCommand(
         parseArgs(["json"]),
         CONFIG_PATH,
         JSON.stringify({
           version: "v1",
-          action: "submit",
+          action: "thread.start",
           input: {
             project: "repo-a",
-            title: "Implement queue runner",
-            goal: "Build the queue runner",
+            instruction: "Build the queue runner",
           },
         })
       )
@@ -199,11 +201,11 @@ describe("JSON CLI interface", () => {
         CONFIG_PATH,
         JSON.stringify({
           version: "v1",
-          action: "continue",
+          action: "thread.continue",
           input: {
             thread_id: submitResponse.result.thread.id,
-            title: "Address review feedback",
-            goal: "Add the requested tests",
+            summary: "Address review feedback",
+            instruction: "Add the requested tests",
           },
         })
       )
@@ -215,12 +217,16 @@ describe("JSON CLI interface", () => {
       result: {
         job: {
           thread_id: string;
+          summary: string;
+          instruction: string;
           job_type: string;
         };
       };
     }>(lines);
     expect(response.ok).toBe(true);
     expect(response.result.job.thread_id).toBe(submitResponse.result.thread.id);
+    expect(response.result.job.summary).toBe("Address review feedback");
+    expect(response.result.job.instruction).toBe("Add the requested tests");
     expect(response.result.job.job_type).toBe("continue");
 
     const db = openDb();
@@ -235,11 +241,10 @@ describe("JSON CLI interface", () => {
         CONFIG_PATH,
         JSON.stringify({
           version: "v1",
-          action: "submit",
+          action: "thread.start",
           input: {
             project: "repo-a",
-            title: "Implement queue runner",
-            goal: "Build the queue runner",
+            instruction: "Build the queue runner",
           },
         })
       )
@@ -297,16 +302,20 @@ describe("JSON CLI interface", () => {
       result: {
         thread: {
           id: string;
+          summary: string;
         };
-        jobs: Array<{ id: string }>;
+        jobs: Array<{ id: string; summary: string; instruction: string }>;
         events: Array<{ id: string; event_type: string }>;
         links: Array<{ id: string; label: string }>;
       };
     }>(lines);
     expect(response.ok).toBe(true);
     expect(response.result.thread.id).toBe(submitResponse.result.thread.id);
+    expect(response.result.thread.summary).toBe("Build the queue runner");
     expect(response.result.jobs).toHaveLength(1);
     expect(response.result.jobs[0]?.id).toBe(submitResponse.result.job.id);
+    expect(response.result.jobs[0]?.summary).toBe("Build the queue runner");
+    expect(response.result.jobs[0]?.instruction).toBe("Build the queue runner");
     expect(response.result.events[0]?.event_type).toBe("ci_failed");
     expect(response.result.links[0]?.label).toBe("pull_request");
   });

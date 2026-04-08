@@ -46,27 +46,36 @@ describe("CLI parseArgs", () => {
     expect(cmd.subcommand).toBe("list");
   });
 
-  test("parses 'submit' command with flags", () => {
+  test("parses 'thread start' command with flags", () => {
     const cmd = parseArgs([
-      "submit",
+      "thread",
+      "start",
       "--project",
       "repo-a",
-      "--title",
-      "Implement queue runner",
-      "--goal",
+      "--summary",
+      "Queue runner",
+      "--instruction",
       "Build it",
     ]);
-    expect(cmd.command).toBe("submit");
+    expect(cmd.command).toBe("thread");
+    expect(cmd.subcommand).toBe("start");
     expect(cmd.flags.project).toBe("repo-a");
-    expect(cmd.flags.title).toBe("Implement queue runner");
-    expect(cmd.flags.goal).toBe("Build it");
+    expect(cmd.flags.summary).toBe("Queue runner");
+    expect(cmd.flags.instruction).toBe("Build it");
   });
 
-  test("parses 'continue <thread-id>' command", () => {
-    const cmd = parseArgs(["continue", "thread-123", "--title", "Follow up"]);
-    expect(cmd.command).toBe("continue");
-    expect(cmd.subcommand).toBe("thread-123");
-    expect(cmd.flags.title).toBe("Follow up");
+  test("parses 'thread continue <thread-id>' command", () => {
+    const cmd = parseArgs([
+      "thread",
+      "continue",
+      "thread-123",
+      "--instruction",
+      "Follow up",
+    ]);
+    expect(cmd.command).toBe("thread");
+    expect(cmd.subcommand).toBe("continue");
+    expect(cmd.args).toEqual(["thread-123"]);
+    expect(cmd.flags.instruction).toBe("Follow up");
   });
 
   test("parses 'json' command", () => {

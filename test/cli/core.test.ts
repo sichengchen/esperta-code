@@ -47,16 +47,15 @@ describe("core CLI commands", () => {
     if (existsSync(TEST_ROOT)) rmSync(TEST_ROOT, { recursive: true });
   });
 
-  test("submit creates a thread with an initial job", async () => {
+  test("thread start creates a thread with an initial job and derives a summary", async () => {
     const { result, lines } = await captureLogs(() =>
       handleCoreCliCommand(
         parseArgs([
-          "submit",
+          "thread",
+          "start",
           "--project",
           "repo-a",
-          "--title",
-          "Implement queue runner",
-          "--goal",
+          "--instruction",
           "Build the queue runner",
         ]),
         CONFIG_PATH
@@ -68,19 +67,22 @@ describe("core CLI commands", () => {
 
     const db = openDb();
     expect(db.listThreads()).toHaveLength(1);
-    expect(db.listJobs()).toHaveLength(1);
+    const thread = db.listThreads()[0]!;
+    const job = db.listJobs()[0]!;
+    expect(thread.title).toBe("Build the queue runner");
+    expect(job.title).toBe("Build the queue runner");
+    expect(job.goal).toBe("Build the queue runner");
     db.close();
   });
 
-  test("continue appends a job to an existing thread", async () => {
+  test("thread continue appends a job to an existing thread", async () => {
     await handleCoreCliCommand(
       parseArgs([
-        "submit",
+        "thread",
+        "start",
         "--project",
         "repo-a",
-        "--title",
-        "Implement queue runner",
-        "--goal",
+        "--instruction",
         "Build the queue runner",
       ]),
       CONFIG_PATH
@@ -93,11 +95,12 @@ describe("core CLI commands", () => {
     const { result, lines } = await captureLogs(() =>
       handleCoreCliCommand(
         parseArgs([
+          "thread",
           "continue",
           thread.id,
-          "--title",
+          "--summary",
           "Address review feedback",
-          "--goal",
+          "--instruction",
           "Add the requested tests",
         ]),
         CONFIG_PATH
@@ -108,19 +111,21 @@ describe("core CLI commands", () => {
     expect(lines[0]).toContain("Queued job");
 
     const reopened = openDb();
-    expect(reopened.listJobsForThread(thread.id)).toHaveLength(2);
+    const jobs = reopened.listJobsForThread(thread.id);
+    expect(jobs).toHaveLength(2);
+    expect(jobs[1]?.title).toBe("Address review feedback");
+    expect(jobs[1]?.goal).toBe("Add the requested tests");
     reopened.close();
   });
 
   test("job retry moves a failed job back to retry_queued", async () => {
     await handleCoreCliCommand(
       parseArgs([
-        "submit",
+        "thread",
+        "start",
         "--project",
         "repo-a",
-        "--title",
-        "Implement queue runner",
-        "--goal",
+        "--instruction",
         "Build the queue runner",
       ]),
       CONFIG_PATH

@@ -27,9 +27,9 @@ Commands:
   stop                     Stop the daemon
   status                   Show daemon status
   json                     Process one JSON request from stdin
-  submit                   Create a thread with an initial job
-  continue <thread-id>     Append a job to an existing thread
-  thread create            Create a new thread
+  thread start             Create a thread and initial job
+  thread continue          Append a job to an existing thread
+  thread create            Create a thread without relying on derived defaults
   thread list              List threads
   thread show <thread-id>  Show thread details
   job list                 List jobs

@@ -9,6 +9,18 @@ export function projectIdFromName(name: string): string {
   return `project:${sanitizeIdentifier(name)}`;
 }
 
+export function deriveSummaryFromInstruction(instruction: string): string {
+  const normalized = instruction.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 80) {
+    return normalized;
+  }
+
+  const prefix = normalized.slice(0, 77);
+  const lastSpace = prefix.lastIndexOf(" ");
+  const clipped = lastSpace >= 32 ? prefix.slice(0, lastSpace) : prefix;
+  return `${clipped.trim()}...`;
+}
+
 export function loadConfigOrThrow(configPath: string): FelizConfig {
   if (!existsSync(configPath)) {
     throw new Error(`Config file not found: ${configPath}`);

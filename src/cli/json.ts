@@ -1,9 +1,16 @@
-import type { Job, Thread, WorktreeRecord } from "../core/types.ts";
+import type {
+  CoreProject,
+  Job,
+  RunRecord,
+  Thread,
+  WorktreeRecord,
+} from "../core/types.ts";
 import { ThreadService } from "../core/service.ts";
 import type { Database } from "../db/database.ts";
 import type { CliCommand } from "./commands.ts";
 import {
   buildDefaultJobTypes,
+  deriveSummaryFromInstruction,
   findProjectConfig,
   findProjectConfigById,
   openCoreDb,
@@ -15,8 +22,8 @@ const JSON_CLI_VERSION = "v1";
 const JSON_ACTIONS = [
   "capabilities",
   "project.list",
-  "submit",
-  "continue",
+  "thread.start",
+  "thread.continue",
   "thread.list",
   "thread.get",
   "job.list",
@@ -26,8 +33,14 @@ const JSON_ACTIONS = [
   "job.approve",
   "worktree.list",
   "worktree.get",
-  "event.attach",
+  "thread.event.attach",
 ] as const;
+
+const JSON_ACTION_ALIASES: Record<string, string> = {
+  submit: "thread.start",
+  continue: "thread.continue",
+  "event.attach": "thread.event.attach",
+};
 
 type JsonAction = (typeof JSON_ACTIONS)[number];
 
@@ -239,6 +252,120 @@ function normalizeRequestedBy(
   };
 }
 
+function normalizeAction(action: string): string {
+  return JSON_ACTION_ALIASES[action] ?? action;
+}
+
+function requireInstruction(input: Record<string, unknown>): string {
+  return requireString(input, "instruction", ["goal"]);
+}
+
+function resolveSummary(
+  input: Record<string, unknown>,
+  instruction: string
+): string {
+  return (
+    optionalString(input, "summary", ["title"]) ??
+    deriveSummaryFromInstruction(instruction)
+  );
+}
+
+function serializeProject(project: CoreProject | null): Record<string, unknown> | null {
+  if (!project) {
+    return null;
+  }
+
+  return {
+    id: project.id,
+    name: project.name,
+    repo_url: project.repo_url,
+    base_branch: project.default_branch,
+    runtime_config: project.runtime_config,
+    concurrency: project.concurrency,
+    worktree_policy: project.worktree_policy,
+    job_types: project.job_types,
+    created_at: project.created_at,
+    updated_at: project.updated_at,
+  };
+}
+
+function serializeThread(thread: Thread | null): Record<string, unknown> | null {
+  if (!thread) {
+    return null;
+  }
+
+  return {
+    id: thread.id,
+    project_id: thread.project_id,
+    summary: thread.title,
+    base_branch: thread.base_branch,
+    branch_name: thread.branch_name,
+    pr_url: thread.current_pr_url,
+    status: thread.status,
+    metadata: thread.metadata,
+    created_at: thread.created_at,
+    updated_at: thread.updated_at,
+    archived_at: thread.archived_at,
+  };
+}
+
+function serializeJob(job: Job | null): Record<string, unknown> | null {
+  if (!job) {
+    return null;
+  }
+
+  return {
+    id: job.id,
+    thread_id: job.thread_id,
+    job_type: job.job_type,
+    agent: job.agent_adapter,
+    summary: job.title,
+    instruction: job.goal,
+    prompt: typeof job.prompt_payload.prompt === "string" ? job.prompt_payload.prompt : null,
+    prompt_input: job.prompt_payload,
+    approval_policy: job.approval_policy,
+    publish_policy: job.publish_policy,
+    verification_commands: job.verification_commands,
+    priority: job.priority,
+    requested_by: job.requested_by,
+    write_mode: job.write_mode,
+    status: job.status,
+    timeout_ms: job.timeout_ms,
+    retry_limit: job.retry_limit,
+    metadata: job.metadata,
+    created_at: job.created_at,
+    updated_at: job.updated_at,
+    started_at: job.started_at,
+    finished_at: job.finished_at,
+  };
+}
+
+function serializeRun(run: RunRecord | null): Record<string, unknown> | null {
+  if (!run) {
+    return null;
+  }
+
+  return {
+    id: run.id,
+    job_id: run.job_id,
+    thread_id: run.thread_id,
+    project_id: run.project_id,
+    worktree_id: run.worktree_id,
+    agent: run.agent_adapter,
+    attempt: run.attempt,
+    status: run.status,
+    summary: run.summary,
+    failure_reason: run.failure_reason,
+    verification_status: run.verification_status,
+    branch_name: run.branch_name,
+    base_branch: run.base_branch,
+    pr_url: run.pr_url,
+    created_at: run.created_at,
+    started_at: run.started_at,
+    finished_at: run.finished_at,
+  };
+}
+
 function serializeForJson(value: unknown): unknown {
   if (value instanceof Date) {
     return value.toISOString();
@@ -266,7 +393,7 @@ function responseEnvelope(
   return {
     version: JSON_CLI_VERSION,
     ...(request.id ? { id: request.id } : {}),
-    action: request.action ?? "unknown",
+    action: normalizeAction(request.action ?? "unknown"),
     ok: true,
     result: serializeForJson(result),
   };
@@ -331,7 +458,7 @@ function projectSummary(configPathResult: ReturnType<typeof openCoreDb>["config"
     id: projectIdFromName(project.name),
     name: project.name,
     repo_url: project.repo,
-    default_branch: project.base_branch ?? project.branch,
+    base_branch: project.base_branch ?? project.branch,
     concurrency: project.concurrency ?? {},
     worktree_policy: project.worktrees ?? {},
     job_types: Object.keys(buildDefaultJobTypes(project, configPathResult)),
@@ -346,7 +473,7 @@ function resolveProjectInput(
   const projectId = optionalString(input, "project_id");
 
   if (!projectName && !projectId) {
-    invalidRequest("submit requires project or project_id");
+    invalidRequest("thread.start requires project or project_id");
   }
 
   if (projectName && projectId && projectIdFromName(projectName) !== projectId) {
@@ -369,7 +496,7 @@ function resolveProjectInput(
 
 function buildPromptPayload(
   input: Record<string, unknown>,
-  fallbackGoal: string
+  instruction: string
 ): Record<string, unknown> {
   const promptPayload = optionalRecord(input, "prompt_payload");
   if (promptPayload) {
@@ -378,7 +505,7 @@ function buildPromptPayload(
 
   const prompt = optionalString(input, "prompt");
   return {
-    prompt: prompt ?? fallbackGoal,
+    prompt: prompt ?? instruction,
   };
 }
 
@@ -390,11 +517,11 @@ function buildThreadSnapshot(db: Database, threadId: string) {
   const latestRun = latestJob ? db.getLatestRunRecordForJob(latestJob.id) : null;
 
   return {
-    thread,
-    project,
-    jobs,
-    latest_job: latestJob,
-    latest_run: latestRun,
+    thread: serializeThread(thread),
+    project: serializeProject(project),
+    jobs: jobs.map((job) => serializeJob(job)),
+    latest_job: serializeJob(latestJob),
+    latest_run: serializeRun(latestRun),
     worktrees: db.listWorktrees(threadId),
     artifacts: db.listArtifactsForThread(threadId),
     approvals: db.listApprovalsForThread(threadId),
@@ -410,9 +537,10 @@ async function dispatchJsonRequest(
   const { config, db } = openCoreDb(configPath);
   const threadService = new ThreadService(db);
   const input = request.input ?? {};
+  const action = normalizeAction(request.action);
 
   try {
-    switch (request.action) {
+    switch (action) {
       case "capabilities":
         return {
           name: PRODUCT_NAME,
@@ -425,20 +553,20 @@ async function dispatchJsonRequest(
         return {
           projects: projectSummary(config),
         };
-      case "submit": {
+      case "thread.start": {
         const { projectId, projectName } = resolveProjectInput(config, input);
-        const title = requireString(input, "title");
-        const goal = requireString(input, "goal");
+        const instruction = requireInstruction(input);
+        const summary = resolveSummary(input, instruction);
         const created = threadService.createThread({
           project_id: projectId,
-          title,
+          title: summary,
           requested_by: normalizeRequestedBy(request, input),
           metadata: optionalRecord(input, "thread_metadata") ?? {},
           initial_job: {
             job_type: optionalString(input, "job_type") ?? "implement",
-            title,
-            goal,
-            prompt_payload: buildPromptPayload(input, goal),
+            title: summary,
+            goal: instruction,
+            prompt_payload: buildPromptPayload(input, instruction),
             agent_adapter: optionalString(input, "agent_adapter"),
             approval_policy: optionalString(input, "approval_policy"),
             publish_policy: optionalString(input, "publish_policy"),
@@ -457,20 +585,20 @@ async function dispatchJsonRequest(
             id: projectId,
             name: projectName,
           },
-          thread: created.thread,
-          job: created.job,
+          thread: serializeThread(created.thread),
+          job: serializeJob(created.job),
         };
       }
-      case "continue": {
+      case "thread.continue": {
         const threadId = requireString(input, "thread_id");
         ensureThread(db, threadId);
-        const title = requireString(input, "title");
-        const goal = requireString(input, "goal");
+        const instruction = requireInstruction(input);
+        const summary = resolveSummary(input, instruction);
         const job = threadService.continueThread(threadId, {
           job_type: optionalString(input, "job_type") ?? "continue",
-          title,
-          goal,
-          prompt_payload: buildPromptPayload(input, goal),
+          title: summary,
+          goal: instruction,
+          prompt_payload: buildPromptPayload(input, instruction),
           requested_by: normalizeRequestedBy(request, input),
           agent_adapter: optionalString(input, "agent_adapter"),
           approval_policy: optionalString(input, "approval_policy"),
@@ -485,8 +613,8 @@ async function dispatchJsonRequest(
         });
 
         return {
-          thread: ensureThread(db, threadId),
-          job,
+          thread: serializeThread(ensureThread(db, threadId)),
+          job: serializeJob(job),
         };
       }
       case "thread.list": {
@@ -504,7 +632,7 @@ async function dispatchJsonRequest(
         }
 
         return {
-          threads,
+          threads: threads.map((thread) => serializeThread(thread)),
         };
       }
       case "thread.get": {
@@ -517,7 +645,9 @@ async function dispatchJsonRequest(
           ensureThread(db, threadId);
         }
         return {
-          jobs: threadId ? db.listJobsForThread(threadId) : db.listJobs(),
+          jobs: (threadId ? db.listJobsForThread(threadId) : db.listJobs()).map((job) =>
+            serializeJob(job)
+          ),
         };
       }
       case "job.get": {
@@ -525,9 +655,9 @@ async function dispatchJsonRequest(
         const job = ensureJob(db, jobId);
         const latestRun = db.getLatestRunRecordForJob(job.id);
         return {
-          job,
-          thread: ensureThread(db, job.thread_id),
-          latest_run: latestRun,
+          job: serializeJob(job),
+          thread: serializeThread(ensureThread(db, job.thread_id)),
+          latest_run: serializeRun(latestRun),
           worktree:
             latestRun?.worktree_id ? db.getWorktreeRecord(latestRun.worktree_id) : null,
           artifacts: db.listArtifactsForJob(job.id),
@@ -545,8 +675,8 @@ async function dispatchJsonRequest(
         db.updateJob(job.id, { status: "retry_queued" });
         db.updateThreadStatus(job.thread_id, "active");
         return {
-          job: ensureJob(db, jobId),
-          thread: ensureThread(db, job.thread_id),
+          job: serializeJob(ensureJob(db, jobId)),
+          thread: serializeThread(ensureThread(db, job.thread_id)),
         };
       }
       case "job.cancel": {
@@ -555,8 +685,8 @@ async function dispatchJsonRequest(
         db.updateJob(job.id, { status: "cancelled" });
         db.updateThreadStatus(job.thread_id, "blocked");
         return {
-          job: ensureJob(db, jobId),
-          thread: ensureThread(db, job.thread_id),
+          job: serializeJob(ensureJob(db, jobId)),
+          thread: serializeThread(ensureThread(db, job.thread_id)),
         };
       }
       case "job.approve": {
@@ -566,8 +696,8 @@ async function dispatchJsonRequest(
           status: job.status === "waiting_approval" ? "queued" : job.status,
         });
         return {
-          job: ensureJob(db, jobId),
-          thread: ensureThread(db, job.thread_id),
+          job: serializeJob(ensureJob(db, jobId)),
+          thread: serializeThread(ensureThread(db, job.thread_id)),
         };
       }
       case "worktree.list": {
@@ -585,12 +715,14 @@ async function dispatchJsonRequest(
         const latestJob = getLatestJobForThread(db, worktree.thread_id);
         return {
           worktree,
-          thread: ensureThread(db, worktree.thread_id),
-          latest_job: latestJob,
-          latest_run: latestJob ? db.getLatestRunRecordForJob(latestJob.id) : null,
+          thread: serializeThread(ensureThread(db, worktree.thread_id)),
+          latest_job: serializeJob(latestJob),
+          latest_run: serializeRun(
+            latestJob ? db.getLatestRunRecordForJob(latestJob.id) : null
+          ),
         };
       }
-      case "event.attach": {
+      case "thread.event.attach": {
         const threadId = requireString(input, "thread_id");
         const event = threadService.attachExternalEvent(threadId, {
           source_kind: requireString(input, "source_kind", ["source"]),
@@ -604,12 +736,12 @@ async function dispatchJsonRequest(
             })(),
         });
         return {
-          thread: ensureThread(db, threadId),
+          thread: serializeThread(ensureThread(db, threadId)),
           event,
         };
       }
       default:
-        unknownAction(request.action);
+        unknownAction(action);
     }
   } finally {
     db.close();
