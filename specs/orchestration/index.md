@@ -1,99 +1,105 @@
 # Orchestration
 
-## Scheduling model
+The orchestrator is responsible for selecting runnable threads, creating worktrees when needed, invoking the pipeline executor, and maintaining `thread.status`.
 
-Esperta Code schedules jobs, not pipeline phases.
+## Thread Lifecycle
 
-Rules:
+```
+pending -> running -> completed
+        -> running -> failed
+        -> running -> running_dirty -> pending
+pending/running/* -> stopped
+```
 
-- one active write job per thread
-- multiple threads may run in parallel
-- per-project and global concurrency limits apply
-- read-only jobs may run without taking the thread write lease
+### Status Semantics
 
-## State machines
+| Status | Meaning |
+|---|---|
+| `pending` | Thread is ready to be dispatched |
+| `running` | Agent pipeline is currently executing |
+| `running_dirty` | New jobs arrived while execution was in flight |
+| `completed` | Latest execution completed with no queued follow-up |
+| `failed` | Latest execution failed and no concurrent follow-up re-queue was needed |
+| `stopped` | Execution was interrupted by external control |
 
-### Thread states
+`running_dirty` is the only special transitional status. It means the thread already has fresh work queued while the current execution is still draining.
 
-- `open`
-- `active`
-- `waiting_input`
-- `blocked`
-- `idle`
-- `archived`
+## Entry Point
 
-### Job states
+Linear webhook handling is the only entry point for new work.
 
-- `queued`
-- `preparing`
-- `running`
-- `waiting_approval`
-- `retry_queued`
-- `succeeded`
-- `failed`
-- `cancelled`
+1. Find the matching project from the Linear project name.
+2. Create or resume the thread for the Linear issue.
+3. Append a new human job if the event carries comment guidance.
+4. Mark the thread `pending`, unless it is already `running`, in which case mark it `running_dirty`.
 
-### Run states
+## Dispatch Rules
 
-- `created`
-- `running`
-- `succeeded`
-- `failed`
-- `timed_out`
-- `cancelled`
+Dispatch occurs on the periodic server tick.
 
-### Worktree states
+A thread is eligible when all of the following are true:
 
-- `provisioning`
-- `active`
-- `retained`
-- `deleting`
-- `deleted`
-- `orphaned`
+- `thread.status === "pending"`
+- global running thread count is below `agent.max_concurrent`
+- per-issue-state concurrency limit is not exceeded, if configured
+- all blocker issues known to Feliz are already in terminal thread states
 
-## Execution envelope
+Selection order is:
 
-Every job executes inside the same outer envelope:
+1. `priority ASC`
+2. `created_at ASC`
 
-1. Resolve thread state and branch.
-2. Create a run record.
-3. Create a fresh isolated worktree.
-4. Invoke exactly one agent in that worktree.
-5. Capture logs, summary, changed files, and other artifacts.
-6. Run verification commands for the job type.
-7. Optionally publish branch or PR metadata.
-8. Update run, job, thread, and worktree state.
-9. Retain or delete the worktree according to policy.
+## Execution Semantics
 
-## Continuation model
+When a thread is selected:
 
-Continuation happens by appending a new job to the same thread.
+1. Create the worktree if it does not already exist.
+2. Persist the worktree path and branch name on the thread.
+3. Run `hooks.after_create` once when the worktree is first created.
+4. Mark the thread `running`.
+5. Execute `.feliz/pipeline.yml` against the thread worktree.
 
-Examples:
+The executor works on the whole thread, not on per-step persisted sub-records.
 
-- follow-up user instructions
-- retry after failure
-- continue after CI failure
-- continue after review feedback
-- publish after implementation
+## Review and Failure Feedback
 
-“Review then fix” is two jobs on one thread, not one job with internal phases.
+The simplified model does not create separate review or failure channels.
 
-## Approvals
+- If a review step fails and the reviewer produced actionable text, append that text as an agent job.
+- If the overall pipeline fails, append a concise failure summary as an agent job.
 
-Approvals are explicit durable records. When a job needs approval:
+This keeps all actionable follow-up inside the same thread job stream.
 
-- the job moves to `waiting_approval`
-- an approval record is created
-- execution resumes only after approval is resolved
+## Completion Rules
 
-## External events
+On successful execution:
 
-External events attach to threads and can drive follow-up jobs.
+- if the thread is still `running`, mark it `completed`
+- if the thread became `running_dirty`, mark it back to `pending`
 
-Examples:
+On failed execution:
 
-- CI failed
-- PR review requested changes
-- merge conflict detected
-- new webhook instruction
+- if the thread is still `running`, mark it `failed`
+- if the thread became `running_dirty`, mark it back to `pending`
+
+This allows follow-up work to win over a terminal failure state when new jobs arrived during execution.
+
+## Stop Handling
+
+When a stop signal is received:
+
+1. If the thread is active, ask the adapter to cancel by `thread.id`.
+2. Mark the thread `stopped`.
+3. Append a `thread.stopped` history entry.
+
+## History
+
+The orchestrator records operational events such as:
+
+- `thread.started`
+- `thread.completed`
+- `thread.requeued`
+- `thread.failed`
+- `thread.stopped`
+
+History supports audit and debugging, while jobs remain the clean thread-facing work record.

@@ -1,58 +1,41 @@
 # Workspace Management
 
-Worktree management is a first-class subsystem.
+## Repo Lifecycle
 
-## Per-project layout
+On project registration, Feliz:
 
-Each project maintains:
+1. Clones the repo to `{workspace_root}/{project_name}/repo`
+2. Tracks the configured base branch
+3. Reuses that clone as the source for thread worktrees
 
-- one canonical local clone
-- a worktree root
-- branch leases enforced at the thread/job level
+## Thread Worktree Lifecycle
 
-Suggested layout:
+Each thread owns one worktree in the normal case.
+
+1. On first dispatch, Feliz creates a worktree for the thread.
+2. The worktree path and branch name are stored on the thread.
+3. The same worktree is reused across follow-up jobs on that thread.
+4. Agent steps execute only inside that worktree.
+
+Example shape:
 
 ```text
-~/.feliz/
-  repos/<project>/
-  workspaces/<project>/worktrees/<thread-id>/<run-id>/
-  artifacts/<thread-id>/<run-id>/
+{workspace_root}/{project_name}/worktrees/{linear_identifier}
 ```
 
-The current implementation stores canonical repos and worktrees under the configured workspace root and records the absolute worktree path in SQLite.
+Default branch name:
 
-## Per-run lifecycle
+```text
+feliz/{linear_identifier}
+```
 
-For each run:
+## Hooks
 
-1. resolve the thread branch or base branch
-2. create a fresh worktree
-3. execute the job inside that worktree
-4. capture metadata and last activity time
-5. retain or delete the worktree after completion
+- `hooks.after_create` runs once when the thread worktree is first created.
+- `hooks.before_run` and `hooks.after_run` run around each pipeline step.
 
-## Retention policies
+## Safety Rules
 
-Supported policies:
-
-- delete immediately on success
-- retain briefly on success for inspection
-- retain longer on failure
-- pin retained worktrees manually
-- prune retained worktrees by age
-
-## Administrative commands
-
-- `esperta-code worktree list`
-- `esperta-code worktree inspect <id>`
-- `esperta-code worktree prune`
-
-## Garbage collection responsibilities
-
-Garbage collection must handle:
-
-- expired retained worktrees
-- orphaned worktrees after crash
-- stale branch leases
-- archived threads
-- merged or deleted branches
+- Thread identifiers are sanitized before becoming filesystem paths.
+- Resolved worktree paths must remain under `workspace_root`.
+- Concurrent threads do not share a mutable worktree.
