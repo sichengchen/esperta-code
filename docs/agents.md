@@ -2,6 +2,8 @@
 
 Esperta Code runs exactly one agent per job. Agent adapters live under `src/agents/` and translate the platform’s execution contract into concrete CLI invocations.
 
+Local agent clients are a separate concern. Tools such as Esperta Base can interact with Esperta Code through `esperta-code json`, which lives in the CLI layer rather than the adapter layer.
+
 ## Supported Adapters
 
 ### Codex
@@ -70,3 +72,13 @@ For adapters that support sandbox selection, Esperta Code maps approval policy t
 2. Implement the `AgentAdapter` interface.
 3. Register the adapter where adapters are assembled, currently in `src/server.ts`.
 4. Reference the adapter name from `job_types` or repo-local workflow assets.
+
+## Local Agent Clients
+
+Use the JSON CLI when a local tool needs to drive Esperta Code as a platform:
+
+```bash
+echo '{"version":"v1","action":"capabilities"}' | esperta-code json
+```
+
+That interface is documented in [Local Agents](local-agents.md). It supports thread creation, continuation, inspection, job control, worktree inspection, and external-event attachment.

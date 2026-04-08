@@ -33,7 +33,7 @@ Esperta Code is a self-hosted remote coding job runner. It accepts coding jobs f
 | `src/connectors/` | External-system integrations |
 | `src/connectors/linear/` | Linear client, webhook mapping, and command parsing |
 | `src/agents/` | Agent adapters such as Codex and Claude Code |
-| `src/cli/` | Operator-facing commands |
+| `src/cli/` | Human and machine-facing CLI commands |
 | `src/context/` | Context assembly and scratchpad handling |
 | `src/orchestrator/` | Scheduling, retry logic, decomposition, spec drafting |
 | `src/pipeline/` | Repo-local workflow execution helpers |
@@ -86,12 +86,19 @@ esperta-code continue <thread-id> --title "Address review feedback" --goal "Appl
 esperta-code worktree list
 ```
 
+Local agent clients can also use a JSON request/response interface over stdin/stdout:
+
+```bash
+echo '{"version":"v1","action":"capabilities"}' | esperta-code json
+```
+
 ## Docs
 
 - [Getting Started](docs/getting-started.md)
 - [Configuration](docs/configuration.md)
 - [Usage](docs/usage.md)
 - [CLI Reference](docs/cli.md)
+- [Local Agents](docs/local-agents.md)
 - [Agents](docs/agents.md)
 - [Repo Workflow Assets](docs/pipelines.md)
 

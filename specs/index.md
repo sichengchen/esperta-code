@@ -25,9 +25,7 @@ Linear remains supported, but as a connector layered on top of the core thread/j
 | [Workspace Management](workspace/index.md) | Canonical repos, isolated worktrees, retention, pruning, branch leases |
 | [Agent Dispatch](agents/index.md) | Single-agent execution model and adapter contract |
 | [Linear Connector](linear/index.md) | Linear as a source and sink mapped onto threads, jobs, and events |
-| [CLI](cli/index.md) | Thread/job/worktree oriented CLI |
+| [CLI](cli/index.md) | Thread/job/worktree oriented CLI, including the local-agent JSON interface |
 | [Security](security/index.md) | Secrets, isolation, permissions, auditability |
 | [Testing](testing/index.md) | Validation strategy |
 | [Roadmap](roadmap/index.md) | Delivery sequencing |
-
-Legacy documents that describe the old Linear-first pipeline architecture are retained only as transition references and are not the source of truth for the new core model.

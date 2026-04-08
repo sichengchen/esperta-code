@@ -12,6 +12,8 @@
 ## Core Workflow
 
 ```bash
+esperta-code json
+
 esperta-code submit --project <name> --title <title> --goal <goal>
 esperta-code continue <thread-id> --title <title> --goal <goal>
 
@@ -32,6 +34,59 @@ esperta-code worktree prune
 
 esperta-code event attach <thread-id> --type <type> --source <kind> --source-id <id>
 ```
+
+## JSON Interface
+
+`esperta-code json` processes one request from stdin and prints one JSON response to stdout. This is the machine-facing interface for local agent clients.
+
+Request shape:
+
+```json
+{
+  "version": "v1",
+  "id": "req-123",
+  "client": {
+    "name": "esperta-base",
+    "cwd": "~/src/sa"
+  },
+  "action": "submit",
+  "input": {}
+}
+```
+
+Response shape:
+
+```json
+{
+  "version": "v1",
+  "id": "req-123",
+  "action": "submit",
+  "ok": true,
+  "result": {}
+}
+```
+
+Supported actions:
+
+| Action | Purpose |
+|---|---|
+| `capabilities` | Discover supported actions |
+| `project.list` | List configured projects |
+| `submit` | Create a thread and first job |
+| `continue` | Append a job to an existing thread |
+| `thread.list`, `thread.get` | Inspect threads |
+| `job.list`, `job.get` | Inspect jobs |
+| `job.retry`, `job.cancel`, `job.approve` | Control job lifecycle |
+| `worktree.list`, `worktree.get` | Inspect worktrees |
+| `event.attach` | Attach an external event |
+
+Example:
+
+```bash
+echo '{"version":"v1","action":"capabilities"}' | esperta-code json
+```
+
+See [Local Agents](local-agents.md) for the full contract and examples.
 
 ## Setup and Operations
 
@@ -61,7 +116,7 @@ esperta-code agent list
 
 ## Context Helpers
 
-These commands are primarily for operators and for agents running inside the execution environment.
+These commands are primarily for operators and for agents running inside an execution worktree.
 
 ```bash
 esperta-code context history <project>
