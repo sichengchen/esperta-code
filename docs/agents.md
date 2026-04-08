@@ -18,6 +18,12 @@ codex exec --json -s <sandbox> "<prompt>"
 claude --dangerously-skip-permissions --output-format json --max-turns <N> --print -p "<prompt>"
 ```
 
+### OpenCode
+
+```bash
+opencode run --format json --agent <build|plan> "<prompt>"
+```
+
 ## Availability
 
 ```bash
@@ -58,13 +64,15 @@ interface AgentAdapter {
 
 ## Sandbox Mapping
 
-For adapters that support sandbox selection, Esperta Code maps approval policy to the appropriate mode.
+For adapters that support sandbox or permission selection, Esperta Code maps approval policy to the appropriate mode.
 
 | Policy | Typical Sandbox |
 |---|---|
 | `auto` | full write access |
 | `suggest` | workspace-write |
 | `gated` | read-only |
+
+For OpenCode specifically, Esperta Code uses the documented `build`/`plan` agents and passes permissions through `OPENCODE_CONFIG_CONTENT`.
 
 ## Adding a New Adapter
 

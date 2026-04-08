@@ -32,7 +32,7 @@ Verify the required tools before writing config:
 - `bun --version`
 - `git --version`
 - `gh auth status` or confirm `GITHUB_TOKEN`
-- one agent CLI: `codex --version` or `claude --version`
+- one agent CLI: `codex --version`, `claude --version`, or `opencode --version`
 
 If the user wants the Linear connector, also prepare:
 

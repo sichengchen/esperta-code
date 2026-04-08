@@ -8,7 +8,7 @@ This guide assumes you are running Esperta Code from a local checkout of the rep
 - Git
 - A Linear OAuth app with `actor=app`
 - A GitHub token with `repo` scope, or authenticated `gh`
-- At least one coding agent CLI: `codex` or `claude`
+- At least one coding agent CLI: `codex`, `claude`, or `opencode`
 
 ## Install
 
