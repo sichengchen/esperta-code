@@ -1,14 +1,8 @@
 # Agents
 
-Esperta Code dispatches coding agents through a pluggable adapter interface.
+Esperta Code runs exactly one agent per job. Agent adapters live under `src/agents/` and translate the platform’s execution contract into concrete CLI invocations.
 
-## Supported agents
-
-### Claude Code
-
-```bash
-claude --dangerously-skip-permissions --output-format json --max-turns <N> --print -p "<prompt>"
-```
+## Supported Adapters
 
 ### Codex
 
@@ -16,41 +10,28 @@ claude --dangerously-skip-permissions --output-format json --max-turns <N> --pri
 codex exec --json -s <sandbox> "<prompt>"
 ```
 
-Sandbox mode maps from `approval_policy`:
+### Claude Code
 
-| Policy | Sandbox |
-|---|---|
-| `auto` | `danger-full-access` |
-| `suggest` | `workspace-write` |
-| `gated` | `read-only` |
+```bash
+claude --dangerously-skip-permissions --output-format json --max-turns <N> --print -p "<prompt>"
+```
 
-## Check availability
+## Availability
 
 ```bash
 esperta-code agent list
 ```
 
-Reports whether each agent CLI is installed and runnable.
+This checks whether each adapter’s CLI is installed and runnable.
 
-## Per-step agent selection
+## Where Agents Are Selected
 
-Override the default agent on any pipeline step:
+Agents are chosen in two places:
 
-```yaml
-phases:
-  - name: implement
-    steps:
-      - name: code
-        agent: claude-code
-  - name: review
-    steps:
-      - name: review
-        agent: codex
-```
+1. Central `job_types` in `feliz.yml`
+2. Repo-local workflow assets in `.feliz/pipeline.yml` when a repo uses scaffolded pipeline steps
 
-Steps without an explicit `agent` use the default from `.feliz/config.yml`.
-
-## Adapter interface
+## Adapter Contract
 
 ```ts
 interface AgentAdapter {
@@ -61,12 +42,31 @@ interface AgentAdapter {
 }
 ```
 
-Run params include `runId`, `workDir`, `prompt`, `timeout_ms`, `maxTurns`, `approvalPolicy`, and `env`.
+`AgentRunParams` includes:
 
-## Custom adapters
+- `runId`
+- `workDir`
+- `prompt`
+- `timeout_ms`
+- `maxTurns`
+- `approvalPolicy`
+- `env`
 
-1. Create a file in `src/agents/` implementing `AgentAdapter`.
-2. Register it in `src/server.ts`.
-3. Reference the adapter name in config or pipeline steps.
+`AgentRunResult` returns structured status, exit code, stdout/stderr, changed files, and optional summary/token usage.
 
-Adapters must return structured status (`succeeded | failed | timed_out | cancelled`), capture stdout/stderr, honor `timeout_ms`, and implement `cancel`.
+## Sandbox Mapping
+
+For adapters that support sandbox selection, Esperta Code maps approval policy to the appropriate mode.
+
+| Policy | Typical Sandbox |
+|---|---|
+| `auto` | full write access |
+| `suggest` | workspace-write |
+| `gated` | read-only |
+
+## Adding a New Adapter
+
+1. Add a new adapter file under `src/agents/`.
+2. Implement the `AgentAdapter` interface.
+3. Register the adapter where adapters are assembled, currently in `src/server.ts`.
+4. Reference the adapter name from `job_types` or repo-local workflow assets.

@@ -1,15 +1,14 @@
 # Getting Started
 
-Install Esperta Code, configure your first project, and verify everything works.
+This guide assumes you are running Esperta Code from a local checkout of the repository.
 
 ## Prerequisites
 
 - [Bun](https://bun.sh)
 - Git
-- A [Linear OAuth app](https://linear.app/settings/api/applications/new) (with `actor=app` for bot identity)
-- GitHub personal access token with `repo` scope ([create one](https://github.com/settings/tokens))
-- GitHub CLI (`gh auth login`) or `GITHUB_TOKEN` env var
-- A coding agent CLI: `claude` or `codex`
+- A Linear OAuth app with `actor=app`
+- A GitHub token with `repo` scope, or authenticated `gh`
+- At least one coding agent CLI: `codex` or `claude`
 
 ## Install
 
@@ -19,131 +18,97 @@ cd esperta-code
 bun install
 ```
 
+For commands below, this guide uses:
+
+```bash
+EC="bun run src/cli/index.ts"
+```
+
+If you install the package globally, replace `$EC` with `esperta-code`.
+
 ## Authenticate with Linear
 
-Run the OAuth flow to obtain and store your Linear token:
-
 ```bash
-bun run src/cli/index.ts auth linear
+$EC auth linear
 ```
 
-This will:
-1. Prompt for your Linear OAuth app's client ID and client secret
-2. Open the Linear authorization page in your browser
-3. Exchange the authorization code for an access token
-4. Verify the bot identity via `viewer { id name }`
-5. Write the token to `~/.feliz/feliz.yml`
+This flow:
 
-You can also pass credentials as flags:
+1. Prompts for your Linear OAuth app client ID and client secret.
+2. Opens the authorization page.
+3. Exchanges the callback code for an access token.
+4. Verifies the app identity with `viewer { id name }`.
+5. Writes the token into `~/.feliz/feliz.yml`.
 
-```bash
-bun run src/cli/index.ts auth linear --client-id <id> --client-secret <secret>
-```
-
-Since Linear blocks `localhost` callback URLs, provide your public URL:
+You can also pass credentials explicitly:
 
 ```bash
-bun run src/cli/index.ts auth linear --callback-url https://<your-host>:3421/auth/callback
+$EC auth linear --client-id <id> --client-secret <secret>
 ```
 
-Or set the token manually:
+If Linear must redirect to a public host, pass a callback URL:
 
 ```bash
-export LINEAR_OAUTH_TOKEN="lin_oauth_..."
+$EC auth linear --callback-url https://<your-host>:3421/auth/callback
 ```
 
-## Set up Linear webhooks
-
-After authenticating, configure webhooks in your Linear OAuth app settings:
-
-1. Go to your Linear OAuth app settings
-2. Enable webhooks and select **Agent session events**
-3. Set the webhook URL to `https://<your-host>:3421/webhook/linear`
-
-## Set GitHub credentials
+## Create Initial Config
 
 ```bash
-export GITHUB_TOKEN="ghp_..."  # needs `repo` scope
+$EC init
 ```
 
-## Create config
+This writes `~/.feliz/feliz.yml` with:
 
-Run the interactive wizard:
+- runtime storage defaults
+- webhook port
+- agent defaults
+- an empty `projects` list
+
+You can also start with a hand-written config. See [Configuration](configuration.md).
+
+## Add a Project
 
 ```bash
-bun run src/cli/index.ts init
+$EC project add
 ```
 
-This prompts for the Linear OAuth token and writes `~/.feliz/feliz.yml` with default settings (webhook port, storage paths, agent defaults, and an empty `projects` list). The legacy path remains the default for compatibility.
+The wizard:
 
-Alternatively, run `start` without a config to scaffold a template you can edit manually.
+1. Lists available Linear projects.
+2. Asks for the repository URL and base branch.
+3. Clones the repo into the configured workspace root.
+4. Optionally scaffolds repo-local workflow assets under `.feliz/`.
+5. Appends the project entry to `feliz.yml`.
 
-## Add a project
+## Start the Daemon
 
 ```bash
-bun run src/cli/index.ts project add
+$EC start
 ```
 
-This walks through Linear project selection, repo cloning, and scaffolding `.feliz/` config files if they don't exist.
-
-## Start the daemon
+Check status:
 
 ```bash
-bun run src/cli/index.ts start
+$EC status
+$EC config validate
 ```
 
-Verify it's running:
+## Submit Work
 
 ```bash
-bun run src/cli/index.ts status
-bun run src/cli/index.ts config validate
+$EC submit --project repo-a --title "Implement cache invalidation" --goal "Build cache invalidation for user updates"
+$EC thread list
 ```
 
-## Add more projects
-
-```bash
-bun run src/cli/index.ts project add
-```
-
-## Validate with E2E smoke checks
-
-```bash
-bun run src/cli/index.ts e2e doctor
-bun run src/cli/index.ts e2e smoke
-```
-
-For a full automated E2E run against real Linear and GitHub:
-
-```bash
-cp scripts/e2e.env.example scripts/e2e.env
-# fill in credentials
-bash scripts/e2e-real.sh --env-file scripts/e2e.env
-```
-
-## Docker alternative
+## Docker
 
 ```bash
 cp .env.example .env
-# fill in credentials (see .env.example for guidance)
 docker compose up -d --build
 ```
 
-The Docker entrypoint automatically:
-- Runs preflight checks (tools, auth, env vars)
-- Generates `feliz.yml` from environment variables if none exists
-- Validates the configuration before starting
-
-Install an agent CLI inside the container:
-
-```bash
-# Claude Code
-docker compose exec feliz bash -c 'curl -fsSL https://claude.ai/install.sh | bash'
-
-# Codex
-docker compose exec feliz npm install -g @openai/codex
-```
-
-Run CLI commands inside the container:
+Inside the container:
 
 ```bash
 docker compose exec feliz bun run src/cli/index.ts status
@@ -151,8 +116,9 @@ docker compose exec feliz bun run src/cli/index.ts project add
 docker compose exec feliz bun run src/cli/index.ts auth linear
 ```
 
-## Next steps
+## Next Steps
 
-- [Usage](usage.md) — day-to-day operation
-- [Configuration](configuration.md) — config reference
-- [Pipelines](pipelines.md) — custom pipeline steps
+- [Usage](usage.md) for the thread/job workflow
+- [CLI Reference](cli.md) for the full command surface
+- [Agents](agents.md) for adapter details
+- [Repo Workflow Assets](pipelines.md) for `.feliz/` scaffolding

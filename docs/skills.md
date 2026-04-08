@@ -1,20 +1,33 @@
 # Skills
 
-Claude Code skills for setting up and configuring Esperta Code.
+The repository includes operator-oriented helper skills under `skills/`.
 
-## `feliz-setup`
+## Available Skills
 
-Install and configure the Esperta Code service: prerequisites, credentials, Linear OAuth app setup, central `feliz.yml`, and daemon startup.
+### `feliz-setup`
 
-File: `skills/feliz-setup/SKILL.md`
+Location: `skills/feliz-setup/SKILL.md`
 
-## `feliz-add-project`
+Use it to:
 
-Add a project to Esperta Code and configure its workflow: register in `feliz.yml`, clone repo, write `.feliz/config.yml`, `.feliz/pipeline.yml`, prompt templates, and `WORKFLOW.md`.
+- install prerequisites
+- configure credentials
+- set up Linear OAuth
+- write the central `feliz.yml`
+- start the service cleanly
 
-File: `skills/feliz-add-project/SKILL.md`
+### `feliz-add-project`
 
-## Recommended order
+Location: `skills/feliz-add-project/SKILL.md`
 
-1. `feliz-setup` — install Esperta Code and get the daemon running
-2. `feliz-add-project` — add each project repo with its pipeline and prompts
+Use it to:
+
+- add a new project entry to `feliz.yml`
+- clone the target repo
+- scaffold `.feliz/` repo assets
+- set prompts and workflow defaults
+
+## Suggested Order
+
+1. `feliz-setup`
+2. `feliz-add-project`

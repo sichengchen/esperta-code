@@ -1,124 +1,76 @@
 # CLI Reference
 
-## Global flags
+## Global Flags
 
 | Flag | Description |
 |---|---|
-| `--config <path>` | Central config path (default: `~/.feliz/feliz.yml`) |
-| `--json` | JSON output (E2E commands) |
-| `--out <path>` | Write JSON report to file (E2E commands) |
+| `--config <path>` | Path to `feliz.yml` (default: `~/.feliz/feliz.yml`) |
+| `--json` | JSON output for E2E commands |
+| `--out <path>` | Write E2E JSON output to a file |
 | `--help`, `-h` | Show help |
 
-## Commands
-
-### Daemon
-
-**`start`** — Start the Esperta Code daemon. Scaffolds a template config and exits if none exists.
+## Core Workflow
 
 ```bash
-esperta-code start
-esperta-code start --config /path/to/feliz.yml
+esperta-code submit --project <name> --title <title> --goal <goal>
+esperta-code continue <thread-id> --title <title> --goal <goal>
+
+esperta-code thread create --project <name> --title <title>
+esperta-code thread list
+esperta-code thread show <thread-id>
+
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+esperta-code job approve <job-id>
+
+esperta-code worktree list
+esperta-code worktree inspect <id>
+esperta-code worktree prune
+
+esperta-code event attach <thread-id> --type <type> --source <kind> --source-id <id>
 ```
 
-**`stop`** — Stop the daemon via PID file.
-
-```bash
-esperta-code stop
-```
-
-**`status`** — Show daemon and project status.
-
-```bash
-esperta-code status
-```
-
-### Setup
-
-**`init`** — Interactive setup wizard. Creates `feliz.yml` with Linear token, webhook port, storage paths, agent defaults, and an empty projects list. Add projects separately with `esperta-code project add`.
+## Setup and Operations
 
 ```bash
 esperta-code init
-```
+esperta-code start
+esperta-code stop
+esperta-code status
 
-### Config
-
-**`config validate`** — Validate central and repo configs.
-
-```bash
 esperta-code config validate
-```
-
-**`config show`** — Print resolved config with environment variables expanded.
-
-```bash
 esperta-code config show
-```
 
-### Projects
-
-**`project list`** — List project mappings.
-
-```bash
 esperta-code project list
-```
-
-**`project add`** — Interactive project onboarding.
-
-```bash
 esperta-code project add
+esperta-code project remove <name>
 ```
 
-**`project remove <name>`** — Remove a project mapping.
-
-```bash
-esperta-code project remove backend-api
-```
-
-### Runs
-
-**`run list`** — List recent runs.
+## Runtime Inspection
 
 ```bash
 esperta-code run list
-```
+esperta-code run show <run-id>
+esperta-code run retry <work-item-identifier>
 
-**`run show <run_id>`** — Show run details and step executions.
-
-```bash
-esperta-code run show abc123
-```
-
-**`run retry <identifier>`** — Retry a failed work item.
-
-```bash
-esperta-code run retry BAC-123
-```
-
-### Agents
-
-**`agent list`** — Show installed agent adapters and availability.
-
-```bash
 esperta-code agent list
 ```
 
-### Context
+## Context Helpers
 
-**`context history <project>`** — Show history events for a project.
-
-```bash
-esperta-code context history backend-api
-```
-
-**`context show <identifier>`** — Show context snapshot for a work item.
+These commands are primarily for operators and for agents running inside the execution environment.
 
 ```bash
-esperta-code context show BAC-123
+esperta-code context history <project>
+esperta-code context show <work-item-identifier>
+esperta-code context read
+esperta-code context write <message>
 ```
 
-### Authentication
-
-**`auth linear`** — Authenticate with Linear via OAuth2. Starts a temporary local server on the webhook port, opens the browser for authorization, exchanges the code for a token, verifies the bot identity, and writes the token to `feliz.yml`.
+## Linear Authentication
 
 ```bash
 esperta-code auth linear
@@ -128,32 +80,23 @@ esperta-code auth linear --callback-url https://my-host.com/auth/callback
 
 | Flag | Description |
 |---|---|
-| `--client-id <id>` | Linear OAuth app client ID (or prompt interactively) |
-| `--client-secret <secret>` | Linear OAuth app client secret (or prompt interactively) |
-| `--port <port>` | Callback server port (default: `3421`, same as webhook port) |
-| `--callback-url <url>` | Public callback URL for Linear redirect (default: `http://localhost:<port>/auth/callback`). Use this when exposing Esperta Code to the internet, since Linear blocks `localhost` callback URLs. |
+| `--client-id <id>` | Linear OAuth app client ID |
+| `--client-secret <secret>` | Linear OAuth app client secret |
+| `--port <port>` | Callback server port, default `3421` |
+| `--callback-url <url>` | Public callback URL for the OAuth redirect |
 
-After authentication, the command prints next steps for configuring Linear webhooks.
-
-### E2E Testing
-
-**`e2e doctor`** — Check prerequisites (tools, auth, config).
+## E2E Helpers
 
 ```bash
 esperta-code e2e doctor
-```
-
-**`e2e smoke`** — Run preflight smoke checks.
-
-```bash
 esperta-code e2e smoke
 esperta-code e2e smoke --json --out /tmp/report.json
 ```
 
-## Helper scripts
+Helper scripts:
 
 ```bash
-bun run e2e:doctor    # runs esperta-code e2e doctor
-bun run e2e:smoke     # runs scripts/e2e-smoke.sh
-bun run e2e:real      # runs scripts/e2e-real.sh
+bun run e2e:doctor
+bun run e2e:smoke
+bun run e2e:real
 ```
