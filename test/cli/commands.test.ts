@@ -69,6 +69,11 @@ describe("CLI parseArgs", () => {
     expect(cmd.flags.title).toBe("Follow up");
   });
 
+  test("parses 'json' command", () => {
+    const cmd = parseArgs(["json"]);
+    expect(cmd.command).toBe("json");
+  });
+
   test("parses 'thread show <id>' command", () => {
     const cmd = parseArgs(["thread", "show", "thread-123"]);
     expect(cmd.command).toBe("thread");

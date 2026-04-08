@@ -26,6 +26,7 @@ Commands:
   init                     Interactive setup wizard
   stop                     Stop the daemon
   status                   Show daemon status
+  json                     Process one JSON request from stdin
   submit                   Create a thread with an initial job
   continue <thread-id>     Append a job to an existing thread
   thread create            Create a new thread
@@ -106,6 +107,11 @@ async function main() {
 
   const { handleCoreCliCommand } = await import("./core.ts");
   if (await handleCoreCliCommand(cmd, configPath)) {
+    return;
+  }
+
+  const { handleJsonCliCommand } = await import("./json.ts");
+  if (await handleJsonCliCommand(cmd, configPath)) {
     return;
   }
 

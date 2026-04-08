@@ -2,6 +2,17 @@
 export { Database } from "./db/database.ts";
 export { createLogger } from "./logger/index.ts";
 export { newId } from "./id.ts";
+export {
+  executeJsonRequest,
+  handleJsonCliCommand,
+} from "./cli/json.ts";
+export type {
+  JsonCliError,
+  JsonCliErrorResponse,
+  JsonCliRequest,
+  JsonCliResponse,
+  JsonCliSuccessResponse,
+} from "./cli/json.ts";
 
 // Config
 export { loadFelizConfig, loadRepoConfig, loadPipelineConfig, getDefaultPipeline, resolveEnvVars } from "./config/loader.ts";

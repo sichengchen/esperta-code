@@ -4,6 +4,7 @@ import { join } from "path";
 import { parseArgs } from "../../src/cli/commands.ts";
 import { handleCoreCliCommand } from "../../src/cli/core.ts";
 import { Database } from "../../src/db/database.ts";
+import { writeCoreCliTestConfig } from "./core-helpers.ts";
 
 const TEST_ROOT = "/tmp/feliz-cli-core-test";
 const CONFIG_PATH = join(TEST_ROOT, "feliz.yml");
@@ -28,33 +29,7 @@ function captureLogs<T>(fn: () => Promise<T> | T): Promise<{ result: T; lines: s
 }
 
 function writeConfig() {
-  mkdirSync(TEST_ROOT, { recursive: true });
-  writeFileSync(
-    CONFIG_PATH,
-    `runtime:
-  data_dir: ${TEST_ROOT}
-  max_concurrent_jobs: 4
-
-projects:
-  - name: repo-a
-    repo: git@github.com:org/repo-a.git
-    base_branch: main
-    worktrees:
-      retain_on_success_minutes: 30
-      retain_on_failure_hours: 24
-      prune_after_days: 7
-    concurrency:
-      max_jobs: 2
-    job_types:
-      implement:
-        agent: codex
-        system_prompt: .feliz/prompts/implement.md
-        verify:
-          - bun test
-        publish: draft_pr
-`,
-    "utf-8"
-  );
+  writeCoreCliTestConfig(TEST_ROOT, CONFIG_PATH);
 }
 
 function openDb(): Database {
