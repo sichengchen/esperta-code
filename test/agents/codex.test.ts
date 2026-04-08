@@ -10,7 +10,7 @@ describe("CodexAdapter", () => {
   test("builds correct command args", () => {
     const adapter = new CodexAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Fix the bug",
       timeout_ms: 600000,
@@ -28,7 +28,7 @@ describe("CodexAdapter", () => {
   test("uses workspace-write sandbox for suggest policy", () => {
     const adapter = new CodexAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Review",
       timeout_ms: 600000,
@@ -43,7 +43,7 @@ describe("CodexAdapter", () => {
   test("uses read-only sandbox for gated policy", () => {
     const adapter = new CodexAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Plan this",
       timeout_ms: 600000,
@@ -97,7 +97,7 @@ describe("CodexAdapter", () => {
   test("maps auto policy to danger-full-access sandbox", () => {
     const adapter = new CodexAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Fix it",
       timeout_ms: 600000,

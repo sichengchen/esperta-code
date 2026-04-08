@@ -10,7 +10,7 @@ describe("OpenCodeAdapter", () => {
   test("builds correct command args for auto policy", () => {
     const adapter = new OpenCodeAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Fix the bug",
       timeout_ms: 600000,
@@ -30,7 +30,7 @@ describe("OpenCodeAdapter", () => {
   test("uses plan agent for gated policy", () => {
     const adapter = new OpenCodeAdapter();
     const args = adapter.buildArgs({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Review this repository",
       timeout_ms: 600000,
@@ -46,7 +46,7 @@ describe("OpenCodeAdapter", () => {
   test("buildEnv sets permissive config for auto policy", () => {
     const adapter = new OpenCodeAdapter();
     const env = adapter.buildEnv({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Implement feature",
       timeout_ms: 600000,
@@ -64,7 +64,7 @@ describe("OpenCodeAdapter", () => {
   test("buildEnv denies edits and bash for gated policy", () => {
     const adapter = new OpenCodeAdapter();
     const env = adapter.buildEnv({
-      runId: "run-1",
+      threadId: "thread-1",
       workDir: "/tmp/work",
       prompt: "Review this",
       timeout_ms: 600000,

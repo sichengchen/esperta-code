@@ -7,97 +7,47 @@ export interface Project {
   created_at: Date;
 }
 
-export type OrchestrationState =
-  | "unclaimed"
-  | "decomposing"
-  | "decompose_review"
-  | "spec_drafting"
-  | "spec_review"
-  | "queued"
+export type ThreadStatus =
+  | "pending"
   | "running"
-  | "retry_queued"
+  | "running_dirty"
   | "completed"
   | "failed"
-  | "cancelled";
+  | "stopped";
 
-export interface WorkItem {
+export interface Thread {
   id: string;
-  linear_id: string;
-  linear_identifier: string;
   project_id: string;
-  parent_work_item_id: string | null;
+  linear_issue_id: string;
+  linear_identifier: string;
+  linear_session_id: string | null;
   title: string;
   description: string;
-  state: string;
+  issue_state: string;
   priority: number;
   labels: string[];
   blocker_ids: string[];
-  linear_session_id: string | null;
-  orchestration_state: OrchestrationState;
+  worktree_path: string | null;
+  branch_name: string | null;
+  status: ThreadStatus;
   created_at: Date;
   updated_at: Date;
 }
 
-export type RunResult = "succeeded" | "failed" | "timed_out" | "cancelled";
+export type JobAuthor = "human" | "agent";
 
-export interface Run {
+export interface Job {
   id: string;
-  work_item_id: string;
-  attempt: number;
-  current_phase: string;
-  current_step: string;
-  started_at: Date;
-  finished_at: Date | null;
-  result: RunResult | null;
-  failure_reason: string | null;
-  context_snapshot_id: string;
-  pr_url: string | null;
-  token_usage: { input: number; output: number } | null;
-}
-
-export type StepResult = "succeeded" | "failed" | "timed_out" | "cancelled";
-
-export interface StepExecution {
-  id: string;
-  run_id: string;
-  phase_name: string;
-  step_name: string;
-  cycle: number;
-  step_attempt: number;
-  agent_adapter: string | null;
-  started_at: Date;
-  finished_at: Date | null;
-  result: StepResult | null;
-  exit_code: number | null;
-  failure_reason: string | null;
-  token_usage: { input: number; output: number } | null;
-}
-
-export interface ContextSnapshot {
-  id: string;
-  run_id: string;
-  work_item_id: string;
-  artifact_refs: ArtifactRef[];
-  token_budget: {
-    max_input: number;
-    reserved_system: number;
-  };
+  thread_id: string;
+  body: string;
+  author: JobAuthor | null;
   created_at: Date;
-}
-
-export interface ArtifactRef {
-  artifact_id: string;
-  path: string;
-  content_hash: string;
-  version: number;
-  purpose: string;
 }
 
 export interface HistoryEntry {
   id: string;
   project_id: string;
-  work_item_id: string | null;
-  run_id: string | null;
+  thread_id: string | null;
   event_type: string;
   payload: Record<string, unknown>;
   created_at: Date;

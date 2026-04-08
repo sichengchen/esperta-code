@@ -162,32 +162,28 @@ export class FelizServer {
           this.db,
           this.adapters,
           repoConfig,
-          join(this.config.storage.data_dir, "scratchpad"),
           this.config.agent.max_concurrent,
-          { workspace: this.workspace, linearClient: this.linearClient }
+          {
+            workspace: this.workspace,
+            linearClient: this.linearClient,
+            dataDir: this.config.storage.data_dir,
+          }
         );
 
         if (result.signal === "stop") {
-          orchestrator.cancelWorkItem(result.workItemId);
-          const wi = this.db.getWorkItem(result.workItemId);
-          if (wi?.linear_session_id) {
+          orchestrator.stopThread(result.threadId);
+          const thread = this.db.getThread(result.threadId);
+          if (thread?.linear_session_id) {
             try {
               await this.linearClient.emitError(
-                wi.linear_session_id,
+                thread.linear_session_id,
                 "Cancelled by user"
               );
             } catch {}
           }
-        } else if (result.command?.command === "cancel") {
-          orchestrator.cancelWorkItem(result.workItemId);
-        } else {
-          const wi = this.db.getWorkItem(result.workItemId);
-          if (wi && wi.orchestration_state === "unclaimed") {
-            orchestrator.processNewIssue(wi.id);
-          }
         }
 
-        return new Response(JSON.stringify({ ok: true, workItemId: result.workItemId }), {
+        return new Response(JSON.stringify({ ok: true, threadId: result.threadId }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -213,23 +209,17 @@ export class FelizServer {
           this.db,
           this.adapters,
           repoConfig,
-          join(this.config.storage.data_dir, "scratchpad"),
           this.config.agent.max_concurrent,
-          { workspace: this.workspace, linearClient: this.linearClient }
+          {
+            workspace: this.workspace,
+            linearClient: this.linearClient,
+            dataDir: this.config.storage.data_dir,
+          }
         );
 
         const workDir = this.workspace.getRepoPath(projConfig.name);
         if (existsSync(workDir)) {
-          await orchestrator.processDecomposing(project.id, workDir);
-          await orchestrator.processSpecDrafting(project.id, workDir);
-        }
-
-        // Promote retry_queued items whose backoff has elapsed
-        orchestrator.promoteRetryQueued(project.id);
-
-        // Dispatch queued items
-        if (existsSync(workDir)) {
-          await orchestrator.dispatchQueued(project.id, pipeline, workDir);
+          await orchestrator.dispatchPending(project.id, pipeline, workDir);
         }
       } catch (e: any) {
         this.logger.error(`Tick cycle error for ${projConfig.name}: ${e.message}`, {

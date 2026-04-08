@@ -1,31 +1,40 @@
-# Esperta Code Specification
+# Feliz Specification
 
-Esperta Code is a neutral remote agent platform. It accepts coding jobs from multiple sources, runs exactly one coding agent per job in a fresh isolated worktree, and preserves durable thread history, branch state, worktree state, artifacts, approvals, and external events across restarts.
+Feliz is a long-running service that turns Linear issues into agent work on a git worktree. The product model is intentionally small:
 
-## Product definition
+- `Project`
+- `Thread`
+- `Job`
 
-- Remote-first: jobs continue without an attached terminal session.
-- Neutral: core behavior does not depend on Linear, GitHub Issues, or any one client.
-- Thread-centric: a thread is the durable identity; new work is added by appending jobs.
-- One-agent-per-job: no internal multi-agent or multi-phase workflow inside a job.
-- Worktree-first: every run executes in a fresh isolated worktree.
-- Durable: jobs, runs, artifacts, thread links, and worktrees survive process restarts.
+A Linear issue maps to a thread. A thread owns one worktree and one branch. Jobs are the ordered history of work and guidance for that thread. Human requests, clarifications, approvals, review feedback, and agent-written next steps are all jobs.
 
-## Connectors
+The only control behavior outside the model is Linear's `stop` signal, which interrupts active execution for a thread.
 
-Linear remains supported, but as a connector layered on top of the core thread/job model rather than as the core architecture.
+## Core Principles
 
-## Specification documents
+1. Linear is the primary user interface.
+2. The thread is the unit of execution and collaboration.
+3. Jobs are the only first-class work record.
+4. Current execution state lives on the thread.
+5. Specs, memory, and prompts are repo-owned context.
+6. Agent pipeline steps operate on the whole thread worktree.
+
+## Specification Documents
 
 | Section | Description |
 |---|---|
-| [Architecture](architecture/index.md) | Core domain model, persistence, thread/job/run/worktree relationships |
-| [Configuration](configuration/index.md) | Runtime config, project config, job type profiles, retention and concurrency |
-| [Orchestration](orchestration/index.md) | Job scheduling, state transitions, execution envelope, approvals |
-| [Workspace Management](workspace/index.md) | Canonical repos, isolated worktrees, retention, pruning, branch leases |
-| [Agent Dispatch](agents/index.md) | Single-agent execution model and adapter contract |
-| [Linear Connector](linear/index.md) | Linear as a source and sink mapped onto threads, jobs, and events |
-| [CLI](cli/index.md) | Thread/job/worktree oriented CLI, including the local-agent JSON interface |
-| [Security](security/index.md) | Secrets, isolation, permissions, auditability |
-| [Testing](testing/index.md) | Validation strategy |
-| [Roadmap](roadmap/index.md) | Delivery sequencing |
+| [Architecture](architecture/index.md) | System architecture, persistence, and the `Project -> Thread -> Job` model |
+| [Configuration](configuration/index.md) | Central config, repo config, pipeline definition, and prompt variables |
+| [Linear Integration](linear/index.md) | Agent sessions, thread creation/resume, job ingestion, and stop handling |
+| [Context Management](context/index.md) | Thread context assembly from jobs, memory, specs, and history |
+| [Context Lifecycle](context/lifecycle.md) | How threads, jobs, history, and memory evolve over time |
+| [Orchestration](orchestration/index.md) | Thread status transitions, dispatch rules, and stop semantics |
+| [Spec-Driven Development](spec-driven-dev/index.md) | Optional repo specs as context, authored inside the same thread model |
+| [Workspace Management](workspace/index.md) | Repo clone and thread worktree lifecycle |
+| [Agent Dispatch](agents/index.md) | Adapter interface and pipeline execution against a thread |
+| [Publishing](publishing/index.md) | Agent-handled commit, push, and PR creation inside a thread |
+| [CLI](cli/index.md) | Operator and agent-facing CLI commands |
+| [Testing](testing/index.md) | Validation plan for the thread/job model |
+| [Security](security/index.md) | Secrets, logging, isolation, and trust model |
+| [User Journey](user-journey/index.md) | End-to-end walkthrough for the simplified model |
+| [Roadmap](roadmap/index.md) | Forward-looking areas beyond the clean-slate thread model |

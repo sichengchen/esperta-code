@@ -1,5 +1,5 @@
 export interface AgentRunParams {
-  runId: string;
+  threadId: string;
   workDir: string;
   prompt: string;
   timeout_ms: number;
@@ -22,5 +22,5 @@ export interface AgentAdapter {
   name: string;
   isAvailable(): Promise<boolean>;
   execute(params: AgentRunParams): Promise<AgentRunResult>;
-  cancel(runId: string): Promise<void>;
+  cancel(threadId: string): Promise<void>;
 }

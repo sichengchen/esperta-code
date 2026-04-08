@@ -1,102 +1,76 @@
 # CLI
 
-The CLI exposes the durable thread/job/worktree model directly.
+The CLI is split between operator commands and thread-scoped agent helpers.
 
-## Core commands
+## Operator Commands
 
-```bash
-esperta-code json
+```text
+feliz start
+feliz init
+feliz stop
+feliz status
 
-esperta-code thread start --project <name> --instruction <text>
-esperta-code thread continue <thread-id> --instruction <text>
+feliz config validate
+feliz config show
 
-esperta-code thread create --project <name> --summary <text>
-esperta-code thread list
-esperta-code thread show <thread-id>
+feliz project list
+feliz project add
+feliz project remove <name>
 
-esperta-code job list
-esperta-code job show <job-id>
-esperta-code job logs <job-id>
-esperta-code job retry <job-id>
-esperta-code job cancel <job-id>
-esperta-code job approve <job-id>
+feliz agent list
+feliz auth linear
 
-esperta-code worktree list
-esperta-code worktree inspect <id>
-esperta-code worktree prune
-
-esperta-code event attach <thread-id> --type ci_failed --source github --source-id 123
+feliz e2e doctor
+feliz e2e smoke
 ```
 
-## Operational commands
+## Agent Commands
 
-Operational commands:
-
-- `esperta-code start`
-- `esperta-code stop`
-- `esperta-code status`
-- `esperta-code config validate`
-- `esperta-code config show`
-
-## JSON command
-
-`esperta-code json` is the machine-facing CLI for local agent clients.
-
-- Reads one JSON request from stdin
-- Writes one JSON response to stdout
-- Uses protocol version `v1`
-- Reports application-level failures inside the JSON envelope instead of plain-text stderr
-
-Request envelope:
-
-```json
-{
-  "version": "v1",
-  "id": "req-123",
-  "client": {
-    "name": "esperta-base",
-    "cwd": "~/src/sa"
-  },
-  "action": "thread.start",
-  "input": {}
-}
+```text
+feliz thread read
+feliz thread write <message>
 ```
 
-Response envelope:
+These commands are intended for use during active thread execution. They rely on:
 
-```json
-{
-  "version": "v1",
-  "id": "req-123",
-  "action": "thread.start",
-  "ok": true,
-  "result": {}
-}
-```
+- `FELIZ_DATA_DIR`
+- `FELIZ_THREAD_ID`
 
-Supported actions:
+## `feliz thread read`
 
-- `capabilities`
-- `project.list`
-- `thread.start`
-- `thread.continue`
-- `thread.list`
-- `thread.get`
-- `job.list`
-- `job.get`
-- `job.retry`
-- `job.cancel`
-- `job.approve`
-- `worktree.list`
-- `worktree.get`
-- `thread.event.attach`
+Renders a thread-centric context view including:
 
-## Behavioral expectations
+- thread metadata
+- ordered jobs
+- repo memory
+- repo specs
 
-- `thread start` creates a new thread and queues the first job
-- `thread continue` appends a new job to an existing thread
-- `instruction` is the required work request
-- `summary` is an optional short label derived from `instruction` when omitted
-- `job retry` re-queues a failed job
-- `worktree prune` deletes expired retained worktrees
-- `json` provides a stable request/response contract for local clients without exposing internal modules
+## `feliz thread write`
+
+Appends a new agent-authored job to the current thread.
+
+Use it for:
+
+- review findings
+- failure summaries
+- follow-up instructions
+- important handoff notes
+
+## `feliz status`
+
+Shows basic daemon status and the count of currently running agent threads.
+
+## `feliz auth linear`
+
+Performs Linear OAuth for the Feliz app identity:
+
+1. Build the authorization URL.
+2. Wait for the callback.
+3. Exchange the authorization code for a token.
+4. Verify the token with `viewer`.
+5. Save `linear.oauth_token` and `linear.app_user_id`.
+
+## E2E Commands
+
+- `feliz e2e doctor` checks local prerequisites.
+- `feliz e2e smoke` validates config, DB readiness, and scenario scaffolding.

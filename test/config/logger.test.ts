@@ -17,12 +17,10 @@ describe("Logger", () => {
     const logger = createLogger("orchestrator", (entry) => entries.push(entry));
     logger.info("run started", {
       project_id: "proj-1",
-      work_item_id: "wi-1",
-      run_id: "run-1",
+      thread_id: "thread-1",
     });
     expect(entries[0]!.project_id).toBe("proj-1");
-    expect(entries[0]!.work_item_id).toBe("wi-1");
-    expect(entries[0]!.run_id).toBe("run-1");
+    expect(entries[0]!.thread_id).toBe("thread-1");
   });
 
   test("supports all log levels", () => {

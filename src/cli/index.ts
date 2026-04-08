@@ -3,58 +3,30 @@ import { parseArgs } from "./commands.ts";
 import { loadFelizConfig, loadFelizProjectAddConfig } from "../config/loader.ts";
 import { Database } from "../db/database.ts";
 import { createLogger } from "../logger/index.ts";
-import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { existsSync, readFileSync } from "fs";
 import { homedir } from "os";
+import { join } from "path";
 import { validateAllConfigs } from "./validate.ts";
-import {
-  LEGACY_CLI_NAME,
-  PRIMARY_CLI_NAME,
-  PRODUCT_NAME,
-} from "../branding.ts";
+import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../branding.ts";
 
 const HELP_TEXT = `
 ${PRODUCT_NAME} - Cloud agents platform
 
 Usage: ${PRIMARY_CLI_NAME} <command> [options]
 
-Alias:
-  ${LEGACY_CLI_NAME}                 Backward-compatible CLI alias
-
 Commands:
-  start                    Start the ${PRODUCT_NAME} daemon
+  start                    Start the Feliz daemon
   init                     Interactive setup wizard
   stop                     Stop the daemon
   status                   Show daemon status
-  json                     Process one JSON request from stdin
-  thread start             Create a thread and initial job
-  thread continue          Append a job to an existing thread
-  thread create            Create a thread without relying on derived defaults
-  thread list              List threads
-  thread show <thread-id>  Show thread details
-  job list                 List jobs
-  job show <job-id>        Show a job
-  job logs <job-id>        Show job log artifact paths
-  job retry <job-id>       Re-queue a failed job
-  job cancel <job-id>      Cancel a job
-  job approve <job-id>     Approve a waiting job
-  worktree list            List tracked worktrees
-  worktree inspect <id>    Show worktree details
-  worktree prune           Prune expired retained worktrees
-  event attach <thread-id> Attach an external event to a thread
   config validate          Validate configuration
   config show              Print resolved configuration
   project list             List configured projects
   project add              Add a new project
   project remove <name>    Remove a project
-  run list                 List recent runs
-  run show <run_id>        Show run details
-  run retry <work_item>    Retry a failed work item
   agent list               List installed agents
-  context history <proj>   Show history events
-  context show <item>      Show context snapshot
-  context read             Read context (for agents during pipeline runs)
-  context write <msg>      Write scratchpad message (for agents during pipeline runs)
+  thread read              Read thread context (for agents during execution)
+  thread write <msg>       Append a job to the current thread (for agents during execution)
   auth linear              Authenticate with Linear (OAuth flow)
   e2e doctor               Validate local E2E prerequisites
   e2e smoke                Run automated E2E smoke checks
@@ -105,24 +77,14 @@ async function main() {
   const configPath =
     cmd.flags.config ?? join(homedir(), ".feliz", "feliz.yml");
 
-  const { handleCoreCliCommand } = await import("./core.ts");
-  if (await handleCoreCliCommand(cmd, configPath)) {
-    return;
-  }
-
-  const { handleJsonCliCommand } = await import("./json.ts");
-  if (await handleJsonCliCommand(cmd, configPath)) {
-    return;
-  }
-
   if (cmd.command === "config" && cmd.subcommand === "validate") {
     try {
       const result = validateAllConfigs(configPath);
       console.log(
         `Configuration is valid. Validated ${result.validated_projects} project(s), ${result.checked_repo_configs} repo config(s), ${result.checked_pipelines} pipeline config(s).`
       );
-    } catch (e: any) {
-      console.error(`Configuration error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Configuration error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -130,10 +92,9 @@ async function main() {
 
   if (cmd.command === "config" && cmd.subcommand === "show") {
     try {
-      const config = loadConfig(configPath);
-      console.log(JSON.stringify(config, null, 2));
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+      console.log(JSON.stringify(loadConfig(configPath), null, 2));
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -153,17 +114,18 @@ async function main() {
         );
         return;
       }
+
       const db = new Database(dbPath);
-      const running = db.countRunningItems();
+      const running = db.countRunningThreads();
       console.log(
-        `${PRODUCT_NAME} status: ${config.projects.length} project(s), ${running} running agent(s).`
+        `${PRODUCT_NAME} status: ${config.projects.length} project(s), ${running} running agent thread(s).`
       );
-      for (const p of config.projects) {
-        console.log(`  ${p.name}: watching "${p.linear_project}"`);
+      for (const project of config.projects) {
+        console.log(`  ${project.name}: watching "${project.linear_project}"`);
       }
       db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -172,269 +134,65 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "list") {
     try {
       const config = loadConfig(configPath);
-      for (const p of config.projects) {
-        console.log(`${p.name}: ${p.repo} (${p.linear_project})`);
+      for (const project of config.projects) {
+        console.log(`${project.name}: ${project.repo} (${project.linear_project})`);
       }
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
   }
 
-  if (cmd.command === "run" && cmd.subcommand === "list") {
-    try {
-      const { db } = openDb(configPath);
-      if (!db) {
-        console.log(`No runs found. ${PRODUCT_NAME} has not been started yet.`);
-        return;
-      }
-      const runs = db.listRuns();
-      if (runs.length === 0) {
-        console.log("No runs found.");
-        db.close();
-        return;
-      }
-      console.log("ID            Work Item   Project        Status     Phase/Step         Started");
-      console.log("─".repeat(90));
-      for (const r of runs) {
-        const wi = db.getWorkItem(r.work_item_id);
-        const identifier = wi?.linear_identifier ?? r.work_item_id.slice(0, 8);
-        const project = wi ? db.getProject(wi.project_id) : null;
-        const projName = project?.name ?? "-";
-        const status = r.result ?? "running";
-        const phase = `${r.current_phase}/${r.current_step}`;
-        const started = r.started_at.toISOString().slice(0, 19).replace("T", " ");
-        console.log(
-          `${r.id.padEnd(14)}${identifier.padEnd(12)}${projName.padEnd(15)}${status.padEnd(11)}${phase.padEnd(19)}${started}`
-        );
-      }
-      db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd.command === "run" && cmd.subcommand === "show") {
-    const runId = cmd.args[0];
-    if (!runId) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} run show <run_id>`);
-      process.exit(1);
-    }
-    try {
-      const { db } = openDb(configPath);
-      if (!db) {
-        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
-        process.exit(1);
-      }
-      const run = db.getRun(runId);
-      if (!run) {
-        console.error(`Run not found: ${runId}`);
-        db.close();
-        process.exit(1);
-      }
-      const wi = db.getWorkItem(run.work_item_id);
-      console.log(`Run:        ${run.id}`);
-      console.log(`Work Item:  ${wi?.linear_identifier ?? run.work_item_id}`);
-      console.log(`Attempt:    ${run.attempt}`);
-      console.log(`Status:     ${run.result ?? "running"}`);
-      console.log(`Phase/Step: ${run.current_phase}/${run.current_step}`);
-      console.log(`Started:    ${run.started_at.toISOString()}`);
-      if (run.finished_at) console.log(`Finished:   ${run.finished_at.toISOString()}`);
-      if (run.pr_url) console.log(`PR:         ${run.pr_url}`);
-      if (run.failure_reason) console.log(`Failure:    ${run.failure_reason}`);
-      if (run.token_usage) console.log(`Tokens:     ${run.token_usage.input} in / ${run.token_usage.output} out`);
-
-      const steps = db.listStepExecutionsForRun(runId);
-      if (steps.length > 0) {
-        console.log("\nStep Executions:");
-        for (const s of steps) {
-          const sStatus = s.result ?? "running";
-          const agent = s.agent_adapter ?? "-";
-          console.log(`  ${s.phase_name}/${s.step_name} (cycle ${s.cycle}, attempt ${s.step_attempt}): ${sStatus} [${agent}]`);
-        }
-      }
-      db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd.command === "run" && cmd.subcommand === "retry") {
-    const identifier = cmd.args[0];
-    if (!identifier) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} run retry <work_item_identifier>`);
-      process.exit(1);
-    }
-    try {
-      const { db } = openDb(configPath);
-      if (!db) {
-        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
-        process.exit(1);
-      }
-      const wi = db.getWorkItemByLinearIdentifier(identifier);
-      if (!wi) {
-        console.error(`Work item not found: ${identifier}`);
-        db.close();
-        process.exit(1);
-      }
-      if (wi.orchestration_state !== "failed") {
-        console.error(`Work item ${identifier} is in state "${wi.orchestration_state}", not "failed". Only failed items can be retried.`);
-        db.close();
-        process.exit(1);
-      }
-      db.updateWorkItemOrchestrationState(wi.id, "retry_queued");
-      console.log(`Queued ${identifier} for retry.`);
-      db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd.command === "context" && cmd.subcommand === "history") {
-    const projectName = cmd.args[0];
-    if (!projectName) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} context history <project>`);
-      process.exit(1);
-    }
-    try {
-      const { db } = openDb(configPath);
-      if (!db) {
-        console.log(`No history found. ${PRODUCT_NAME} has not been started yet.`);
-        return;
-      }
-      const project = db.getProjectByName(projectName);
-      if (!project) {
-        console.error(`Project not found: ${projectName}`);
-        db.close();
-        process.exit(1);
-      }
-      const entries = db.getHistory(project.id);
-      if (entries.length === 0) {
-        console.log(`No history events for project "${projectName}".`);
-        db.close();
-        return;
-      }
-      for (const e of entries) {
-        const ts = e.created_at.toISOString().slice(0, 19).replace("T", " ");
-        const wi = e.work_item_id ?? "-";
-        console.log(`${ts}  ${e.event_type.padEnd(25)} work_item=${wi}`);
-      }
-      db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd.command === "context" && cmd.subcommand === "show") {
-    const identifier = cmd.args[0];
-    if (!identifier) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} context show <work_item_identifier>`);
-      process.exit(1);
-    }
-    try {
-      const { db } = openDb(configPath);
-      if (!db) {
-        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
-        process.exit(1);
-      }
-      const wi = db.getWorkItemByLinearIdentifier(identifier);
-      if (!wi) {
-        console.error(`Work item not found: ${identifier}`);
-        db.close();
-        process.exit(1);
-      }
-      const snap = db.getLatestSnapshotForWorkItem(wi.id);
-      if (!snap) {
-        console.log(`No context snapshot for ${identifier}.`);
-        db.close();
-        return;
-      }
-      console.log(`Snapshot:    ${snap.id}`);
-      console.log(`Work Item:   ${identifier}`);
-      console.log(`Created:     ${snap.created_at.toISOString()}`);
-      console.log(`Token Budget: ${snap.token_budget.max_input} max input, ${snap.token_budget.reserved_system} reserved`);
-      if (snap.artifact_refs.length > 0) {
-        console.log("\nArtifacts:");
-        for (const ref of snap.artifact_refs) {
-          console.log(`  ${ref.path} (${ref.purpose})`);
-        }
-      }
-      db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
-      process.exit(1);
-    }
-    return;
-  }
-
-  if (cmd.command === "context" && cmd.subcommand === "read") {
+  if (cmd.command === "thread" && cmd.subcommand === "read") {
     const dataDir = process.env.FELIZ_DATA_DIR;
-    const projectId = process.env.FELIZ_PROJECT_ID;
-    const workItemId = process.env.FELIZ_WORK_ITEM_ID;
-    const runId = process.env.FELIZ_RUN_ID ?? null;
+    const threadId = process.env.FELIZ_THREAD_ID;
 
-    if (!dataDir || !projectId || !workItemId) {
-      console.error("Missing environment variables. This command is for use by agents during pipeline execution.");
-      console.error("Required: FELIZ_DATA_DIR, FELIZ_PROJECT_ID, FELIZ_WORK_ITEM_ID");
+    if (!dataDir || !threadId) {
+      console.error("Missing environment variables. This command is for use by agents during execution.");
+      console.error("Required: FELIZ_DATA_DIR, FELIZ_THREAD_ID");
       process.exit(1);
     }
 
     try {
-      const dbPath = join(dataDir, "db", "feliz.db");
-      if (!existsSync(dbPath)) {
-        console.log("No context available.");
-        return;
-      }
-      const db = new Database(dbPath);
-      const { contextRead } = await import("./context-agent.ts");
-      const output = contextRead(db, join(dataDir, "scratchpad"), projectId, workItemId, runId);
-      console.log(output);
+      const db = new Database(join(dataDir, "db", "feliz.db"));
+      const { threadRead } = await import("./thread-agent.ts");
+      console.log(threadRead(db, threadId));
       db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
   }
 
-  if (cmd.command === "context" && cmd.subcommand === "write") {
+  if (cmd.command === "thread" && cmd.subcommand === "write") {
     const dataDir = process.env.FELIZ_DATA_DIR;
-    const projectId = process.env.FELIZ_PROJECT_ID;
-    const runId = process.env.FELIZ_RUN_ID;
+    const threadId = process.env.FELIZ_THREAD_ID;
 
-    if (!dataDir || !projectId || !runId) {
-      console.error("Missing environment variables. This command is for use by agents during pipeline execution.");
-      console.error("Required: FELIZ_DATA_DIR, FELIZ_PROJECT_ID, FELIZ_RUN_ID");
+    if (!dataDir || !threadId) {
+      console.error("Missing environment variables. This command is for use by agents during execution.");
+      console.error("Required: FELIZ_DATA_DIR, FELIZ_THREAD_ID");
       process.exit(1);
     }
 
     let message = cmd.args.join(" ");
     if (!message) {
-      // Read from stdin
       message = await Bun.stdin.text();
     }
+
     if (!message.trim()) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} context write <message>`);
+      console.error("Usage: feliz thread write <message>");
       process.exit(1);
     }
 
     try {
-      const dbPath = join(dataDir, "db", "feliz.db");
-      const db = new Database(dbPath);
-      const { contextWrite } = await import("./context-agent.ts");
-      contextWrite(db, join(dataDir, "scratchpad"), projectId, runId, message.trim());
+      const db = new Database(join(dataDir, "db", "feliz.db"));
+      const { threadWrite } = await import("./thread-agent.ts");
+      threadWrite(db, threadId, message.trim(), "agent");
       db.close();
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -443,13 +201,12 @@ async function main() {
   if (cmd.command === "agent" && cmd.subcommand === "list") {
     const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
     const { CodexAdapter } = await import("../agents/codex.ts");
-    const { OpenCodeAdapter } = await import("../agents/opencode.ts");
-    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter(), new OpenCodeAdapter()];
+    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter()];
     console.log("Agent          Available");
     console.log("─".repeat(30));
-    for (const a of adapters) {
-      const available = await a.isAvailable();
-      console.log(`${a.name.padEnd(15)}${available ? "yes" : "no"}`);
+    for (const adapter of adapters) {
+      const available = await adapter.isAvailable();
+      console.log(`${adapter.name.padEnd(15)}${available ? "yes" : "no"}`);
     }
     return;
   }
@@ -457,9 +214,10 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "add") {
     try {
       if (!existsSync(configPath)) {
-        console.error(`Config file not found. Run \`${PRIMARY_CLI_NAME} init\` first.`);
+        console.error("Config file not found. Run `feliz init` first.");
         process.exit(1);
       }
+
       const config = loadProjectAddConfig(configPath);
       const { LinearClient } = await import("../connectors/linear/client.ts");
       const { WorkspaceManager } = await import("../workspace/manager.ts");
@@ -509,8 +267,8 @@ async function main() {
         defaultScaffoldAdapter: config.agent.default,
         configPath,
       });
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -519,7 +277,7 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "remove") {
     const name = cmd.args[0];
     if (!name) {
-      console.error(`Usage: ${PRIMARY_CLI_NAME} project remove <name>`);
+      console.error("Usage: feliz project remove <name>");
       process.exit(1);
     }
     try {
@@ -530,8 +288,8 @@ async function main() {
       const { removeProjectFromConfig } = await import("./project.ts");
       removeProjectFromConfig(configPath, name);
       console.log(`Removed project "${name}".`);
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -559,17 +317,17 @@ async function main() {
       try {
         process.kill(pid, "SIGTERM");
         console.log(`Stopped ${PRODUCT_NAME} daemon (PID ${pid}).`);
-      } catch (e: any) {
-        if (e.code === "ESRCH") {
+      } catch (error: any) {
+        if (error.code === "ESRCH") {
           console.log(`${PRODUCT_NAME} is not running (stale PID ${pid}). Cleaning up.`);
           const { removePidFile } = await import("../pid.ts");
           removePidFile(config.storage.data_dir);
         } else {
-          throw e;
+          throw error;
         }
       }
-    } catch (e: any) {
-      console.error(`Error: ${e.message}`);
+    } catch (error: any) {
+      console.error(`Error: ${error.message}`);
       process.exit(1);
     }
     return;
@@ -582,23 +340,21 @@ async function main() {
       console.log(`Created config file: ${configPath}`);
       console.log("");
       console.log("Edit this file to set your Linear API key and project details,");
-      console.log(`then run \`${PRIMARY_CLI_NAME} start\` again.`);
+        console.log(`then run \`${PRIMARY_CLI_NAME} start\` again.`);
       return;
     }
+
     console.log(`Starting ${PRODUCT_NAME} daemon...`);
     logger.info(`${PRODUCT_NAME} starting`);
     const { FelizServer } = await import("../server.ts");
-    const config = loadConfig(configPath);
-    const server = new FelizServer(config);
+    const server = new FelizServer(loadConfig(configPath));
     await server.start();
     return;
   }
 
   if (cmd.command === "auth") {
     if (cmd.subcommand !== "linear") {
-      console.error(
-        `Usage: ${PRIMARY_CLI_NAME} auth linear [--client-id <id>] [--client-secret <secret>] [--port <port>] [--callback-url <url>]`
-      );
+      console.error(`Usage: ${PRIMARY_CLI_NAME} auth linear [--client-id <id>] [--client-secret <secret>] [--port <port>] [--callback-url <url>]`);
       process.exit(1);
     }
     const { runAuth } = await import("./auth.ts");
@@ -619,12 +375,10 @@ async function main() {
     return;
   }
 
-  console.log(
-    `Unknown command: ${cmd.command}. Run '${PRIMARY_CLI_NAME} --help' for usage.`
-  );
+  console.log(`Unknown command: ${cmd.command}. Run '${PRIMARY_CLI_NAME} --help' for usage.`);
 }
 
-main().catch((e) => {
-  console.error(e);
+main().catch((error) => {
+  console.error(error);
   process.exit(1);
 });
