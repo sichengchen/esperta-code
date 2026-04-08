@@ -443,7 +443,8 @@ async function main() {
   if (cmd.command === "agent" && cmd.subcommand === "list") {
     const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
     const { CodexAdapter } = await import("../agents/codex.ts");
-    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter()];
+    const { OpenCodeAdapter } = await import("../agents/opencode.ts");
+    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter(), new OpenCodeAdapter()];
     console.log("Agent          Available");
     console.log("─".repeat(30));
     for (const a of adapters) {
@@ -471,6 +472,7 @@ async function main() {
       } = await import("./repo-scaffold.ts");
       const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
       const { CodexAdapter } = await import("../agents/codex.ts");
+      const { OpenCodeAdapter } = await import("../agents/opencode.ts");
       const { runProjectAddWizard } = await import("./project-add-wizard.ts");
 
       const linearClient = new LinearClient(config.linear.oauth_token);
@@ -478,6 +480,7 @@ async function main() {
       const adapters = {
         "claude-code": new ClaudeCodeAdapter(),
         codex: new CodexAdapter(),
+        opencode: new OpenCodeAdapter(),
       };
 
       await runProjectAddWizard({

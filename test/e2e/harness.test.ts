@@ -77,6 +77,34 @@ describe("E2E harness doctor", () => {
     expect(report.checks.some((c) => c.id === "tool.agent")).toBe(true);
     expect(report.checks.some((c) => c.id === "github.auth")).toBe(true);
   });
+
+  test("passes when only opencode is available", () => {
+    const report = runE2EDoctor(
+      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      baseDeps({
+        runCommand: (cmd: string, args: string[]) => {
+          const key = `${cmd} ${args.join(" ")}`.trim();
+          const okCommands = new Set([
+            "bun --version",
+            "gh --version",
+            "sqlite3 --version",
+            "git --version",
+            "gh auth status",
+            "opencode --version",
+            "bun run src/cli/index.ts config validate --config /tmp/feliz-e2e/feliz.yml",
+          ]);
+          if (okCommands.has(key)) {
+            return { exitCode: 0, stdout: "ok", stderr: "" };
+          }
+          return { exitCode: 1, stdout: "", stderr: `unexpected command: ${key}` };
+        },
+      })
+    );
+
+    expect(report.ok).toBe(true);
+    const agentCheck = report.checks.find((c) => c.id === "tool.agent");
+    expect(agentCheck?.summary).toContain("opencode");
+  });
 });
 
 describe("E2E harness smoke", () => {

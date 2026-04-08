@@ -66,6 +66,7 @@ export {
 export type { AgentAdapter, AgentRunParams, AgentRunResult } from "./agents/adapter.ts";
 export { ClaudeCodeAdapter } from "./agents/claude-code.ts";
 export { CodexAdapter } from "./agents/codex.ts";
+export { OpenCodeAdapter } from "./agents/opencode.ts";
 
 // Pipeline
 export { PipelineExecutor } from "./pipeline/executor.ts";

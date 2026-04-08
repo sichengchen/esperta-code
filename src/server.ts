@@ -5,6 +5,7 @@ import { WorkspaceManager } from "./workspace/manager.ts";
 import { Orchestrator } from "./orchestrator/orchestrator.ts";
 import { ClaudeCodeAdapter } from "./agents/claude-code.ts";
 import { CodexAdapter } from "./agents/codex.ts";
+import { OpenCodeAdapter } from "./agents/opencode.ts";
 import {
   loadRepoConfig,
   loadPipelineConfig,
@@ -48,6 +49,7 @@ export class FelizServer {
     this.adapters = {
       "claude-code": new ClaudeCodeAdapter(),
       "codex": new CodexAdapter(),
+      "opencode": new OpenCodeAdapter(),
     };
   }
 
