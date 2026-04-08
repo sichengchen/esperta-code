@@ -23,7 +23,7 @@ describe("CONFIG_TEMPLATE", () => {
   });
 
   test("contains comment header", () => {
-    expect(CONFIG_TEMPLATE).toContain("# Feliz configuration");
+    expect(CONFIG_TEMPLATE).toContain("# Esperta Code configuration");
   });
 });
 
@@ -142,8 +142,8 @@ describe("generateWorkflowMd", () => {
 
   test("contains context system instructions", () => {
     const md = generateWorkflowMd();
-    expect(md).toContain("feliz context read");
-    expect(md).toContain("feliz context write");
+    expect(md).toContain("esperta-code context read");
+    expect(md).toContain("esperta-code context write");
   });
 
   test("does not contain old template variables", () => {

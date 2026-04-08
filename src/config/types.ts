@@ -1,4 +1,36 @@
+export interface RuntimeConfig {
+  data_dir: string;
+  max_concurrent_jobs: number;
+  canonical_repo_root: string;
+  worktree_root: string;
+  artifact_root: string;
+}
+
+export interface ProjectWorktreeConfig {
+  retain_on_success_minutes?: number;
+  retain_on_failure_hours?: number;
+  prune_after_days?: number;
+}
+
+export interface ProjectConcurrencyConfig {
+  max_jobs?: number;
+  allow_read_only_parallel?: boolean;
+}
+
+export interface JobTypeProfileConfig {
+  agent: string;
+  system_prompt: string;
+  prompt_template?: string;
+  write_mode?: "workspace_write" | "read_only";
+  verify?: string[];
+  publish?: string;
+  artifact_expectations?: string[];
+  timeout_ms?: number;
+  retry_limit?: number;
+}
+
 export interface FelizConfig {
+  runtime?: RuntimeConfig;
   linear: {
     oauth_token: string;
     app_user_id?: string;
@@ -35,8 +67,12 @@ export interface ProjectAddConfig {
 export interface ProjectConfig {
   name: string;
   repo: string;
-  linear_project: string;
+  linear_project?: string;
   branch: string;
+  base_branch?: string;
+  worktrees?: ProjectWorktreeConfig;
+  concurrency?: ProjectConcurrencyConfig;
+  job_types?: Record<string, JobTypeProfileConfig>;
 }
 
 export interface RepoConfig {

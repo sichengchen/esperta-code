@@ -89,7 +89,13 @@ export class PipelineExecutor {
               agent_adapter: step.agent || this.agentConfig.defaultAgent || null,
             });
 
-            let agentResult: { status: string; exitCode: number; stdout: string } | null = null;
+            let agentResult: {
+              status: string;
+              exitCode: number;
+              stdout: string;
+              stderr: string;
+              filesChanged: string[];
+            } | null = null;
 
             // Run before_run hook
             if (this.hooks.before_run) {

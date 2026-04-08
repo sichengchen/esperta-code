@@ -1,72 +1,81 @@
 # Usage
 
-Day-to-day operation of Feliz after setup is complete.
+Esperta Code is thread-centric. A thread is the durable identity for a unit of work, and each new instruction becomes a new job on that thread.
 
-## Start the daemon
-
-```bash
-bun run src/cli/index.ts start
-```
-
-Keep this terminal running. Feliz listens for Linear webhook events on the configured port.
-
-## Create work in Linear
-
-Create an issue in your mapped Linear project with clear acceptance criteria. **Assign the issue to Feliz** (or use `@Feliz` mentions for commands) — Feliz discovers work via webhook when issues are assigned or delegated to it.
-
-What happens after discovery:
-
-1. Issue is claimed and queued (or routed to spec drafting / decomposition if configured).
-2. An isolated git worktree is created.
-3. The pipeline runs (agent execution, gates, agent-handled PR creation).
-
-No labels or special formatting needed — just assign the issue to Feliz.
-
-If nothing happens after creating an issue, check:
-
-- Is the daemon running? (`feliz status`)
-- Does the project name in `feliz.yml` match the Linear project exactly?
-- Is the repo cloned? (check `feliz status` or the workspace directory)
-- Is an agent CLI installed? (`feliz agent list`)
-
-## Monitor
+## Start New Work
 
 ```bash
-bun run src/cli/index.ts status          # daemon health
-bun run src/cli/index.ts run list        # recent runs
-bun run src/cli/index.ts run show <id>   # run details + step results
+esperta-code thread start \
+  --project repo-a \
+  --instruction "Build cache invalidation for user updates"
 ```
 
-## Verify delivery
+This creates:
 
-A successful run produces:
+- a thread
+- an initial job
+- a queued run candidate for the scheduler
 
-- A pull request on the target repo
-- A PR URL in `run show` output
-
-## Handle failures
+## Continue Existing Work
 
 ```bash
-bun run src/cli/index.ts run retry <LINEAR_ID>
+esperta-code thread continue <thread-id> \
+  --instruction "Apply requested changes"
 ```
 
-The retry carries failure context from the previous attempt so the agent can correct course.
+Use `--summary` when you want a custom short label in thread and job lists. If you omit it, Esperta Code derives a summary from the instruction.
 
-## Inspect context
+Use this when:
+
+- review feedback arrives
+- CI fails
+- a previous run only partially completed
+- the user wants to change direction without losing thread history
+
+## Inspect Threads and Jobs
 
 ```bash
-bun run src/cli/index.ts context history <project>   # past events
-bun run src/cli/index.ts context show <LINEAR_ID>     # snapshot for a work item
+esperta-code thread list
+esperta-code thread show <thread-id>
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
 ```
 
-## Stop
+## Worktrees
+
+Every run executes in its own isolated worktree.
 
 ```bash
-bun run src/cli/index.ts stop
+esperta-code worktree list
+esperta-code worktree inspect <id>
+esperta-code worktree prune
 ```
 
-## Related
+Use retained worktrees to inspect failures, verify branch state, or resume work quickly.
 
-- [Getting Started](getting-started.md) — first-time setup
-- [Configuration](configuration.md) — config reference
-- [CLI](cli.md) — full command reference
+## Approvals, Retries, and Cancellation
+
+```bash
+esperta-code job approve <job-id>
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+```
+
+## Attach External Events
+
+External events let you keep using the same thread after outside signals arrive.
+
+```bash
+esperta-code event attach <thread-id> \
+  --type ci_failed \
+  --source github \
+  --source-id 123
+```
+
+Typical external events:
+
+- CI failures
+- requested review changes
+- merge conflicts
+- webhook-driven follow-up instructions

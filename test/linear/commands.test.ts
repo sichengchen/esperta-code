@@ -1,7 +1,22 @@
 import { describe, expect, test } from "bun:test";
-import { parseCommand, type FelizCommand } from "../../src/linear/commands.ts";
+import {
+  parseCommand,
+  type FelizCommand,
+} from "../../src/connectors/linear/commands.ts";
 
 describe("Linear Comment Commands", () => {
+  test("parses @esperta start", () => {
+    const cmd = parseCommand("@esperta start");
+    expect(cmd).not.toBeNull();
+    expect(cmd!.command).toBe("start");
+  });
+
+  test("parses @esperta-code retry", () => {
+    const cmd = parseCommand("@esperta-code retry");
+    expect(cmd).not.toBeNull();
+    expect(cmd!.command).toBe("retry");
+  });
+
   test("parses @feliz start", () => {
     const cmd = parseCommand("@feliz start");
     expect(cmd).not.toBeNull();
@@ -55,7 +70,7 @@ describe("Linear Comment Commands", () => {
   });
 
   test("handles case insensitivity", () => {
-    const cmd = parseCommand("@Feliz START");
+    const cmd = parseCommand("@Esperta START");
     expect(cmd).not.toBeNull();
     expect(cmd!.command).toBe("start");
   });

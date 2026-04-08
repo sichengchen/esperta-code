@@ -1,6 +1,9 @@
 import { describe, expect, test, mock, beforeEach, afterEach } from "bun:test";
 import { Database } from "../../src/db/database.ts";
-import { WebhookHandler, type AgentSessionEvent } from "../../src/linear/webhook.ts";
+import {
+  WebhookHandler,
+  type AgentSessionEvent,
+} from "../../src/connectors/linear/webhook.ts";
 import { existsSync, unlinkSync } from "fs";
 
 const TEST_DB = "/tmp/feliz-webhook-test.db";

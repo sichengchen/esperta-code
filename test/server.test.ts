@@ -221,15 +221,9 @@ agent:
     const server = new FelizServer(makeConfig());
     const anyServer = server as any;
 
-    // Start the HTTP server only (not the full start() which enters tick loop)
-    const httpServer = Bun.serve({
-      port: 0,
-      fetch: anyServer.handleRequest.bind(anyServer),
-    });
-
     try {
-      const resp = await fetch(
-        `http://localhost:${httpServer.port}/auth/callback?code=srv_test_code`
+      const resp = await anyServer.handleRequest(
+        new Request("http://localhost/auth/callback?code=srv_test_code")
       );
       expect(resp.status).toBe(200);
       const html = await resp.text();
@@ -238,7 +232,6 @@ agent:
       expect(existsSync(AUTH_CODE_FILE)).toBe(true);
       expect(readFileSync(AUTH_CODE_FILE, "utf-8")).toBe("srv_test_code");
     } finally {
-      httpServer.stop();
       await server.stop();
       clearAuthCode();
     }
@@ -248,18 +241,12 @@ agent:
     const server = new FelizServer(makeConfig());
     const anyServer = server as any;
 
-    const httpServer = Bun.serve({
-      port: 0,
-      fetch: anyServer.handleRequest.bind(anyServer),
-    });
-
     try {
-      const resp = await fetch(
-        `http://localhost:${httpServer.port}/auth/callback`
+      const resp = await anyServer.handleRequest(
+        new Request("http://localhost/auth/callback")
       );
       expect(resp.status).toBe(400);
     } finally {
-      httpServer.stop();
       await server.stop();
     }
   });
@@ -402,19 +389,13 @@ agent:
       },
     };
 
-    const httpServer = Bun.serve({
-      port: 0,
-      fetch: anyServer.handleRequest.bind(anyServer),
-    });
-
     try {
-      const resp = await fetch(
-        `http://localhost:${httpServer.port}/webhook/linear`,
-        {
+      const resp = await anyServer.handleRequest(
+        new Request("http://localhost/webhook/linear", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event),
-        }
+        })
       );
       expect(resp.status).toBe(200);
 
@@ -425,7 +406,6 @@ agent:
       expect(emitErrorCalls[0]![0]).toBe("session-stop");
       expect(emitErrorCalls[0]![1]).toContain("Cancelled by user");
     } finally {
-      httpServer.stop();
       await server.stop();
     }
   });
@@ -490,26 +470,19 @@ agent:
       },
     };
 
-    const httpServer = Bun.serve({
-      port: 0,
-      fetch: anyServer.handleRequest.bind(anyServer),
-    });
-
     try {
-      const resp = await fetch(
-        `http://localhost:${httpServer.port}/webhook/linear`,
-        {
+      const resp = await anyServer.handleRequest(
+        new Request("http://localhost/webhook/linear", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event),
-        }
+        })
       );
       expect(resp.status).toBe(200);
 
       const wi = db.getWorkItem("wi-cancel");
       expect(wi.orchestration_state).toBe("cancelled");
     } finally {
-      httpServer.stop();
       await server.stop();
     }
   });

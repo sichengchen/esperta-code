@@ -30,7 +30,7 @@ OpenTelemetry export is a future extension.
 - **Linear OAuth token**: environment variable (`LINEAR_OAUTH_TOKEN`), obtained via OAuth2 flow with `actor=app`. Never logged or stored in config files.
 - **Git credentials**: SSH keys (via agent socket mount) or HTTPS tokens (see Docker Credentials below).
 - **GitHub/GitLab API token**: environment variable (`GITHUB_TOKEN`) for PR creation.
-- **Coding agent credentials**: Feliz delegates authentication to each agent's own CLI. Feliz never stores agent OAuth tokens or credentials itself.
+- **Coding agent credentials**: Esperta Code delegates authentication to each agent's own CLI. Esperta Code never stores agent OAuth tokens or credentials itself.
 
 | Agent | OAuth (recommended) | API Key (fallback) |
 |---|---|---|
@@ -39,13 +39,13 @@ OpenTelemetry export is a future extension.
 
 OAuth is preferred because it avoids long-lived API keys and respects each agent's EULA by using their official auth mechanisms. For headless environments (CI, remote servers), API key via env var is the fallback.
 
-- `feliz agent login <name>` is a convenience wrapper that calls the agent's own login command (e.g., `claude login`, `codex login`).
+- `esperta-code agent login <name>` is a convenience wrapper that calls the agent's own login command (e.g., `claude login`, `codex login`).
 - Agent credential directories must be persisted across container restarts (mount or volume).
 - Credentials are never logged and never included in context snapshots.
 
 ## Docker Credentials
 
-Feliz runs in Docker and needs git access for cloning repos and pushing branches/PRs.
+Esperta Code runs in Docker and needs git access for cloning repos and pushing branches/PRs.
 
 **Required credentials**:
 - SSH key or HTTPS token for `git clone` / `git push` to private repos
@@ -62,7 +62,7 @@ services:
     env_file: .env
     ports:
       - "3421:3421"   # Linear webhook
-      - "8374:8374"   # OAuth callback for `feliz auth linear`
+      - "8374:8374"   # OAuth callback for `esperta-code auth linear`
     volumes:
       - ${SSH_AUTH_SOCK}:/ssh-agent:ro
       - ~/.ssh/known_hosts:/root/.ssh/known_hosts:ro
@@ -96,17 +96,17 @@ The Dockerfile must include `git`, `openssh-client`, and configure `known_hosts`
 ## Workspace Isolation
 
 - Each agent runs in its own worktree -- no shared mutable state between concurrent runs
-- Agent process runs with the same user permissions as the Feliz daemon
+- Agent process runs with the same user permissions as the Esperta Code daemon
 - Worktree paths are sanitized and validated to prevent path traversal
 
 ## Trust Model
 
-Feliz trusts:
+Esperta Code trusts:
 - The configured Linear OAuth token (operator responsibility)
-- The code in managed repos (operator responsibility -- don't point Feliz at untrusted repos)
+- The code in managed repos (operator responsibility -- don't point Esperta Code at untrusted repos)
 - Hook scripts in `.feliz/config.yml` (repo-controlled, treat as trusted config)
 - Agent adapters (bundled or operator-installed)
 
-Feliz does NOT trust:
+Esperta Code does NOT trust:
 - Linear issue content as executable input (template rendering is sandboxed -- no code execution from issue text)
 - Agent outputs (validated through gates before publishing)

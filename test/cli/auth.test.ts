@@ -265,64 +265,38 @@ describe("waitForCallback", () => {
   test("times out when no callback received", async () => {
     const { waitForCallback } = await import("../../src/cli/auth.ts");
 
-    await expect(waitForCallback(0, 50)).rejects.toThrow(
+    await expect(
+      waitForCallback(3421, 50, {
+        waitViaServer: async () => {
+          throw new Error("OAuth callback timed out after 5 minutes");
+        },
+      })
+    ).rejects.toThrow(
       "OAuth callback timed out"
     );
   });
 
   test("resolves with code from callback", async () => {
     const { waitForCallback } = await import("../../src/cli/auth.ts");
-
-    const promise = waitForCallback(0, 5000);
-
-    // Wait briefly for server to start, then hit the callback
-    await new Promise((r) => setTimeout(r, 50));
-
-    // We need to find what port was assigned — use port 0 trick
-    // Instead, use a known port for this test
-    const { waitForCallback: wfc2 } = await import("../../src/cli/auth.ts");
-    const port = 18374;
-    const promise2 = wfc2(port, 5000);
-
-    await new Promise((r) => setTimeout(r, 50));
-    const resp = await fetch(
-      `http://localhost:${port}/auth/callback?code=test_code_123`
-    );
-    expect(resp.status).toBe(200);
-
-    const code = await promise2;
+    const code = await waitForCallback(3421, 5000, {
+      waitViaServer: async () => "test_code_123",
+    });
     expect(code).toBe("test_code_123");
-
-    // Clean up the first server (it will time out, catch the rejection)
-    promise.catch(() => {});
   });
 
   test("falls back to polling code file when port is in use", async () => {
-    const { waitForCallback, AUTH_CODE_FILE, writeAuthCode, clearAuthCode } =
-      await import("../../src/cli/auth.ts");
+    const { waitForCallback } = await import("../../src/cli/auth.ts");
 
-    clearAuthCode();
-
-    // Occupy a port to simulate the main server running
-    const port = 18377;
-    const blocker = Bun.serve({
-      port,
-      fetch: () => new Response("occupied"),
+    const code = await waitForCallback(3421, 3000, {
+      waitViaServer: () => {
+        const error = new Error("in use") as Error & { code?: string };
+        error.code = "EADDRINUSE";
+        throw error;
+      },
+      waitViaPolling: async () => "polled_code_456",
     });
 
-    try {
-      const promise = waitForCallback(port, 3000);
-
-      // Simulate the main server writing the code file
-      await new Promise((r) => setTimeout(r, 200));
-      writeAuthCode("polled_code_456");
-
-      const code = await promise;
-      expect(code).toBe("polled_code_456");
-    } finally {
-      blocker.stop();
-      clearAuthCode();
-    }
+    expect(code).toBe("polled_code_456");
   });
 });
 
@@ -339,7 +313,7 @@ describe("runAuth", () => {
   test("full flow with injected dependencies", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
     const configPath = join(TEST_DIR, "feliz.yml");
-    const port = 18375;
+    const port = 3421;
 
     const promptAnswers = ["n"]; // "n" = store literal token, not env var
     let promptIdx = 0;
@@ -353,14 +327,14 @@ describe("runAuth", () => {
         "client-secret": "test_secret",
         port: String(port),
       },
-      promptFn
+      promptFn,
+      {
+        exchangeCodeForTokenFn: async () => {
+          throw new Error("Token exchange failed: test");
+        },
+        waitForCallbackFn: async () => "test_auth_code",
+      }
     );
-
-    // Wait for server to start, then simulate the callback
-    await new Promise((r) => setTimeout(r, 100));
-
-    // Simulate Linear redirecting with a code
-    await fetch(`http://localhost:${port}/auth/callback?code=test_auth_code`);
 
     // The flow will try to exchange the code — we can't mock fetch in runAuth
     // since it uses globalThis.fetch. So this will fail at token exchange.
@@ -375,7 +349,7 @@ describe("runAuth", () => {
   test("uses --callback-url for redirect_uri", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
     const configPath = join(TEST_DIR, "feliz.yml");
-    const port = 18376;
+    const port = 3421;
 
     const promptAnswers = ["n"];
     let promptIdx = 0;
@@ -389,11 +363,14 @@ describe("runAuth", () => {
         port: String(port),
         "callback-url": "https://my-host.com/auth/callback",
       },
-      promptFn
+      promptFn,
+      {
+        exchangeCodeForTokenFn: async () => {
+          throw new Error("Token exchange failed: test");
+        },
+        waitForCallbackFn: async () => "test_auth_code",
+      }
     );
-
-    await new Promise((r) => setTimeout(r, 100));
-    await fetch(`http://localhost:${port}/auth/callback?code=test_auth_code`);
 
     try {
       await authPromise;

@@ -28,6 +28,41 @@ describe("resolveEnvVars", () => {
 });
 
 describe("loadFelizConfig", () => {
+  test("parses the new remote-first config shape", () => {
+    const yaml = `
+runtime:
+  data_dir: /tmp/feliz
+  max_concurrent_jobs: 4
+
+projects:
+  - name: repo-a
+    repo: git@github.com:org/repo-a.git
+    base_branch: main
+    worktrees:
+      retain_on_success_minutes: 30
+      retain_on_failure_hours: 24
+      prune_after_days: 7
+    concurrency:
+      max_jobs: 2
+    job_types:
+      implement:
+        agent: codex
+        system_prompt: .feliz/prompts/implement.md
+        verify:
+          - bun test
+        publish: draft_pr
+`;
+    const config = loadFelizConfig(yaml);
+    expect(config.runtime?.data_dir).toBe("/tmp/feliz");
+    expect(config.runtime?.max_concurrent_jobs).toBe(4);
+    expect(config.projects[0]!.base_branch).toBe("main");
+    expect(config.projects[0]!.worktrees?.retain_on_failure_hours).toBe(24);
+    expect(config.projects[0]!.concurrency?.max_jobs).toBe(2);
+    expect(config.projects[0]!.job_types?.implement?.agent).toBe("codex");
+    expect(config.projects[0]!.job_types?.implement?.verify).toEqual(["bun test"]);
+    expect(config.projects[0]!.job_types?.implement?.publish).toBe("draft_pr");
+  });
+
   test("parses valid feliz.yml with defaults", () => {
     const yaml = `
 linear:
@@ -83,7 +118,9 @@ projects:
     repo: git@github.com:org/x.git
     linear_project: X
 `;
-    expect(() => loadFelizConfig(yaml)).toThrow("linear.oauth_token is required");
+    expect(() => loadFelizConfig(yaml)).toThrow(
+      "runtime.max_concurrent_jobs or linear.oauth_token is required"
+    );
   });
 
   test("accepts empty projects array", () => {

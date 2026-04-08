@@ -1,4 +1,4 @@
-import type { LinearProject } from "../linear/client.ts";
+import type { LinearProject } from "../connectors/linear/client.ts";
 import type { RepoScaffoldAnswers } from "../config/writer.ts";
 import { projectNameFromRepoUrl } from "./project.ts";
 

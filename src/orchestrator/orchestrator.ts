@@ -544,8 +544,8 @@ export class Orchestrator {
 
 ## Context
 
-Run \`feliz context read\` to see history and prior step outputs.
-Run \`feliz context write <message>\` to leave findings for the next step.`;
+Run \`esperta-code context read\` to see history and prior step outputs.
+Run \`esperta-code context write <message>\` to leave findings for the next step.`;
     cache.set(cacheKey, fallback);
     return fallback;
   }

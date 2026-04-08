@@ -1,39 +1,58 @@
 # Workspace Management
 
-## Repo Lifecycle
+Worktree management is a first-class subsystem.
 
-On project registration, Feliz:
-1. Clones the repo to `{workspace_root}/{project_name}/repo`
-2. Sets up the repo as a bare or regular clone for worktree support
-3. Fetches and tracks the configured base branch
+## Per-project layout
 
-## Worktree Lifecycle
+Each project maintains:
 
-Per work item:
+- one canonical local clone
+- a worktree root
+- branch leases enforced at the thread/job level
 
-1. **Create**: `git worktree add {workspace_root}/{project_name}/worktrees/{identifier} -b feliz/{identifier} {base_branch}`
-2. **Hook**: Run `hooks.after_create` in worktree directory (e.g., `npm install`)
-3. **Use**: Agent runs exclusively within this worktree
-4. **Cleanup**: After completion/failure, run `hooks.before_remove`, then `git worktree remove`
+Suggested layout:
 
-Worktree path safety: identifier is sanitized to `[A-Za-z0-9._-]` (other chars replaced with `_`). The resolved path must remain under `workspace_root` after normalization.
+```text
+~/.feliz/
+  repos/<project>/
+  workspaces/<project>/worktrees/<thread-id>/<run-id>/
+  artifacts/<thread-id>/<run-id>/
+```
 
-## Branch Naming
+The current implementation stores canonical repos and worktrees under the configured workspace root and records the absolute worktree path in SQLite.
 
-Default: `feliz/{linear_identifier}` (e.g., `feliz/BAC-123`)
+## Per-run lifecycle
 
-Configurable via WORKFLOW.md front matter (future extension).
+For each run:
 
-## Behavioral Scenarios
+1. resolve the thread branch or base branch
+2. create a fresh worktree
+3. execute the job inside that worktree
+4. capture metadata and last activity time
+5. retain or delete the worktree after completion
 
-### Scenario: Worktree-Scoped Execution
+## Retention policies
 
-- **Given** a queued work item is dispatched
-- **When** Feliz executes the pipeline
-- **Then** the agent runs in that work item's dedicated worktree path
+Supported policies:
 
-### Scenario: Worktree Hook and Cleanup
+- delete immediately on success
+- retain briefly on success for inspection
+- retain longer on failure
+- pin retained worktrees manually
+- prune retained worktrees by age
 
-- **Given** `hooks.after_create` and/or `hooks.before_remove` are configured
-- **When** a worktree is created and later torn down
-- **Then** Feliz runs `after_create` in the worktree before agent execution and `before_remove` before `git worktree remove`
+## Administrative commands
+
+- `esperta-code worktree list`
+- `esperta-code worktree inspect <id>`
+- `esperta-code worktree prune`
+
+## Garbage collection responsibilities
+
+Garbage collection must handle:
+
+- expired retained worktrees
+- orphaned worktrees after crash
+- stale branch leases
+- archived threads
+- merged or deleted branches

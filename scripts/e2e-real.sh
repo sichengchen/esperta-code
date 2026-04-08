@@ -341,7 +341,7 @@ check_linear_project() {
   (
     cd "${REPO_ROOT}"
     LINEAR_PROJECT_TO_CHECK="${project_name}" bun --eval '
-import { LinearClient } from "./src/linear/client.ts";
+import { LinearClient } from "./src/connectors/linear/client.ts";
 
 const target = (process.env.LINEAR_PROJECT_TO_CHECK ?? "").trim();
 const key = process.env.LINEAR_OAUTH_TOKEN ?? "";

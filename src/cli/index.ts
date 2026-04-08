@@ -7,17 +7,41 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { validateAllConfigs } from "./validate.ts";
+import {
+  LEGACY_CLI_NAME,
+  PRIMARY_CLI_NAME,
+  PRODUCT_NAME,
+} from "../branding.ts";
 
 const HELP_TEXT = `
-feliz - Cloud agents platform
+${PRODUCT_NAME} - Cloud agents platform
 
-Usage: feliz <command> [options]
+Usage: ${PRIMARY_CLI_NAME} <command> [options]
+
+Alias:
+  ${LEGACY_CLI_NAME}                 Backward-compatible CLI alias
 
 Commands:
-  start                    Start the Feliz daemon
+  start                    Start the ${PRODUCT_NAME} daemon
   init                     Interactive setup wizard
   stop                     Stop the daemon
   status                   Show daemon status
+  json                     Process one JSON request from stdin
+  thread start             Create a thread and initial job
+  thread continue          Append a job to an existing thread
+  thread create            Create a thread without relying on derived defaults
+  thread list              List threads
+  thread show <thread-id>  Show thread details
+  job list                 List jobs
+  job show <job-id>        Show a job
+  job logs <job-id>        Show job log artifact paths
+  job retry <job-id>       Re-queue a failed job
+  job cancel <job-id>      Cancel a job
+  job approve <job-id>     Approve a waiting job
+  worktree list            List tracked worktrees
+  worktree inspect <id>    Show worktree details
+  worktree prune           Prune expired retained worktrees
+  event attach <thread-id> Attach an external event to a thread
   config validate          Validate configuration
   config show              Print resolved configuration
   project list             List configured projects
@@ -36,7 +60,7 @@ Commands:
   e2e smoke                Run automated E2E smoke checks
 
 Options:
-  --config <path>          Path to feliz.yml (default: ~/.feliz/feliz.yml)
+  --config <path>          Path to config file (default: ~/.feliz/feliz.yml)
   --json                   Print report as JSON (for e2e commands)
   --out <path>             Write report JSON to file (for e2e commands)
   --help                   Show this help
@@ -81,6 +105,16 @@ async function main() {
   const configPath =
     cmd.flags.config ?? join(homedir(), ".feliz", "feliz.yml");
 
+  const { handleCoreCliCommand } = await import("./core.ts");
+  if (await handleCoreCliCommand(cmd, configPath)) {
+    return;
+  }
+
+  const { handleJsonCliCommand } = await import("./json.ts");
+  if (await handleJsonCliCommand(cmd, configPath)) {
+    return;
+  }
+
   if (cmd.command === "config" && cmd.subcommand === "validate") {
     try {
       const result = validateAllConfigs(configPath);
@@ -108,21 +142,21 @@ async function main() {
   if (cmd.command === "status") {
     try {
       if (!existsSync(configPath)) {
-        console.log("Feliz is not configured. Run `feliz init` first.");
+        console.log(`${PRODUCT_NAME} is not configured. Run \`${PRIMARY_CLI_NAME} init\` first.`);
         return;
       }
       const config = loadConfig(configPath);
       const dbPath = join(config.storage.data_dir, "db", "feliz.db");
       if (!existsSync(dbPath)) {
         console.log(
-          `Feliz is configured but not running. ${config.projects.length} project(s) configured.`
+          `${PRODUCT_NAME} is configured but not running. ${config.projects.length} project(s) configured.`
         );
         return;
       }
       const db = new Database(dbPath);
       const running = db.countRunningItems();
       console.log(
-        `Feliz status: ${config.projects.length} project(s), ${running} running agent(s).`
+        `${PRODUCT_NAME} status: ${config.projects.length} project(s), ${running} running agent(s).`
       );
       for (const p of config.projects) {
         console.log(`  ${p.name}: watching "${p.linear_project}"`);
@@ -152,7 +186,7 @@ async function main() {
     try {
       const { db } = openDb(configPath);
       if (!db) {
-        console.log("No runs found. Feliz has not been started yet.");
+        console.log(`No runs found. ${PRODUCT_NAME} has not been started yet.`);
         return;
       }
       const runs = db.listRuns();
@@ -186,13 +220,13 @@ async function main() {
   if (cmd.command === "run" && cmd.subcommand === "show") {
     const runId = cmd.args[0];
     if (!runId) {
-      console.error("Usage: feliz run show <run_id>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} run show <run_id>`);
       process.exit(1);
     }
     try {
       const { db } = openDb(configPath);
       if (!db) {
-        console.error("No data found. Feliz has not been started yet.");
+        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
         process.exit(1);
       }
       const run = db.getRun(runId);
@@ -233,13 +267,13 @@ async function main() {
   if (cmd.command === "run" && cmd.subcommand === "retry") {
     const identifier = cmd.args[0];
     if (!identifier) {
-      console.error("Usage: feliz run retry <work_item_identifier>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} run retry <work_item_identifier>`);
       process.exit(1);
     }
     try {
       const { db } = openDb(configPath);
       if (!db) {
-        console.error("No data found. Feliz has not been started yet.");
+        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
         process.exit(1);
       }
       const wi = db.getWorkItemByLinearIdentifier(identifier);
@@ -266,13 +300,13 @@ async function main() {
   if (cmd.command === "context" && cmd.subcommand === "history") {
     const projectName = cmd.args[0];
     if (!projectName) {
-      console.error("Usage: feliz context history <project>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} context history <project>`);
       process.exit(1);
     }
     try {
       const { db } = openDb(configPath);
       if (!db) {
-        console.log("No history found. Feliz has not been started yet.");
+        console.log(`No history found. ${PRODUCT_NAME} has not been started yet.`);
         return;
       }
       const project = db.getProjectByName(projectName);
@@ -303,13 +337,13 @@ async function main() {
   if (cmd.command === "context" && cmd.subcommand === "show") {
     const identifier = cmd.args[0];
     if (!identifier) {
-      console.error("Usage: feliz context show <work_item_identifier>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} context show <work_item_identifier>`);
       process.exit(1);
     }
     try {
       const { db } = openDb(configPath);
       if (!db) {
-        console.error("No data found. Feliz has not been started yet.");
+        console.error(`No data found. ${PRODUCT_NAME} has not been started yet.`);
         process.exit(1);
       }
       const wi = db.getWorkItemByLinearIdentifier(identifier);
@@ -389,7 +423,7 @@ async function main() {
       message = await Bun.stdin.text();
     }
     if (!message.trim()) {
-      console.error("Usage: feliz context write <message>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} context write <message>`);
       process.exit(1);
     }
 
@@ -409,7 +443,8 @@ async function main() {
   if (cmd.command === "agent" && cmd.subcommand === "list") {
     const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
     const { CodexAdapter } = await import("../agents/codex.ts");
-    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter()];
+    const { OpenCodeAdapter } = await import("../agents/opencode.ts");
+    const adapters = [new ClaudeCodeAdapter(), new CodexAdapter(), new OpenCodeAdapter()];
     console.log("Agent          Available");
     console.log("─".repeat(30));
     for (const a of adapters) {
@@ -422,11 +457,11 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "add") {
     try {
       if (!existsSync(configPath)) {
-        console.error("Config file not found. Run `feliz init` first.");
+        console.error(`Config file not found. Run \`${PRIMARY_CLI_NAME} init\` first.`);
         process.exit(1);
       }
       const config = loadProjectAddConfig(configPath);
-      const { LinearClient } = await import("../linear/client.ts");
+      const { LinearClient } = await import("../connectors/linear/client.ts");
       const { WorkspaceManager } = await import("../workspace/manager.ts");
       const { addProjectToConfig } = await import("./project.ts");
       const {
@@ -437,6 +472,7 @@ async function main() {
       } = await import("./repo-scaffold.ts");
       const { ClaudeCodeAdapter } = await import("../agents/claude-code.ts");
       const { CodexAdapter } = await import("../agents/codex.ts");
+      const { OpenCodeAdapter } = await import("../agents/opencode.ts");
       const { runProjectAddWizard } = await import("./project-add-wizard.ts");
 
       const linearClient = new LinearClient(config.linear.oauth_token);
@@ -444,6 +480,7 @@ async function main() {
       const adapters = {
         "claude-code": new ClaudeCodeAdapter(),
         codex: new CodexAdapter(),
+        opencode: new OpenCodeAdapter(),
       };
 
       await runProjectAddWizard({
@@ -482,12 +519,12 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "remove") {
     const name = cmd.args[0];
     if (!name) {
-      console.error("Usage: feliz project remove <name>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} project remove <name>`);
       process.exit(1);
     }
     try {
       if (!existsSync(configPath)) {
-        console.error("Config file not found. Run `feliz init` first.");
+        console.error(`Config file not found. Run \`${PRIMARY_CLI_NAME} init\` first.`);
         process.exit(1);
       }
       const { removeProjectFromConfig } = await import("./project.ts");
@@ -509,22 +546,22 @@ async function main() {
   if (cmd.command === "stop") {
     try {
       if (!existsSync(configPath)) {
-        console.log("Feliz is not running (no config file found).");
+        console.log(`${PRODUCT_NAME} is not running (no config file found).`);
         return;
       }
       const config = loadConfig(configPath);
       const { readPidFile } = await import("../pid.ts");
       const pid = readPidFile(config.storage.data_dir);
       if (pid === null) {
-        console.log("Feliz is not running (no PID file found).");
+        console.log(`${PRODUCT_NAME} is not running (no PID file found).`);
         return;
       }
       try {
         process.kill(pid, "SIGTERM");
-        console.log(`Stopped Feliz daemon (PID ${pid}).`);
+        console.log(`Stopped ${PRODUCT_NAME} daemon (PID ${pid}).`);
       } catch (e: any) {
         if (e.code === "ESRCH") {
-          console.log(`Feliz is not running (stale PID ${pid}). Cleaning up.`);
+          console.log(`${PRODUCT_NAME} is not running (stale PID ${pid}). Cleaning up.`);
           const { removePidFile } = await import("../pid.ts");
           removePidFile(config.storage.data_dir);
         } else {
@@ -545,11 +582,11 @@ async function main() {
       console.log(`Created config file: ${configPath}`);
       console.log("");
       console.log("Edit this file to set your Linear API key and project details,");
-      console.log("then run `feliz start` again.");
+      console.log(`then run \`${PRIMARY_CLI_NAME} start\` again.`);
       return;
     }
-    console.log("Starting Feliz daemon...");
-    logger.info("Feliz starting");
+    console.log(`Starting ${PRODUCT_NAME} daemon...`);
+    logger.info(`${PRODUCT_NAME} starting`);
     const { FelizServer } = await import("../server.ts");
     const config = loadConfig(configPath);
     const server = new FelizServer(config);
@@ -559,7 +596,9 @@ async function main() {
 
   if (cmd.command === "auth") {
     if (cmd.subcommand !== "linear") {
-      console.error("Usage: feliz auth linear [--client-id <id>] [--client-secret <secret>] [--port <port>] [--callback-url <url>]");
+      console.error(
+        `Usage: ${PRIMARY_CLI_NAME} auth linear [--client-id <id>] [--client-secret <secret>] [--port <port>] [--callback-url <url>]`
+      );
       process.exit(1);
     }
     const { runAuth } = await import("./auth.ts");
@@ -580,7 +619,9 @@ async function main() {
     return;
   }
 
-  console.log(`Unknown command: ${cmd.command}. Run 'feliz --help' for usage.`);
+  console.log(
+    `Unknown command: ${cmd.command}. Run '${PRIMARY_CLI_NAME} --help' for usage.`
+  );
 }
 
 main().catch((e) => {

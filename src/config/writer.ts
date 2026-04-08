@@ -1,10 +1,15 @@
 import { mkdirSync, writeFileSync } from "fs";
 import { dirname } from "path";
 import { stringify } from "yaml";
+import {
+  DOCS_REPOSITORY_URL,
+  PRIMARY_CLI_NAME,
+  PRODUCT_NAME,
+} from "../branding.ts";
 import { getDefaultPipeline } from "./loader.ts";
 
-export const CONFIG_TEMPLATE = `# Feliz configuration
-# Docs: https://github.com/anthropics/feliz
+export const CONFIG_TEMPLATE = `# ${PRODUCT_NAME} configuration
+# Docs: ${DOCS_REPOSITORY_URL}
 
 linear:
   oauth_token: $LINEAR_OAUTH_TOKEN  # Set this environment variable
@@ -27,8 +32,8 @@ export interface InitAnswers {
 }
 
 export function generateConfig(answers: InitAnswers): string {
-  return `# Feliz configuration
-# Docs: https://github.com/anthropics/feliz
+  return `# ${PRODUCT_NAME} configuration
+# Docs: ${DOCS_REPOSITORY_URL}
 
 linear:
   oauth_token: ${answers.oauthToken}
@@ -100,8 +105,8 @@ You are working on {{ project.name }}.
 
 ## Context
 
-Run \`feliz context read\` to see history and prior step outputs.
-Run \`feliz context write <message>\` to leave findings for the next step.
+Run \`${PRIMARY_CLI_NAME} context read\` to see history and prior step outputs.
+Run \`${PRIMARY_CLI_NAME} context write <message>\` to leave findings for the next step.
 Project memory is in \`.feliz/context/memory/\` — read and write files there directly.
 Specs are in \`specs/\`.
 

@@ -1,10 +1,11 @@
 {
-  "name": "feliz",
+  "name": "esperta-code",
   "version": "0.1.0",
   "module": "src/index.ts",
   "type": "module",
   "private": true,
   "bin": {
+    "esperta-code": "./src/cli/index.ts",
     "feliz": "./src/cli/index.ts"
   },
   "scripts": {

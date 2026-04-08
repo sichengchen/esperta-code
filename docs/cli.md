@@ -1,159 +1,159 @@
 # CLI Reference
 
-## Global flags
+## Global Flags
 
 | Flag | Description |
 |---|---|
-| `--config <path>` | Central config path (default: `~/.feliz/feliz.yml`) |
-| `--json` | JSON output (E2E commands) |
-| `--out <path>` | Write JSON report to file (E2E commands) |
+| `--config <path>` | Path to `feliz.yml` (default: `~/.feliz/feliz.yml`) |
+| `--json` | JSON output for E2E commands |
+| `--out <path>` | Write E2E JSON output to a file |
 | `--help`, `-h` | Show help |
 
-## Commands
-
-### Daemon
-
-**`start`** — Start the Feliz daemon. Scaffolds a template config and exits if none exists.
+## Core Workflow
 
 ```bash
-feliz start
-feliz start --config /path/to/feliz.yml
+esperta-code json
+
+esperta-code thread start --project <name> --instruction <text>
+esperta-code thread continue <thread-id> --instruction <text>
+
+esperta-code thread create --project <name> --summary <text>
+esperta-code thread list
+esperta-code thread show <thread-id>
+
+esperta-code job list
+esperta-code job show <job-id>
+esperta-code job logs <job-id>
+esperta-code job retry <job-id>
+esperta-code job cancel <job-id>
+esperta-code job approve <job-id>
+
+esperta-code worktree list
+esperta-code worktree inspect <id>
+esperta-code worktree prune
+
+esperta-code event attach <thread-id> --type <type> --source <kind> --source-id <id>
 ```
 
-**`stop`** — Stop the daemon via PID file.
+## JSON Interface
 
-```bash
-feliz stop
+`esperta-code json` processes one request from stdin and prints one JSON response to stdout. This is the machine-facing interface for local agent clients.
+
+Request shape:
+
+```json
+{
+  "version": "v1",
+  "id": "req-123",
+  "client": {
+    "name": "esperta-base",
+    "cwd": "~/src/sa"
+  },
+  "action": "thread.start",
+  "input": {}
+}
 ```
 
-**`status`** — Show daemon and project status.
+Response shape:
 
-```bash
-feliz status
+```json
+{
+  "version": "v1",
+  "id": "req-123",
+  "action": "thread.start",
+  "ok": true,
+  "result": {}
+}
 ```
 
-### Setup
+Supported actions:
 
-**`init`** — Interactive setup wizard. Creates `feliz.yml` with Linear token, webhook port, storage paths, agent defaults, and an empty projects list. Add projects separately with `feliz project add`.
+| Action | Purpose |
+|---|---|
+| `capabilities` | Discover supported actions |
+| `project.list` | List configured projects |
+| `thread.start` | Create a thread and first job |
+| `thread.continue` | Append a job to an existing thread |
+| `thread.list`, `thread.get` | Inspect threads |
+| `job.list`, `job.get` | Inspect jobs |
+| `job.retry`, `job.cancel`, `job.approve` | Control job lifecycle |
+| `worktree.list`, `worktree.get` | Inspect worktrees |
+| `thread.event.attach` | Attach an external event |
+
+Example:
 
 ```bash
-feliz init
+echo '{"version":"v1","action":"capabilities"}' | esperta-code json
 ```
 
-### Config
+See [Local Agents](local-agents.md) for the full contract and examples.
 
-**`config validate`** — Validate central and repo configs.
+For `thread start` and `thread continue`, `--instruction` is required. `--summary` is optional; if omitted, Esperta Code derives one from the instruction.
+
+## Setup and Operations
 
 ```bash
-feliz config validate
+esperta-code init
+esperta-code start
+esperta-code stop
+esperta-code status
+
+esperta-code config validate
+esperta-code config show
+
+esperta-code project list
+esperta-code project add
+esperta-code project remove <name>
 ```
 
-**`config show`** — Print resolved config with environment variables expanded.
+## Runtime Inspection
 
 ```bash
-feliz config show
+esperta-code run list
+esperta-code run show <run-id>
+esperta-code run retry <work-item-identifier>
+
+esperta-code agent list
 ```
 
-### Projects
+## Context Helpers
 
-**`project list`** — List project mappings.
+These commands are primarily for operators and for agents running inside an execution worktree.
 
 ```bash
-feliz project list
+esperta-code context history <project>
+esperta-code context show <work-item-identifier>
+esperta-code context read
+esperta-code context write <message>
 ```
 
-**`project add`** — Interactive project onboarding.
+## Linear Authentication
 
 ```bash
-feliz project add
-```
-
-**`project remove <name>`** — Remove a project mapping.
-
-```bash
-feliz project remove backend-api
-```
-
-### Runs
-
-**`run list`** — List recent runs.
-
-```bash
-feliz run list
-```
-
-**`run show <run_id>`** — Show run details and step executions.
-
-```bash
-feliz run show abc123
-```
-
-**`run retry <identifier>`** — Retry a failed work item.
-
-```bash
-feliz run retry BAC-123
-```
-
-### Agents
-
-**`agent list`** — Show installed agent adapters and availability.
-
-```bash
-feliz agent list
-```
-
-### Context
-
-**`context history <project>`** — Show history events for a project.
-
-```bash
-feliz context history backend-api
-```
-
-**`context show <identifier>`** — Show context snapshot for a work item.
-
-```bash
-feliz context show BAC-123
-```
-
-### Authentication
-
-**`auth linear`** — Authenticate with Linear via OAuth2. Starts a temporary local server on the webhook port, opens the browser for authorization, exchanges the code for a token, verifies the bot identity, and writes the token to `feliz.yml`.
-
-```bash
-feliz auth linear
-feliz auth linear --client-id <id> --client-secret <secret>
-feliz auth linear --callback-url https://my-host.com/auth/callback
+esperta-code auth linear
+esperta-code auth linear --client-id <id> --client-secret <secret>
+esperta-code auth linear --callback-url https://my-host.com/auth/callback
 ```
 
 | Flag | Description |
 |---|---|
-| `--client-id <id>` | Linear OAuth app client ID (or prompt interactively) |
-| `--client-secret <secret>` | Linear OAuth app client secret (or prompt interactively) |
-| `--port <port>` | Callback server port (default: `3421`, same as webhook port) |
-| `--callback-url <url>` | Public callback URL for Linear redirect (default: `http://localhost:<port>/auth/callback`). Use this when exposing Feliz to the internet, since Linear blocks `localhost` callback URLs. |
+| `--client-id <id>` | Linear OAuth app client ID |
+| `--client-secret <secret>` | Linear OAuth app client secret |
+| `--port <port>` | Callback server port, default `3421` |
+| `--callback-url <url>` | Public callback URL for the OAuth redirect |
 
-After authentication, the command prints next steps for configuring Linear webhooks.
-
-### E2E Testing
-
-**`e2e doctor`** — Check prerequisites (tools, auth, config).
+## E2E Helpers
 
 ```bash
-feliz e2e doctor
+esperta-code e2e doctor
+esperta-code e2e smoke
+esperta-code e2e smoke --json --out /tmp/report.json
 ```
 
-**`e2e smoke`** — Run preflight smoke checks.
+Helper scripts:
 
 ```bash
-feliz e2e smoke
-feliz e2e smoke --json --out /tmp/report.json
-```
-
-## Helper scripts
-
-```bash
-bun run e2e:doctor    # runs feliz e2e doctor
-bun run e2e:smoke     # runs scripts/e2e-smoke.sh
-bun run e2e:real      # runs scripts/e2e-real.sh
+bun run e2e:doctor
+bun run e2e:smoke
+bun run e2e:real
 ```

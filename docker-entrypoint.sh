@@ -4,7 +4,7 @@ set -e
 CONFIG_PATH="${FELIZ_CONFIG_PATH:-/home/feliz/.feliz/feliz.yml}"
 
 # --- Preflight checks ---
-echo "Feliz preflight checks..."
+echo "Esperta Code preflight checks..."
 
 check_tool() {
   if command -v "$1" >/dev/null 2>&1; then
@@ -49,7 +49,7 @@ fi
 
 # Check required env vars
 if [ -z "$LINEAR_OAUTH_TOKEN" ]; then
-  echo "  [WARN] LINEAR_OAUTH_TOKEN not set. Run 'feliz auth linear' to authenticate."
+  echo "  [WARN] LINEAR_OAUTH_TOKEN not set. Run 'esperta-code auth linear' to authenticate."
 fi
 if [ -z "$GITHUB_TOKEN" ] && [ -z "$GH_TOKEN" ]; then
   echo "  [WARN] GITHUB_TOKEN not set. GitHub operations (PR creation) will fail."

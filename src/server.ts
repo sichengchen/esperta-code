@@ -1,10 +1,11 @@
 import { Database } from "./db/database.ts";
-import { LinearClient } from "./linear/client.ts";
-import { WebhookHandler } from "./linear/webhook.ts";
+import { LinearClient } from "./connectors/linear/client.ts";
+import { WebhookHandler } from "./connectors/linear/webhook.ts";
 import { WorkspaceManager } from "./workspace/manager.ts";
 import { Orchestrator } from "./orchestrator/orchestrator.ts";
 import { ClaudeCodeAdapter } from "./agents/claude-code.ts";
 import { CodexAdapter } from "./agents/codex.ts";
+import { OpenCodeAdapter } from "./agents/opencode.ts";
 import {
   loadRepoConfig,
   loadPipelineConfig,
@@ -16,8 +17,9 @@ import type { AgentAdapter } from "./agents/adapter.ts";
 import { existsSync, readFileSync, mkdirSync } from "fs";
 import { join } from "path";
 import { writePidFile, removePidFile } from "./pid.ts";
-import type { AgentSessionEvent } from "./linear/webhook.ts";
+import type { AgentSessionEvent } from "./connectors/linear/webhook.ts";
 import { writeAuthCode, AUTH_CALLBACK_HTML } from "./cli/auth.ts";
+import { PRODUCT_NAME } from "./branding.ts";
 
 export class FelizServer {
   private config: FelizConfig;
@@ -47,6 +49,7 @@ export class FelizServer {
     this.adapters = {
       "claude-code": new ClaudeCodeAdapter(),
       "codex": new CodexAdapter(),
+      "opencode": new OpenCodeAdapter(),
     };
   }
 
@@ -60,7 +63,7 @@ export class FelizServer {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
 
-    this.logger.info("Feliz server started", {
+    this.logger.info(`${PRODUCT_NAME} server started`, {
       projects: this.config.projects.length,
       tick_interval: this.config.tick.interval_ms,
       webhook_port: this.config.webhook.port,
@@ -75,8 +78,8 @@ export class FelizServer {
           id: newId(),
           name: proj.name,
           repo_url: proj.repo,
-          linear_project_name: proj.linear_project,
-          base_branch: proj.branch,
+          linear_project_name: proj.linear_project ?? proj.name,
+          base_branch: proj.branch ?? proj.base_branch ?? "main",
         });
         this.logger.info(`Registered project: ${proj.name}`);
 
@@ -113,7 +116,7 @@ export class FelizServer {
       this.httpServer = null;
     }
     removePidFile(this.config.storage.data_dir);
-    this.logger.info("Feliz server stopping");
+    this.logger.info(`${PRODUCT_NAME} server stopping`);
     this.db.close();
   }
 

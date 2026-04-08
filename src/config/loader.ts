@@ -21,39 +21,81 @@ export function resolveEnvVars(value: string): string {
 
 export function loadFelizConfig(yamlContent: string): FelizConfig {
   const raw = parse(yamlContent) as Record<string, unknown>;
+  const linear = (raw.linear as Record<string, unknown>) || {};
+  const runtime = (raw.runtime as Record<string, unknown>) || {};
+  const webhook = (raw.webhook as Record<string, unknown>) || {};
+  const tick = (raw.tick as Record<string, unknown>) || {};
+  const storage = (raw.storage as Record<string, unknown>) || {};
+  const agent = (raw.agent as Record<string, unknown>) || {};
+  const defaultDataDir = join(homedir(), ".feliz");
+  const dataDir =
+    (runtime.data_dir as string) ||
+    (storage.data_dir as string) ||
+    defaultDataDir;
+  const worktreeRoot =
+    (runtime.worktree_root as string) ||
+    (storage.workspace_root as string) ||
+    join(dataDir, "workspaces");
+  const canonicalRepoRoot =
+    (runtime.canonical_repo_root as string) || join(dataDir, "repos");
+  const artifactRoot =
+    (runtime.artifact_root as string) || join(dataDir, "artifacts");
+  const maxConcurrentJobs =
+    (runtime.max_concurrent_jobs as number) ||
+    (agent.max_concurrent as number) ||
+    5;
 
-  if (!raw?.linear || !(raw.linear as Record<string, unknown>)?.oauth_token) {
-    throw new Error("linear.oauth_token is required");
+  if (!linear.oauth_token && runtime.max_concurrent_jobs === undefined) {
+    throw new Error("runtime.max_concurrent_jobs or linear.oauth_token is required");
   }
 
   const rawProjects = (raw.projects as Record<string, unknown>[] | undefined) || [];
 
   const projects: ProjectConfig[] = rawProjects.map((p) => {
     if (!p.repo) throw new Error(`projects[].repo is required for project "${p.name}"`);
-    if (!p.linear_project)
+    if (!p.name)
+      throw new Error("projects[].name is required");
+    if (!p.linear_project && runtime.max_concurrent_jobs === undefined)
       throw new Error(
         `projects[].linear_project is required for project "${p.name}"`
       );
-    if (!p.name)
-      throw new Error("projects[].name is required");
+    const branch = ((p.base_branch as string) || (p.branch as string) || "main");
     return {
       name: p.name as string,
       repo: p.repo as string,
-      linear_project: p.linear_project as string,
-      branch: (p.branch as string) || "main",
+      ...(p.linear_project ? { linear_project: p.linear_project as string } : {}),
+      branch,
+      base_branch: branch,
+      ...(p.worktrees
+        ? {
+            worktrees: p.worktrees as ProjectConfig["worktrees"],
+          }
+        : {}),
+      ...(p.concurrency
+        ? {
+            concurrency: p.concurrency as ProjectConfig["concurrency"],
+          }
+        : {}),
+      ...(p.job_types
+        ? {
+            job_types: p.job_types as ProjectConfig["job_types"],
+          }
+        : {}),
     };
   });
 
-  const linear = raw.linear as Record<string, unknown>;
-  const webhook = (raw.webhook as Record<string, unknown>) || {};
-  const tick = (raw.tick as Record<string, unknown>) || {};
-  const storage = (raw.storage as Record<string, unknown>) || {};
-  const agent = (raw.agent as Record<string, unknown>) || {};
-  const defaultDataDir = join(homedir(), ".feliz");
-
   return {
+    runtime: {
+      data_dir: dataDir,
+      max_concurrent_jobs: maxConcurrentJobs,
+      canonical_repo_root: canonicalRepoRoot,
+      worktree_root: worktreeRoot,
+      artifact_root: artifactRoot,
+    },
     linear: {
-      oauth_token: resolveEnvVars(linear.oauth_token as string),
+      oauth_token: linear.oauth_token
+        ? resolveEnvVars(linear.oauth_token as string)
+        : "",
       ...(linear.app_user_id ? { app_user_id: linear.app_user_id as string } : {}),
     },
     webhook: {
@@ -63,14 +105,12 @@ export function loadFelizConfig(yamlContent: string): FelizConfig {
       interval_ms: (tick.interval_ms as number) || 5000,
     },
     storage: {
-      data_dir: (storage.data_dir as string) || defaultDataDir,
-      workspace_root:
-        (storage.workspace_root as string) ||
-        join((storage.data_dir as string) || defaultDataDir, "workspaces"),
+      data_dir: dataDir,
+      workspace_root: worktreeRoot,
     },
     agent: {
       default: (agent.default as string) || "claude-code",
-      max_concurrent: (agent.max_concurrent as number) || 5,
+      max_concurrent: maxConcurrentJobs,
     },
     projects,
   };

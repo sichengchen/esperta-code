@@ -2,187 +2,143 @@
 
 ## System diagram
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                     Feliz Server                        │
-│                                                         │
-│  ┌───────────┐  ┌───────────┐  ┌──────────────────────┐ │
-│  │  Linear   │  │  Webhook  │  │   Context Store      │ │
-│  │  Client   │  │  Handler  │  │  (History/Memory/    │ │
-│  │ (GraphQL) │  │ (Agent    │  │   Scratchpad)        │ │
-│  │           │  │  Sessions)│  │                      │ │
-│  └─────┬─────┘  └─────┬─────┘  └──────────┬───────────┘ │
-│        │               │                   │             │
-│  ┌─────▼───────────────▼──────────────────▼───────────┐ │
-│  │              Orchestrator                           │ │
-│  │  (State machine, concurrency, retry, approval)     │ │
-│  └─────┬──────────────────────────────────────────────┘ │
-│        │                                                 │
-│  ┌─────▼──────────┐  ┌────────────────┐                 │
-│  │   Workspace    │  │  Spec Engine   │                 │
-│  │   Manager      │  │  (Draft/Review │                 │
-│  │ (clone, wt)    │  │   /Approve)    │                 │
-│  └─────┬──────────┘  └────────────────┘                 │
-│        │                                                 │
-│  ┌─────▼──────────────────────────────────────────────┐ │
-│  │           Agent Dispatch Layer                      │ │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐           │ │
-│  │  │ Claude   │ │  Codex   │ │  Custom  │           │ │
-│  │  │ Code     │ │ Adapter  │ │ Adapter  │           │ │
-│  │  └──────────┘ └──────────┘ └──────────┘           │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │           Linear Writeback                          │ │
-│  │  (Status comments, state updates, 👀 reactions)    │ │
-│  └────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+```text
+┌──────────────────────────────────────────────────────────────┐
+│                        Esperta Code                          │
+│                                                              │
+│  Sources                 Core                    Sinks        │
+│  ┌──────────────┐       ┌────────────────────┐   ┌─────────┐ │
+│  │ CLI / API    │──────▶│ Threads            │──▶│ CLI/API │ │
+│  │ GitHub       │──────▶│ Jobs               │──▶│ Webhook │ │
+│  │ Linear       │──────▶│ Runs               │──▶│ GitHub  │ │
+│  │ Webhooks     │──────▶│ Worktrees          │──▶│ Linear  │ │
+│  │ Automation   │──────▶│ Artifacts          │──▶│ Email   │ │
+│  └──────────────┘       │ Approvals          │   └─────────┘ │
+│                         │ External Events    │               │
+│                         │ Thread Links       │               │
+│                         └─────────┬──────────┘               │
+│                                   │                          │
+│                         ┌─────────▼──────────┐               │
+│                         │ Job Executor        │               │
+│                         │ - fresh worktree    │               │
+│                         │ - one agent         │               │
+│                         │ - verification      │               │
+│                         │ - artifact capture  │               │
+│                         └─────────┬──────────┘               │
+│                                   │                          │
+│                         ┌─────────▼──────────┐               │
+│                         │ Agent Adapters      │               │
+│                         │ Codex / Claude /    │               │
+│                         │ other CLI agents    │               │
+│                         └─────────────────────┘               │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- **Runtime**: Bun (TypeScript)
-- **Deployment**: Docker container
-- **Persistence**: SQLite (runs, history, state) + git repo (memory, specs) + filesystem (worktrees, scratchpad)
+Runtime: Bun (TypeScript)
 
-## Domain model
+Persistence:
 
-```
-┌──────────┐       ┌──────────┐       ┌──────────┐
-│ Project  │──1:N──│ WorkItem │──1:N──│   Run    │
-└──────────┘       └──────────┘       └────┬─────┘
-                                           │
-                                      ┌────▼─────────────┐
-                                      │ StepExecution    │
-                                      └──────────────────┘
+- SQLite for metadata
+- Filesystem for artifacts
+- Filesystem for canonical repos and worktrees
+
+## Core domain model
+
+```text
+Project 1:N Thread 1:N Job 1:N Run
+                    │        │
+                    │        └──1:1 Worktree
+                    │
+                    ├──N Artifact
+                    ├──N Approval
+                    ├──N ExternalEvent
+                    └──N ThreadLink
 ```
 
 ### Project
 
-A repo + Linear project mapping.
+A tracked repository plus runtime policy.
 
-```typescript
-interface Project {
-  id: string;
-  name: string;
-  repo_url: string;
-  linear_project_name: string;
-  base_branch: string;
-  config: RepoConfig;           // parsed .feliz/config.yml
-  pipeline: PipelineDefinition; // parsed .feliz/pipeline.yml
-  created_at: Date;
-}
-```
+Fields:
 
-### WorkItem
+- repo URL
+- default branch
+- runtime config
+- concurrency limits
+- job type definitions
 
-A normalized Linear issue tracked by Feliz.
+### Thread
 
-```typescript
-interface WorkItem {
-  id: string;                    // Feliz internal ID
-  linear_id: string;            // Linear issue UUID
-  linear_identifier: string;    // e.g., "BAC-123"
-  project_id: string;
-  parent_work_item_id: string | null; // for decomposed sub-issues
-  title: string;
-  description: string;
-  state: string;                // Linear issue state name
-  priority: number;             // 0=none, 1=urgent, 4=low
-  labels: string[];
-  blocker_ids: string[];        // Linear issue IDs this is blocked by
-  orchestration_state: OrchestrationState;
-  created_at: Date;
-  updated_at: Date;
-}
+The durable unit of work.
 
-type OrchestrationState =
-  | 'unclaimed'
-  | 'decomposing'       // Feliz is breaking down a large feature
-  | 'decompose_review'  // awaiting human approval of decomposition
-  | 'spec_drafting'     // only when specs.enabled
-  | 'spec_review'       // only when specs.enabled
-  | 'queued'
-  | 'running'
-  | 'retry_queued'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
-```
+Owns:
+
+- project context
+- base branch
+- thread branch
+- current PR link
+- job history
+- artifact history
+- external references
+- latest thread status
+
+### Job
+
+One request attached to a thread.
+
+Properties:
+
+- exactly one agent
+- exactly one job type
+- one execution intent
+- independent approval and publish policies
 
 ### Run
 
-A full pipeline execution for a work item (one run = all phases/steps).
+One attempt to execute a job.
 
-```typescript
-interface Run {
-  id: string;
-  work_item_id: string;
-  attempt: number;              // retry attempt for the whole run
-  current_phase: string;        // current phase name
-  current_step: string;         // current step name
-  started_at: Date;
-  finished_at: Date | null;
-  result: 'succeeded' | 'failed' | 'timed_out' | 'cancelled' | null;
-  failure_reason: string | null;
-  context_snapshot_id: string;  // references the manifest used
-  pr_url: string | null;
-  token_usage: { input: number; output: number } | null;
-}
-```
+Tracks:
 
-### StepExecution
+- attempt number
+- worktree used
+- adapter used
+- verification result
+- branch and PR metadata
+- summary and failure reason
 
-A single step execution within a run.
+### Worktree
 
-```typescript
-interface StepExecution {
-  id: string;
-  run_id: string;
-  phase_name: string;
-  step_name: string;
-  cycle: number;                // 1-based, >1 for repeating phases
-  step_attempt: number;         // retry attempt within this step
-  agent_adapter: string | null; // null for builtin steps
-  started_at: Date;
-  finished_at: Date | null;
-  result: 'succeeded' | 'failed' | 'timed_out' | 'cancelled' | null;
-  exit_code: number | null;
-  failure_reason: string | null;
-  token_usage: { input: number; output: number } | null;
-}
-```
+One isolated execution workspace for a run.
 
-### ContextSnapshot
+Tracks:
 
-The bill of materials for what context a run received.
+- filesystem path
+- base branch and thread branch
+- lease owner
+- state and retention window
+- last activity time
 
-```typescript
-interface ContextSnapshot {
-  id: string;
-  run_id: string;
-  work_item_id: string;
-  artifact_refs: ArtifactRef[];
-  token_budget: {
-    max_input: number;
-    reserved_system: number;
-  };
-  created_at: Date;
-}
+### Artifact
 
-interface ArtifactRef {
-  artifact_id: string;
-  path: string;
-  content_hash: string;
-  version: number;
-  purpose: string; // e.g., "spec", "history", "memory"
-}
-```
+Durable execution outputs.
 
-### Context layers
+Examples:
 
-| Layer | Description | Mutability | Examples |
-|---|---|---|---|
-| **History** | Append-only event log | Immutable | Linear events, run events, agent tool calls |
-| **Memory** | Derived, versioned knowledge | Mutable (versioned) | Specs, project conventions, extracted patterns, decisions |
-| **Scratchpad** | Transient working artifacts | Ephemeral (promotable) | Agent outputs, draft specs, test logs |
+- stdout/stderr logs
+- verification logs
+- summaries
+- test output
+- review notes
+- PR metadata
 
-See [Context Management](../context/index.md) and [Context Lifecycle](../context/lifecycle.md) for full details.
+### Approval
+
+Optional gate that blocks a job until a human resolves it.
+
+### ExternalEvent
+
+An external signal attached to a thread, such as CI failure, review feedback, merge conflict, or a follow-up instruction.
+
+### ThreadLink
+
+External references attached to a thread, such as GitHub PRs, issue IDs, or connector-specific resource IDs.

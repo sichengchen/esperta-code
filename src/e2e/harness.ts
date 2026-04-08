@@ -161,18 +161,24 @@ export function runE2EDoctor(
 
   const codex = deps.runCommand("codex", ["--version"]);
   const claude = deps.runCommand("claude", ["--version"]);
-  if (codex.exitCode === 0 || claude.exitCode === 0) {
+  const opencode = deps.runCommand("opencode", ["--version"]);
+  if (codex.exitCode === 0 || claude.exitCode === 0 || opencode.exitCode === 0) {
     checks.push({
       id: "tool.agent",
       status: "pass",
-      summary: codex.exitCode === 0 ? "codex is available" : "claude is available",
+      summary:
+        codex.exitCode === 0
+          ? "codex is available"
+          : claude.exitCode === 0
+            ? "claude is available"
+            : "opencode is available",
     });
   } else {
     checks.push({
       id: "tool.agent",
       status: "fail",
-      summary: "No supported agent CLI available (codex or claude)",
-      details: [codex.stderr, claude.stderr].filter(Boolean).join(" | "),
+      summary: "No supported agent CLI available (codex, claude, or opencode)",
+      details: [codex.stderr, claude.stderr, opencode.stderr].filter(Boolean).join(" | "),
     });
   }
 
