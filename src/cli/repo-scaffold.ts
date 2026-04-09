@@ -12,6 +12,7 @@ import type { AgentAdapter } from "../agents/adapter.ts";
 import {
   DEFAULT_BOT_EMAIL,
   DEFAULT_BOT_NAME,
+  PRODUCT_NAME,
   PRIMARY_CLI_NAME,
 } from "../branding.ts";
 import { injectGitHubToken } from "../workspace/manager.ts";
@@ -47,7 +48,7 @@ export interface AgentScaffoldResult {
 
 function buildAgentScaffoldPrompt(answers: RepoScaffoldAnswers): string {
   const sections: string[] = [];
-  sections.push(`Create Feliz starter config files for this repository.
+  sections.push(`Create ${PRODUCT_NAME} starter config files for this repository.
 
 You must create these paths:
 - .feliz/config.yml

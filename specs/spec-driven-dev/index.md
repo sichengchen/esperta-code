@@ -10,7 +10,7 @@ Specs are markdown documents stored in the repo, usually under `specs/`, that de
 - constraints and invariants
 - behavioral scenarios
 
-When specs are enabled, they become part of thread context through `feliz thread read`.
+When specs are enabled, they become part of thread context through `esperta-code thread read`.
 
 ## How Specs Fit the Thread Model
 

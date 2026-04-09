@@ -135,12 +135,12 @@ docker compose up -d --build
 Inside the container:
 
 ```bash
-docker compose exec feliz bash
+docker compose exec esperta-code bash
 npm install -g @openai/codex
 exit
-docker compose exec feliz bun run src/cli/index.ts status
-docker compose exec feliz bun run src/cli/index.ts auth linear   # optional
-docker compose exec feliz bun run src/cli/index.ts project add
+docker compose exec esperta-code bun run src/cli/index.ts status
+docker compose exec esperta-code bun run src/cli/index.ts auth linear   # optional
+docker compose exec esperta-code bun run src/cli/index.ts project add
 ```
 
 ## Next Steps

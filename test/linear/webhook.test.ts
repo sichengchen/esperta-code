@@ -77,6 +77,18 @@ describe("WebhookHandler", () => {
     expect(jobs[0]!.author).toBe("human");
   });
 
+  test("accepts the Esperta mention alias while keeping the legacy alias", async () => {
+    const result = await handler.handleEvent(
+      buildEvent("@esperta-code please keep the fix minimal"),
+      "proj-1"
+    );
+
+    const jobs = db.listJobs(result.threadId);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]!.body).toBe("please keep the fix minimal");
+  });
+
   test("reuses the existing thread for follow-up comments", async () => {
     const first = await handler.handleEvent(buildEvent(), "proj-1");
     const followUp = buildEvent("The callback also needs a regression test.");

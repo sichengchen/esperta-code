@@ -15,9 +15,9 @@ ${PRODUCT_NAME} - Cloud agents platform
 Usage: ${PRIMARY_CLI_NAME} <command> [options]
 
 Commands:
-  start                    Start the Feliz daemon
+  start                    Start the Esperta Code daemon
   init                     Interactive setup wizard
-  stop                     Stop the daemon
+  stop                     Stop the Esperta Code daemon
   status                   Show daemon status
   config validate          Validate configuration
   config show              Print resolved configuration
@@ -181,8 +181,8 @@ async function main() {
       message = await Bun.stdin.text();
     }
 
-    if (!message.trim()) {
-      console.error("Usage: feliz thread write <message>");
+      if (!message.trim()) {
+      console.error(`Usage: ${PRIMARY_CLI_NAME} thread write <message>`);
       process.exit(1);
     }
 
@@ -214,7 +214,7 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "add") {
     try {
       if (!existsSync(configPath)) {
-        console.error("Config file not found. Run `feliz init` first.");
+        console.error(`Config file not found. Run \`${PRIMARY_CLI_NAME} init\` first.`);
         process.exit(1);
       }
 
@@ -277,7 +277,7 @@ async function main() {
   if (cmd.command === "project" && cmd.subcommand === "remove") {
     const name = cmd.args[0];
     if (!name) {
-      console.error("Usage: feliz project remove <name>");
+      console.error(`Usage: ${PRIMARY_CLI_NAME} project remove <name>`);
       process.exit(1);
     }
     try {

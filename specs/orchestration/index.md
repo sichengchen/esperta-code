@@ -42,7 +42,7 @@ A thread is eligible when all of the following are true:
 - `thread.status === "pending"`
 - global running thread count is below `agent.max_concurrent`
 - per-issue-state concurrency limit is not exceeded, if configured
-- all blocker issues known to Feliz are already in terminal thread states
+- all blocker issues known to Esperta Code are already in terminal thread states
 
 Selection order is:
 

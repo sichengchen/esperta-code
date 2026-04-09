@@ -10,8 +10,8 @@ You are working on {{ project.name }}.
 
 ## Context
 
-Run `feliz context read` to see history and prior step outputs.
-Run `feliz context write <message>` to leave findings for the next step.
+Run `esperta-code thread read` to see project memory, specs, and thread jobs.
+Run `esperta-code thread write <message>` to append new jobs to the current thread.
 Project memory is in `.feliz/context/memory/` — read and write files there directly.
 Specs are in `specs/`.
 

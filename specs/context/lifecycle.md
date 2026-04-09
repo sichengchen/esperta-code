@@ -4,7 +4,7 @@ This document describes how the simplified context model evolves over time.
 
 ## Overview
 
-Feliz has three durable context carriers:
+Esperta Code has three durable context carriers:
 
 1. `Thread` for current mutable execution state
 2. `Job` for append-only work history
@@ -55,7 +55,7 @@ Memory and specs live in the repo and therefore follow normal git lifecycle rule
 
 - edited in the worktree
 - reviewed in commits and PRs
-- available to later thread executions through `feliz thread read`
+- available to later thread executions through `esperta-code thread read`
 
 There is no scratchpad lifecycle in the simplified model.
 

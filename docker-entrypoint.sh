@@ -99,11 +99,11 @@ YAML
   echo "Config written to $CONFIG_PATH"
   echo ""
   echo "Next steps:"
-  echo "  1. Install an agent: docker compose exec feliz bash"
+  echo "  1. Install an agent: docker compose exec esperta-code bash"
   echo "     claude: curl -fsSL https://claude.ai/install.sh | bash"
   echo "     codex:  npm install -g @openai/codex"
-  echo "  2. If using Linear:  docker compose exec feliz bun run src/cli/index.ts auth linear"
-  echo "  3. Add a project:    docker compose exec feliz bun run src/cli/index.ts project add"
+  echo "  2. If using Linear:  docker compose exec esperta-code bun run src/cli/index.ts auth linear"
+  echo "  3. Add a project:    docker compose exec esperta-code bun run src/cli/index.ts project add"
   echo ""
 fi
 

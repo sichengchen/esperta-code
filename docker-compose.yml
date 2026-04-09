@@ -1,5 +1,5 @@
 services:
-  feliz:
+  esperta-code:
     build: .
     env_file:
       - path: .env

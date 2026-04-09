@@ -2,7 +2,7 @@
 
 ## Project
 
-Feliz is a self-hosted cloud agents platform that turns Linear issues into merged pull requests by orchestrating coding agents (Claude Code, Codex, etc.) through configurable multi-step pipelines.
+Esperta Code is a self-hosted cloud agents platform that turns Linear issues into merged pull requests by orchestrating coding agents (Claude Code, Codex, etc.) through configurable multi-step pipelines.
 
 - Runtime: Bun (TypeScript)
 - Test runner: `bun test`

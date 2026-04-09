@@ -5,38 +5,40 @@ The CLI is split between operator commands and thread-scoped agent helpers.
 ## Operator Commands
 
 ```text
-feliz start
-feliz init
-feliz stop
-feliz status
+esperta-code start
+esperta-code init
+esperta-code stop
+esperta-code status
 
-feliz config validate
-feliz config show
+esperta-code config validate
+esperta-code config show
 
-feliz project list
-feliz project add
-feliz project remove <name>
+esperta-code project list
+esperta-code project add
+esperta-code project remove <name>
 
-feliz agent list
-feliz auth linear
+esperta-code agent list
+esperta-code auth linear
 
-feliz e2e doctor
-feliz e2e smoke
+esperta-code e2e doctor
+esperta-code e2e smoke
 ```
 
 ## Agent Commands
 
 ```text
-feliz thread read
-feliz thread write <message>
+esperta-code thread read
+esperta-code thread write <message>
 ```
+
+The legacy `feliz` CLI alias remains supported for compatibility, but `esperta-code` is the primary command name.
 
 These commands are intended for use during active thread execution. They rely on:
 
 - `FELIZ_DATA_DIR`
 - `FELIZ_THREAD_ID`
 
-## `feliz thread read`
+## `esperta-code thread read`
 
 Renders a thread-centric context view including:
 
@@ -45,7 +47,7 @@ Renders a thread-centric context view including:
 - repo memory
 - repo specs
 
-## `feliz thread write`
+## `esperta-code thread write`
 
 Appends a new agent-authored job to the current thread.
 
@@ -56,13 +58,13 @@ Use it for:
 - follow-up instructions
 - important handoff notes
 
-## `feliz status`
+## `esperta-code status`
 
 Shows basic daemon status and the count of currently running agent threads.
 
-## `feliz auth linear`
+## `esperta-code auth linear`
 
-Performs Linear OAuth for the Feliz app identity:
+Performs Linear OAuth for the Esperta Code app identity:
 
 1. Build the authorization URL.
 2. Wait for the callback.
@@ -72,5 +74,5 @@ Performs Linear OAuth for the Feliz app identity:
 
 ## E2E Commands
 
-- `feliz e2e doctor` checks local prerequisites.
-- `feliz e2e smoke` validates config, DB readiness, and scenario scaffolding.
+- `esperta-code e2e doctor` checks local prerequisites.
+- `esperta-code e2e smoke` validates config, DB readiness, and scenario scaffolding.

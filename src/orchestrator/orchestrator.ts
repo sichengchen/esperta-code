@@ -7,6 +7,7 @@ import { renderTemplate } from "../config/template.ts";
 import { newId } from "../id.ts";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
+import { PRIMARY_CLI_NAME } from "../branding.ts";
 
 const TERMINAL_THREAD_STATUSES = ["completed", "failed", "stopped"];
 
@@ -348,8 +349,8 @@ export class Orchestrator {
 
 ## Thread
 
-Run \`feliz thread read\` to see the project memory, specs, and thread jobs.
-Run \`feliz thread write <message>\` to append new jobs for the thread.`;
+Run \`${PRIMARY_CLI_NAME} thread read\` to see the project memory, specs, and thread jobs.
+Run \`${PRIMARY_CLI_NAME} thread write <message>\` to append new jobs for the thread.`;
     cache.set(configuredPromptPath, fallback);
     return fallback;
   }

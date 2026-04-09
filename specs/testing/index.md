@@ -12,13 +12,13 @@ Validation is complete when all of the following are true:
 - a Linear issue creates exactly one thread and one worktree
 - follow-up comments append jobs to that existing thread
 - `stop` interrupts active execution without creating a second thread
-- `feliz thread read` renders the expected thread job stream and repo context
+- `esperta-code thread read` renders the expected thread job stream and repo context
 
 ## Core Scenarios
 
 ### Thread Creation
 
-- Assign or mention Feliz on a new Linear issue
+- Assign or mention Esperta Code on a new Linear issue
 - Expect one new thread in SQLite
 - Expect status `pending`
 

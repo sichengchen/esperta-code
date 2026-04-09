@@ -1,6 +1,7 @@
 import type { Database } from "../../db/database.ts";
 import type { LinearClient } from "./client.ts";
 import { newId } from "../../id.ts";
+import { LINEAR_MENTION_ALIASES } from "../../branding.ts";
 
 export interface AgentSessionEvent {
   action: "created" | "prompted";
@@ -159,6 +160,13 @@ export class WebhookHandler {
 function normalizeJobBody(body?: string): string | null {
   if (!body) return null;
 
-  const normalized = body.replace(/^\s*@feliz\b[\s:,-]*/i, "").trim();
+  const aliasPattern = LINEAR_MENTION_ALIASES
+    .slice()
+    .sort((a, b) => b.length - a.length)
+    .map((alias) => alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+  const normalized = body
+    .replace(new RegExp(`^\\s*@(?:${aliasPattern})\\b[\\s:,-]*`, "i"), "")
+    .trim();
   return normalized.length > 0 ? normalized : null;
 }

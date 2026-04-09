@@ -2,7 +2,7 @@
 
 ## Repo Lifecycle
 
-On project registration, Feliz:
+On project registration, Esperta Code:
 
 1. Clones the repo to `{workspace_root}/{project_name}/repo`
 2. Tracks the configured base branch
@@ -12,7 +12,7 @@ On project registration, Feliz:
 
 Each thread owns one worktree in the normal case.
 
-1. On first dispatch, Feliz creates a worktree for the thread.
+1. On first dispatch, Esperta Code creates a worktree for the thread.
 2. The worktree path and branch name are stored on the thread.
 3. The same worktree is reused across follow-up jobs on that thread.
 4. Agent steps execute only inside that worktree.

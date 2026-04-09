@@ -171,7 +171,7 @@ Prompt templates should not expect:
 
 Instead, prompts should call:
 
-- `feliz thread read`
-- `feliz thread write`
+- `esperta-code thread read`
+- `esperta-code thread write`
 
 to access and extend thread context.

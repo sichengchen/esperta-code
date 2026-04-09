@@ -1,6 +1,6 @@
-# Feliz Specification
+# Esperta Code Specification
 
-Feliz is a long-running service that turns Linear issues into agent work on a git worktree. The product model is intentionally small:
+Esperta Code is a long-running service that turns Linear issues into agent work on a git worktree. The product model is intentionally small:
 
 - `Project`
 - `Thread`

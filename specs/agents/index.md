@@ -2,7 +2,7 @@
 
 ## Adapter Interface
 
-Feliz dispatches coding agents through a small adapter interface keyed to the thread model.
+Esperta Code dispatches coding agents through a small adapter interface keyed to the thread model.
 
 ```typescript
 interface AgentAdapter {
@@ -37,7 +37,7 @@ interface AgentRunResult {
 
 ## Built-In Adapters
 
-Feliz currently ships with adapters for:
+Esperta Code currently ships with adapters for:
 
 - Claude Code
 - Codex
@@ -89,7 +89,7 @@ The shared worktree is the handoff channel between steps.
 
 Prompts should rely on:
 
-- `feliz thread read` to inspect thread jobs, memory, and specs
-- `feliz thread write` to append follow-up jobs when the agent discovers actionable work
+- `esperta-code thread read` to inspect thread jobs, memory, and specs
+- `esperta-code thread write` to append follow-up jobs when the agent discovers actionable work
 
 Prompt authors should not depend on dedicated template variables for previous failures or previous reviews.

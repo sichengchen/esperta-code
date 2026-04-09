@@ -1,10 +1,10 @@
 # Context Management
 
-Feliz assembles context around the thread, not around a run record.
+Esperta Code assembles context around the thread, not around a run record.
 
 ## Context Assembly
 
-Before an agent step runs, Feliz builds context from four sources:
+Before an agent step runs, Esperta Code builds context from four sources:
 
 1. The current `Thread`
 2. The ordered `Job` list for that thread
@@ -28,12 +28,12 @@ The result is a thread-centric context bundle. There is no context snapshot mode
 - Jobs are read in chronological order.
 - Memory and specs are read from the thread worktree so the agent sees the branch-local repo state.
 - History is not the main agent-facing context channel; it exists for observability and audit.
-- Prompt authors should rely on `feliz thread read` rather than special template variables for prior failures or prior reviews.
+- Prompt authors should rely on `esperta-code thread read` rather than special template variables for prior failures or prior reviews.
 
 ## Behavioral Scenario
 
 ### Scenario: Thread Read
 
 - Given a thread with jobs, memory, and specs
-- When an agent runs `feliz thread read`
-- Then Feliz renders the current thread, job stream, memory, and specs as one thread-centric context view
+- When an agent runs `esperta-code thread read`
+- Then Esperta Code renders the current thread, job stream, memory, and specs as one thread-centric context view

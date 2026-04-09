@@ -28,7 +28,7 @@ Useful future metrics:
 - Git hosting token: `GITHUB_TOKEN` or equivalent
 - Agent credentials: managed by each agent CLI itself
 
-Feliz should never log these values.
+Esperta Code should never log these values.
 
 ## Workspace Isolation
 
@@ -38,14 +38,14 @@ Feliz should never log these values.
 
 ## Trust Model
 
-Feliz trusts:
+Esperta Code trusts:
 
 - operator-provided config
 - trusted repos configured as projects
 - repo hook commands
 - installed agent CLIs
 
-Feliz does not trust:
+Esperta Code does not trust:
 
 - arbitrary issue text as executable shell input
 - agent output without validation or review
