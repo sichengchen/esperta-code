@@ -17,21 +17,21 @@ export async function runInit(
   console.log(`${PRODUCT_NAME} Setup`);
   console.log("");
 
-  let oauthToken: string;
+  let oauthToken: string | undefined;
   const envToken = process.env.LINEAR_OAUTH_TOKEN;
   if (envToken) {
-    const useEnv = promptFn("LINEAR_OAUTH_TOKEN is set. Use it? [Y/n]") ?? "Y";
-    if (useEnv.toLowerCase() === "n") {
-      const entered = promptFn("Enter Linear OAuth token:");
-      if (!entered) throw new Error("OAuth token is required");
-      oauthToken = entered;
-    } else {
+    const useEnv =
+      promptFn("Configure Linear now using LINEAR_OAUTH_TOKEN? [Y/n]") ?? "Y";
+    if (useEnv.toLowerCase() !== "n") {
       oauthToken = "$LINEAR_OAUTH_TOKEN";
     }
   } else {
-    const entered = promptFn("Enter Linear OAuth token:");
-    if (!entered) throw new Error("OAuth token is required");
-    oauthToken = entered;
+    const configureLinear = promptFn("Configure Linear now? [y/N]") ?? "N";
+    if (configureLinear.toLowerCase() === "y") {
+      const entered = promptFn("Enter Linear OAuth token:");
+      if (!entered) throw new Error("OAuth token is required");
+      oauthToken = entered;
+    }
   }
 
   const content = generateConfig({ oauthToken });
@@ -41,7 +41,8 @@ export async function runInit(
   console.log(`Config written to ${configPath}`);
   console.log("");
   console.log("Next steps:");
-  console.log(`  1. Add a project:            ${PRIMARY_CLI_NAME} project add`);
-  console.log(`  2. Review the config:        ${PRIMARY_CLI_NAME} config show`);
-  console.log(`  3. Start ${PRODUCT_NAME}:    ${PRIMARY_CLI_NAME} start`);
+  console.log(`  1. Review the config:        ${PRIMARY_CLI_NAME} config show`);
+  console.log(`  2. If using Linear:          ${PRIMARY_CLI_NAME} auth linear`);
+  console.log(`  3. Add a project:            ${PRIMARY_CLI_NAME} project add`);
+  console.log(`  4. Start ${PRODUCT_NAME}:    ${PRIMARY_CLI_NAME} start`);
 }

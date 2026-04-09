@@ -1,5 +1,7 @@
 import { mkdirSync, writeFileSync } from "fs";
 import { dirname } from "path";
+import { homedir } from "os";
+import { join } from "path";
 import { stringify } from "yaml";
 import {
   DOCS_REPOSITORY_URL,
@@ -8,48 +10,48 @@ import {
 } from "../branding.ts";
 import { getDefaultPipeline } from "./loader.ts";
 
-export const CONFIG_TEMPLATE = `# ${PRODUCT_NAME} configuration
-# Docs: ${DOCS_REPOSITORY_URL}
+const DEFAULT_DATA_DIR = join(homedir(), ".feliz");
 
-linear:
-  oauth_token: $LINEAR_OAUTH_TOKEN  # Set this environment variable
-
-webhook:
-  port: 3421
-
-storage:
-  data_dir: /data/feliz
-  workspace_root: /data/feliz/workspaces
-
-agent:
-  default: claude-code
-
-projects: []
+function renderLinearConfig(oauthToken?: string): string {
+  if (!oauthToken) {
+    return `# Optional: enable the Linear connector later
+# linear:
+#   oauth_token: $LINEAR_OAUTH_TOKEN
 `;
+  }
 
-export interface InitAnswers {
-  oauthToken: string;
+  return `linear:
+  oauth_token: ${oauthToken}
+`;
 }
 
-export function generateConfig(answers: InitAnswers): string {
+function renderBaseConfig(oauthToken?: string): string {
   return `# ${PRODUCT_NAME} configuration
 # Docs: ${DOCS_REPOSITORY_URL}
 
-linear:
-  oauth_token: ${answers.oauthToken}
+${renderLinearConfig(oauthToken)}
+runtime:
+  data_dir: ${DEFAULT_DATA_DIR}
+  max_concurrent_jobs: 4
 
 webhook:
   port: 3421
-
-storage:
-  data_dir: /data/feliz
-  workspace_root: /data/feliz/workspaces
 
 agent:
   default: claude-code
 
 projects: []
 `;
+}
+
+export const CONFIG_TEMPLATE = renderBaseConfig();
+
+export interface InitAnswers {
+  oauthToken?: string;
+}
+
+export function generateConfig(answers: InitAnswers): string {
+  return renderBaseConfig(answers.oauthToken);
 }
 
 export function writeConfigFile(configPath: string, content: string): void {

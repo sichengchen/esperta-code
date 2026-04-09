@@ -339,7 +339,7 @@ async function main() {
       writeConfigFile(configPath, CONFIG_TEMPLATE);
       console.log(`Created config file: ${configPath}`);
       console.log("");
-      console.log("Edit this file to set your Linear API key and project details,");
+      console.log("Review this file, add your project details, and optionally configure Linear,");
         console.log(`then run \`${PRIMARY_CLI_NAME} start\` again.`);
       return;
     }

@@ -48,7 +48,7 @@ describe("runInit", () => {
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
       const configPath = join(TEST_DIR, "feliz.yml");
-      const promptFn = makePromptFn(["lin_api_abc123"]);
+      const promptFn = makePromptFn(["y", "lin_api_abc123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
       await runInit(configPath, promptFn);
@@ -56,6 +56,29 @@ describe("runInit", () => {
       expect(existsSync(configPath)).toBe(true);
       const content = readFileSync(configPath, "utf-8");
       expect(content).toContain("oauth_token: lin_api_abc123");
+      expect(content).toContain("projects: []");
+    } finally {
+      if (origEnv !== undefined) {
+        process.env.LINEAR_OAUTH_TOKEN = origEnv;
+      } else {
+        delete process.env.LINEAR_OAUTH_TOKEN;
+      }
+    }
+  });
+
+  test("creates config without Linear when user skips connector setup", async () => {
+    const origEnv = process.env.LINEAR_OAUTH_TOKEN;
+    delete process.env.LINEAR_OAUTH_TOKEN;
+    try {
+      const configPath = join(TEST_DIR, "feliz.yml");
+      const promptFn = makePromptFn(["n"]);
+
+      const { runInit } = await import("../../src/cli/init.ts");
+      await runInit(configPath, promptFn);
+
+      expect(existsSync(configPath)).toBe(true);
+      const content = readFileSync(configPath, "utf-8");
+      expect(content).not.toContain("\nlinear:\n");
       expect(content).toContain("projects: []");
     } finally {
       if (origEnv !== undefined) {
@@ -89,7 +112,7 @@ describe("runInit", () => {
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
       const configPath = join(TEST_DIR, "a", "b", "feliz.yml");
-      const promptFn = makePromptFn(["lin_key_123"]);
+      const promptFn = makePromptFn(["y", "lin_key_123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
       await runInit(configPath, promptFn);

@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, readFileSync, rmSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../../src/branding.ts";
 import {
   CONFIG_TEMPLATE,
@@ -15,8 +16,9 @@ import { loadFelizConfig, loadRepoConfig, loadPipelineConfig } from "../../src/c
 const TEST_DIR = "/tmp/feliz-writer-test";
 
 describe("CONFIG_TEMPLATE", () => {
-  test("contains oauth_token placeholder with env var ref", () => {
-    expect(CONFIG_TEMPLATE).toContain("oauth_token: $LINEAR_OAUTH_TOKEN");
+  test("uses the local home directory for storage by default", () => {
+    expect(CONFIG_TEMPLATE).toContain(`data_dir: ${join(homedir(), ".feliz")}`);
+    expect(CONFIG_TEMPLATE).not.toContain("data_dir: /data/feliz");
   });
 
   test("contains empty projects list", () => {
@@ -25,6 +27,13 @@ describe("CONFIG_TEMPLATE", () => {
 
   test("contains comment header", () => {
     expect(CONFIG_TEMPLATE).toContain(`# ${PRODUCT_NAME} configuration`);
+  });
+
+  test("round-trips without requiring Linear env vars", () => {
+    delete process.env.LINEAR_OAUTH_TOKEN;
+    const config = loadFelizConfig(CONFIG_TEMPLATE);
+    expect(config.linear.oauth_token).toBe("");
+    expect(config.projects).toEqual([]);
   });
 });
 
@@ -42,6 +51,15 @@ describe("generateConfig", () => {
       oauthToken: "lin_api_abc123",
     });
     expect(yaml).toContain("oauth_token: lin_api_abc123");
+  });
+
+  test("produces YAML without active Linear config when OAuth is skipped", () => {
+    delete process.env.LINEAR_OAUTH_TOKEN;
+    const yaml = generateConfig({});
+    expect(yaml).not.toContain("\nlinear:\n");
+    const config = loadFelizConfig(yaml);
+    expect(config.linear.oauth_token).toBe("");
+    expect(config.projects).toEqual([]);
   });
 
   test("round-trips through loadFelizConfig", () => {

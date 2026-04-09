@@ -96,7 +96,7 @@ function addToolCheck(
   cmd: string,
   args: string[]
 ): void {
-  const result = deps.runCommand(cmd, args);
+  const result = runCommandSafe(deps, cmd, args);
   checks.push({
     id,
     status: result.exitCode === 0 ? "pass" : "fail",
@@ -110,6 +110,22 @@ function addToolCheck(
 
 function hasFail(checks: E2ECheck[]): boolean {
   return checks.some((check) => check.status === "fail");
+}
+
+function runCommandSafe(
+  deps: E2EHarnessDeps,
+  cmd: string,
+  args: string[]
+): E2ECommandResult {
+  try {
+    return deps.runCommand(cmd, args);
+  } catch (error: unknown) {
+    return {
+      exitCode: 127,
+      stdout: "",
+      stderr: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 export function runE2EDoctor(
@@ -159,9 +175,9 @@ export function runE2EDoctor(
   addToolCheck(checks, deps, "tool.sqlite3", "sqlite3", ["--version"]);
   addToolCheck(checks, deps, "tool.git", "git", ["--version"]);
 
-  const codex = deps.runCommand("codex", ["--version"]);
-  const claude = deps.runCommand("claude", ["--version"]);
-  const opencode = deps.runCommand("opencode", ["--version"]);
+  const codex = runCommandSafe(deps, "codex", ["--version"]);
+  const claude = runCommandSafe(deps, "claude", ["--version"]);
+  const opencode = runCommandSafe(deps, "opencode", ["--version"]);
   if (codex.exitCode === 0 || claude.exitCode === 0 || opencode.exitCode === 0) {
     checks.push({
       id: "tool.agent",
@@ -182,7 +198,7 @@ export function runE2EDoctor(
     });
   }
 
-  const ghAuth = deps.runCommand("gh", ["auth", "status"]);
+  const ghAuth = runCommandSafe(deps, "gh", ["auth", "status"]);
   checks.push({
     id: "github.auth",
     status: ghAuth.exitCode === 0 ? "pass" : "fail",
@@ -237,7 +253,7 @@ export function runE2ESmoke(
   }
 
   const checks: E2ECheck[] = [];
-  const validateResult = deps.runCommand("bun", [
+  const validateResult = runCommandSafe(deps, "bun", [
     "run",
     "src/cli/index.ts",
     "config",
@@ -268,7 +284,7 @@ export function runE2ESmoke(
         summary: `Database not found yet: ${dbPath}`,
       });
     } else {
-      const tableResult = deps.runCommand("sqlite3", [dbPath, ".tables"]);
+      const tableResult = runCommandSafe(deps, "sqlite3", [dbPath, ".tables"]);
       if (tableResult.exitCode !== 0) {
         checks.push({
           id: "db.tables",

@@ -6,9 +6,12 @@ This guide assumes you are running Esperta Code from a local checkout of the rep
 
 - [Bun](https://bun.sh)
 - Git
-- A Linear OAuth app with `actor=app`
 - A GitHub token with `repo` scope, or authenticated `gh`
 - At least one coding agent CLI: `codex`, `claude`, or `opencode`
+
+If you want Linear integration, also prepare:
+
+- A Linear OAuth app with `actor=app`
 
 ## Install
 
@@ -26,7 +29,7 @@ EC="bun run src/cli/index.ts"
 
 If you install the package globally, replace `$EC` with `esperta-code`.
 
-## Authenticate with Linear
+## Authenticate with Linear (Optional)
 
 ```bash
 $EC auth linear
@@ -60,10 +63,17 @@ $EC init
 
 This writes `~/.feliz/feliz.yml` with:
 
-- runtime storage defaults
+- local runtime defaults under `~/.feliz`
 - webhook port
 - agent defaults
 - an empty `projects` list
+- optional Linear connector guidance
+
+You can skip Linear during `init` and add it later with:
+
+```bash
+$EC auth linear
+```
 
 You can also start with a hand-written config. See [Configuration](configuration.md).
 
