@@ -8,7 +8,7 @@ Before an agent step runs, Esperta Code builds context from four sources:
 
 1. The current `Thread`
 2. The ordered `Job` list for that thread
-3. Repo memory from `.feliz/context/memory/`
+3. Repo memory from `.esperta-code/context/memory/`
 4. Optional specs from the configured spec directory
 
 The result is a thread-centric context bundle. There is no context snapshot model in the simplified system.
@@ -20,7 +20,7 @@ The result is a thread-centric context bundle. There is no context snapshot mode
 | Thread | SQLite `threads` | Current mutable execution state and workspace linkage |
 | Jobs | SQLite `jobs` | Ordered guidance and agent follow-up |
 | History | SQLite `history` | Operational audit trail |
-| Memory | Repo `.feliz/context/memory/` | Durable project knowledge |
+| Memory | Repo `.esperta-code/context/memory/` | Durable project knowledge |
 | Specs | Repo `specs/` or configured directory | Optional design context |
 
 ## Assembly Rules

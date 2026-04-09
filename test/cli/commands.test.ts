@@ -72,9 +72,9 @@ describe("CLI parseArgs", () => {
   });
 
   test("parses --config flag", () => {
-    const cmd = parseArgs(["--config", "/path/to/feliz.yml", "start"]);
+    const cmd = parseArgs(["--config", "/path/to/esperta-code.yml", "start"]);
     expect(cmd.command).toBe("start");
-    expect(cmd.flags.config).toBe("/path/to/feliz.yml");
+    expect(cmd.flags.config).toBe("/path/to/esperta-code.yml");
   });
 
   test("returns help for empty args", () => {

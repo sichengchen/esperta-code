@@ -47,11 +47,11 @@ bun run lint
 bun run build
 ```
 
-Create `~/.feliz/feliz.yml`:
+Create `~/.esperta-code/esperta-code.yml`:
 
 ```yaml
 runtime:
-  data_dir: ~/.feliz
+  data_dir: ~/.esperta-code
   max_concurrent_jobs: 4
 
 projects:
@@ -70,7 +70,7 @@ projects:
     job_types:
       implement:
         agent: codex
-        system_prompt: .feliz/prompts/implement.md
+        system_prompt: .esperta-code/prompts/implement.md
         verify:
           - bun test
         publish: draft_pr

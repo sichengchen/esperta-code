@@ -7,7 +7,7 @@ import {
 import { existsSync, mkdirSync, rmSync } from "fs";
 import { join } from "path";
 
-const TEST_ROOT = "/tmp/feliz-workspace-test";
+const TEST_ROOT = "/tmp/esperta-code-workspace-test";
 
 function initTestRepo(repoPath: string) {
   mkdirSync(repoPath, { recursive: true });
@@ -65,13 +65,13 @@ describe("WorkspaceManager", () => {
     expect(path).toBe(join(TEST_ROOT, "backend", "worktrees", "BAC_123_foo"));
   });
 
-  test("getBranchName returns feliz/ prefix", () => {
-    expect(manager.getBranchName("BAC-123")).toBe("feliz/BAC-123");
+  test("getBranchName returns esperta-code/ prefix", () => {
+    expect(manager.getBranchName("BAC-123")).toBe("esperta-code/BAC-123");
   });
 
   test("getThreadBranchName returns thread-scoped branch", () => {
     expect(manager.getThreadBranchName("thread-123")).toBe(
-      "feliz/thread/thread-123"
+      "esperta-code/thread/thread-123"
     );
   });
 

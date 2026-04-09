@@ -27,8 +27,8 @@
 │         │                               │                │
 │  ┌──────▼───────────────────────────────▼──────────────┐ │
 │  │ Repo-Owned Context                                   │ │
-│  │ .feliz/config.yml, .feliz/pipeline.yml, prompts,    │ │
-│  │ .feliz/context/memory/, specs/                      │ │
+│  │ .esperta-code/config.yml, .esperta-code/pipeline.yml, prompts, │ │
+│  │ .esperta-code/context/memory/, specs/               │ │
 │  └─────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -134,7 +134,7 @@ interface HistoryEntry {
 |---|---|---|
 | Jobs | SQLite `jobs` | Ordered thread guidance and agent-written follow-up |
 | History | SQLite `history` | Operational audit trail |
-| Memory | `.feliz/context/memory/` | Repo-owned long-lived project knowledge |
+| Memory | `.esperta-code/context/memory/` | Repo-owned long-lived project knowledge |
 | Specs | `specs/` or configured spec dir | Optional design context inside the repo |
 
 ## Explicit Non-Goals of the Model

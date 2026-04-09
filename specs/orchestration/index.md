@@ -57,7 +57,7 @@ When a thread is selected:
 2. Persist the worktree path and branch name on the thread.
 3. Run `hooks.after_create` once when the worktree is first created.
 4. Mark the thread `running`.
-5. Execute `.feliz/pipeline.yml` against the thread worktree.
+5. Execute `.esperta-code/pipeline.yml` against the thread worktree.
 
 The executor works on the whole thread, not on per-step persisted sub-records.
 

@@ -10,7 +10,7 @@ import {
 } from "../../src/cli/repo-scaffold.ts";
 import type { AgentAdapter } from "../../src/agents/adapter.ts";
 
-const TEST_DIR = join(tmpdir(), "feliz-scaffold-test");
+const TEST_DIR = join(tmpdir(), "esperta-code-scaffold-test");
 
 describe("repoHasFelizConfig", () => {
   beforeEach(() => {

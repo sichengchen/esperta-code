@@ -41,7 +41,7 @@ This flow:
 2. Opens the authorization page.
 3. Exchanges the callback code for an access token.
 4. Verifies the app identity with `viewer { id name }`.
-5. Writes the token into `~/.feliz/feliz.yml`.
+5. Writes the token into `~/.esperta-code/esperta-code.yml`.
 
 You can also pass credentials explicitly:
 
@@ -61,9 +61,9 @@ $EC auth linear --callback-url https://<your-host>:3421/auth/callback
 $EC init
 ```
 
-This writes `~/.feliz/feliz.yml` with:
+This writes `~/.esperta-code/esperta-code.yml` with:
 
-- local runtime defaults under `~/.feliz`
+- local runtime defaults under `~/.esperta-code`
 - webhook port
 - agent defaults
 - an empty `projects` list
@@ -88,8 +88,8 @@ The wizard:
 1. Lists available Linear projects when Linear is configured.
 2. Asks for the repository URL and base branch.
 3. Clones the repo into the configured workspace root.
-4. Optionally scaffolds repo-local workflow assets under `.feliz/`.
-5. Appends the project entry to `feliz.yml`.
+4. Optionally scaffolds repo-local workflow assets under `.esperta-code/`.
+5. Appends the project entry to `esperta-code.yml`.
 
 If Linear is not configured, `project add` falls back to a local/manual flow and skips Linear project selection.
 
@@ -150,4 +150,4 @@ docker compose exec esperta-code bun run src/cli/index.ts project add
 - [Usage](usage.md) for the thread/job workflow
 - [CLI Reference](cli.md) for the full command surface
 - [Agents](agents.md) for adapter details
-- [Repo Workflow Assets](pipelines.md) for `.feliz/` scaffolding
+- [Repo Workflow Assets](pipelines.md) for `.esperta-code/` scaffolding

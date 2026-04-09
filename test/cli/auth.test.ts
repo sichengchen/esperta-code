@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, readFileSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DIR = "/tmp/feliz-auth-test";
+const TEST_DIR = "/tmp/esperta-code-auth-test";
 
 describe("buildAuthorizationUrl", () => {
   test("includes all required params", async () => {
@@ -121,7 +121,7 @@ describe("verifyToken", () => {
       capturedAuth = (init?.headers as Record<string, string>)?.Authorization ?? "";
       return new Response(
         JSON.stringify({
-          data: { viewer: { id: "user_1", name: "Feliz Bot" } },
+          data: { viewer: { id: "user_1", name: "Esperta Code Bot" } },
         }),
         { status: 200 }
       );
@@ -133,7 +133,7 @@ describe("verifyToken", () => {
     );
 
     expect(capturedAuth).toBe("Bearer lin_oauth_test123");
-    expect(viewer).toEqual({ id: "user_1", name: "Feliz Bot" });
+    expect(viewer).toEqual({ id: "user_1", name: "Esperta Code Bot" });
   });
 
   test("returns null on verification failure", async () => {
@@ -164,9 +164,9 @@ describe("writeTokenToConfig", () => {
     if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
   });
 
-  test("creates new feliz.yml when none exists", async () => {
+  test("creates new esperta-code.yml when none exists", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     writeTokenToConfig(configPath, "lin_oauth_new_token", false);
 
@@ -177,7 +177,7 @@ describe("writeTokenToConfig", () => {
 
   test("writes env var reference when useEnvVar is true", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     writeTokenToConfig(configPath, "lin_oauth_new_token", true);
 
@@ -186,9 +186,9 @@ describe("writeTokenToConfig", () => {
     expect(content).not.toContain("lin_oauth_new_token");
   });
 
-  test("updates existing feliz.yml without clobbering other fields", async () => {
+  test("updates existing esperta-code.yml without clobbering other fields", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     writeFileSync(
       configPath,
@@ -215,7 +215,7 @@ agent:
 
   test("stores viewer ID alongside token", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     writeTokenToConfig(configPath, "lin_oauth_xyz", false, "user_abc");
 
@@ -226,7 +226,7 @@ agent:
 
   test("stores viewer ID when updating existing config", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     writeFileSync(configPath, "linear:\n  oauth_token: old\nprojects: []\n", "utf-8");
     writeTokenToConfig(configPath, "lin_oauth_new", false, "viewer_123");
@@ -239,7 +239,7 @@ agent:
 
   test("creates nested directories for config path", async () => {
     const { writeTokenToConfig } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "a", "b", "feliz.yml");
+    const configPath = join(TEST_DIR, "a", "b", "esperta-code.yml");
 
     writeTokenToConfig(configPath, "lin_oauth_nested", false);
 
@@ -317,7 +317,7 @@ describe("runAuth", () => {
 
   test("full flow with injected dependencies", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     const promptAnswers = ["n"]; // "n" = store literal token, not env var
     let promptIdx = 0;
@@ -345,7 +345,7 @@ describe("runAuth", () => {
             scope: ["read", "write"],
           };
         },
-        verifyToken: async () => ({ id: "viewer_1", name: "Feliz Bot" }),
+        verifyToken: async () => ({ id: "viewer_1", name: "Esperta Code Bot" }),
         writeTokenToConfig: (path, token, useEnvVar, viewerId) => {
           savedConfig = { path, token, useEnvVar, viewerId };
         },
@@ -364,7 +364,7 @@ describe("runAuth", () => {
 
   test("uses --callback-url for redirect_uri", async () => {
     const { runAuth } = await import("../../src/cli/auth.ts");
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
 
     const promptAnswers = ["n"];
     let promptIdx = 0;

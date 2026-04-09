@@ -8,6 +8,14 @@ import { newId } from "../id.ts";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { PRIMARY_CLI_NAME } from "../branding.ts";
+import {
+  LEGACY_DATA_DIR_ENV,
+  LEGACY_PROJECT_ID_ENV,
+  LEGACY_THREAD_ID_ENV,
+  PRIMARY_DATA_DIR_ENV,
+  PRIMARY_PROJECT_ID_ENV,
+  PRIMARY_THREAD_ID_ENV,
+} from "../paths.ts";
 
 const TERMINAL_THREAD_STATUSES = ["completed", "failed", "stopped"];
 
@@ -163,7 +171,7 @@ export class Orchestrator {
       );
       const branchName =
         workspace.getBranchName?.(thread.linear_identifier) ??
-        `feliz/${thread.linear_identifier}`;
+        `esperta-code/${thread.linear_identifier}`;
       this.db.updateThreadWorkspace(thread.id, executionDir, branchName);
 
       if (this.repoConfig.hooks.after_create && workspace.runHook) {
@@ -216,9 +224,12 @@ export class Orchestrator {
       workDir: executionDir,
       pipeline,
       env: {
-        FELIZ_DATA_DIR: this.options.dataDir ?? "",
-        FELIZ_THREAD_ID: thread.id,
-        FELIZ_PROJECT_ID: thread.project_id,
+        [PRIMARY_DATA_DIR_ENV]: this.options.dataDir ?? "",
+        [LEGACY_DATA_DIR_ENV]: this.options.dataDir ?? "",
+        [PRIMARY_THREAD_ID_ENV]: thread.id,
+        [LEGACY_THREAD_ID_ENV]: thread.id,
+        [PRIMARY_PROJECT_ID_ENV]: thread.project_id,
+        [LEGACY_PROJECT_ID_ENV]: thread.project_id,
       },
       promptRenderer: (phaseName, stepName, cycle) => {
         const template = this.getStepPromptTemplate(

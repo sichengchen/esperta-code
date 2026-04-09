@@ -73,7 +73,7 @@ If no success condition is defined, the step succeeds when the adapter returns a
 
 ## Execution Semantics
 
-For each phase in `.feliz/pipeline.yml`:
+For each phase in `.esperta-code/pipeline.yml`:
 
 1. Render the step prompt.
 2. Run `hooks.before_run` if configured.

@@ -36,8 +36,8 @@ This checks whether each adapter’s CLI is installed and runnable.
 
 Agents are chosen in two places:
 
-1. Central `job_types` in `feliz.yml`
-2. Repo-local workflow assets in `.feliz/pipeline.yml` when a repo uses scaffolded pipeline steps
+1. Central `job_types` in `esperta-code.yml`
+2. Repo-local workflow assets in `.esperta-code/pipeline.yml` when a repo uses scaffolded pipeline steps
 
 ## Adapter Contract
 

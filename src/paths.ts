@@ -19,6 +19,16 @@ export const LEGACY_PID_FILENAME = "feliz.pid";
 export const PRIMARY_AUTH_CODE_FILENAME = "esperta-code-auth-code";
 export const LEGACY_AUTH_CODE_FILENAME = "feliz-auth-code";
 
+export const PRIMARY_DB_FILENAME = "esperta-code.db";
+export const LEGACY_DB_FILENAME = "feliz.db";
+
+export const PRIMARY_DATA_DIR_ENV = "ESPERTA_CODE_DATA_DIR";
+export const LEGACY_DATA_DIR_ENV = "FELIZ_DATA_DIR";
+export const PRIMARY_THREAD_ID_ENV = "ESPERTA_CODE_THREAD_ID";
+export const LEGACY_THREAD_ID_ENV = "FELIZ_THREAD_ID";
+export const PRIMARY_PROJECT_ID_ENV = "ESPERTA_CODE_PROJECT_ID";
+export const LEGACY_PROJECT_ID_ENV = "FELIZ_PROJECT_ID";
+
 export function getPrimaryConfigDir(home: string = homedir()): string {
   return join(home, PRIMARY_CONFIG_DIRNAME);
 }
@@ -81,6 +91,24 @@ export function resolveRepoAssetPath(
   if (existsSync(primary)) return primary;
 
   const legacy = join(getLegacyRepoMetadataDir(repoPath), relativePath);
+  if (existsSync(legacy)) return legacy;
+
+  return primary;
+}
+
+export function getPrimaryDbPath(dataDir: string): string {
+  return join(dataDir, "db", PRIMARY_DB_FILENAME);
+}
+
+export function getLegacyDbPath(dataDir: string): string {
+  return join(dataDir, "db", LEGACY_DB_FILENAME);
+}
+
+export function resolveDbPath(dataDir: string): string {
+  const primary = getPrimaryDbPath(dataDir);
+  if (existsSync(primary)) return primary;
+
+  const legacy = getLegacyDbPath(dataDir);
   if (existsSync(legacy)) return legacy;
 
   return primary;

@@ -27,7 +27,7 @@ function makeDeps(overrides: Partial<WizardDeps> = {}): WizardDeps {
     gitCommitAndPush: mock((_path: string, _branch: string) => {}) as any,
     addProjectToConfig: mock((_path: string, _project: any) => {}) as any,
     defaultScaffoldAdapter: "claude-code",
-    configPath: "/tmp/feliz.yml",
+    configPath: "/tmp/esperta-code.yml",
     ...overrides,
   };
 }
@@ -62,7 +62,7 @@ describe("runProjectAddWizard", () => {
     expect(deps.gitCommitAndPush).toHaveBeenCalledWith("/tmp/repo", "main");
     expect(deps.addProjectToConfig).toHaveBeenCalledTimes(1);
     const addCall = (deps.addProjectToConfig as any).mock.calls[0];
-    expect(addCall[0]).toBe("/tmp/feliz.yml");
+    expect(addCall[0]).toBe("/tmp/esperta-code.yml");
     expect(addCall[1].name).toBe("backend-api");
     expect(addCall[1].repo).toBe("git@github.com:org/backend-api.git");
     expect(addCall[1].linear_project).toBe("Backend API");

@@ -49,9 +49,9 @@ RUN mkdir -p /home/feliz/.ssh && \
     chown -R feliz:feliz /home/feliz/.ssh
 
 # Create data, config, agent, and npm global dirs owned by feliz
-RUN mkdir -p /data/feliz /home/feliz/.feliz /home/feliz/.npm-global \
+RUN mkdir -p /data/esperta-code /home/feliz/.esperta-code /home/feliz/.npm-global \
              /home/feliz/.local /home/feliz/.claude /home/feliz/.codex && \
-    chown -R feliz:feliz /data/feliz /home/feliz/.feliz /home/feliz/.npm-global \
+    chown -R feliz:feliz /data/esperta-code /home/feliz/.esperta-code /home/feliz/.npm-global \
                          /home/feliz/.local /home/feliz/.claude /home/feliz/.codex
 
 ENV NPM_CONFIG_PREFIX="/home/feliz/.npm-global"

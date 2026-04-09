@@ -11,22 +11,22 @@ function makeConfigYaml(): string {
 tick:
   interval_ms: 5000
 storage:
-  data_dir: /tmp/feliz-e2e/data
-  workspace_root: /tmp/feliz-e2e/workspaces
+  data_dir: /tmp/esperta-code-e2e/data
+  workspace_root: /tmp/esperta-code-e2e/workspaces
 agent:
   default: codex
   max_concurrent: 2
 projects:
-  - name: feliz-e2e-sandbox
-    repo: git@github.com:org/feliz-e2e-sandbox.git
-    linear_project: Feliz E2E Test
+  - name: esperta-code-e2e-sandbox
+    repo: git@github.com:org/esperta-code-e2e-sandbox.git
+    linear_project: Esperta Code E2E Test
     branch: main
 `;
 }
 
 function baseDeps(overrides: Partial<E2EHarnessDeps> = {}): E2EHarnessDeps {
   return {
-    existsSync: (path: string) => path === "/tmp/feliz-e2e/feliz.yml",
+    existsSync: (path: string) => path === "/tmp/esperta-code-e2e/esperta-code.yml",
     readFileSync: (_path: string) => makeConfigYaml(),
     env: {
       LINEAR_OAUTH_TOKEN: "lin_test_key",
@@ -41,7 +41,7 @@ function baseDeps(overrides: Partial<E2EHarnessDeps> = {}): E2EHarnessDeps {
         "git --version",
         "gh auth status",
         "codex --version",
-        "bun run src/cli/index.ts config validate --config /tmp/feliz-e2e/feliz.yml",
+        "bun run src/cli/index.ts config validate --config /tmp/esperta-code-e2e/esperta-code.yml",
       ]);
       if (okCommands.has(key)) {
         return { exitCode: 0, stdout: "ok", stderr: "" };
@@ -55,7 +55,7 @@ function baseDeps(overrides: Partial<E2EHarnessDeps> = {}): E2EHarnessDeps {
 describe("E2E harness doctor", () => {
   test("fails when config file does not exist", () => {
     const report = runE2EDoctor(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps({
         existsSync: () => false,
       })
@@ -69,7 +69,7 @@ describe("E2E harness doctor", () => {
 
   test("passes with valid config and available tools", () => {
     const report = runE2EDoctor(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps()
     );
 
@@ -80,7 +80,7 @@ describe("E2E harness doctor", () => {
 
   test("passes when only opencode is available", () => {
     const report = runE2EDoctor(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps({
         runCommand: (cmd: string, args: string[]) => {
           const key = `${cmd} ${args.join(" ")}`.trim();
@@ -91,7 +91,7 @@ describe("E2E harness doctor", () => {
             "git --version",
             "gh auth status",
             "opencode --version",
-            "bun run src/cli/index.ts config validate --config /tmp/feliz-e2e/feliz.yml",
+            "bun run src/cli/index.ts config validate --config /tmp/esperta-code-e2e/esperta-code.yml",
           ]);
           if (okCommands.has(key)) {
             return { exitCode: 0, stdout: "ok", stderr: "" };
@@ -108,7 +108,7 @@ describe("E2E harness doctor", () => {
 
   test("does not crash when a missing agent binary causes runCommand to throw", () => {
     const report = runE2EDoctor(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps({
         runCommand: (cmd: string, args: string[]) => {
           const key = `${cmd} ${args.join(" ")}`.trim();
@@ -123,7 +123,7 @@ describe("E2E harness doctor", () => {
             "git --version",
             "gh auth status",
             "codex --version",
-            "bun run src/cli/index.ts config validate --config /tmp/feliz-e2e/feliz.yml",
+            "bun run src/cli/index.ts config validate --config /tmp/esperta-code-e2e/esperta-code.yml",
           ]);
           if (okCommands.has(key)) {
             return { exitCode: 0, stdout: "ok", stderr: "" };
@@ -142,7 +142,7 @@ describe("E2E harness doctor", () => {
 describe("E2E harness smoke", () => {
   test("stops early when doctor fails", () => {
     const report = runE2ESmoke(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps({
         existsSync: () => false,
       })
@@ -154,7 +154,7 @@ describe("E2E harness smoke", () => {
 
   test("runs smoke checks and includes all scenario IDs", () => {
     const report = runE2ESmoke(
-      { configPath: "/tmp/feliz-e2e/feliz.yml" },
+      { configPath: "/tmp/esperta-code-e2e/esperta-code.yml" },
       baseDeps()
     );
 

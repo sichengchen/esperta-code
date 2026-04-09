@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { PipelineExecutor } from "../../src/pipeline/executor.ts";
 import { mkdirSync, readFileSync, rmSync } from "fs";
 
-const TEST_DIR = "/tmp/feliz-pipeline-hooks-test";
+const TEST_DIR = "/tmp/esperta-code-pipeline-hooks-test";
 
 describe("Pipeline hooks", () => {
   beforeEach(() => {

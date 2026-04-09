@@ -1,12 +1,12 @@
 # Configuration
 
-Esperta Code reads its central runtime configuration from `feliz.yml`, typically at `~/.feliz/feliz.yml`.
+Esperta Code reads its central runtime configuration from `esperta-code.yml`, typically at `~/.esperta-code/esperta-code.yml`.
 
 ## Minimal Runtime Config
 
 ```yaml
 runtime:
-  data_dir: ~/.feliz
+  data_dir: ~/.esperta-code
   max_concurrent_jobs: 4
 
 projects:
@@ -34,14 +34,14 @@ projects:
     job_types:
       implement:
         agent: codex
-        system_prompt: .feliz/prompts/implement.md
+        system_prompt: .esperta-code/prompts/implement.md
         verify:
           - bun test
         publish: draft_pr
 
       review:
         agent: codex
-        system_prompt: .feliz/prompts/review.md
+        system_prompt: .esperta-code/prompts/review.md
         write_mode: read_only
         publish: none
 ```
@@ -104,9 +104,9 @@ Connector-specific identifiers belong in connector state and thread links, not i
 
 Projects can also keep repo-local workflow assets:
 
-- `.feliz/config.yml`
-- `.feliz/pipeline.yml`
-- `.feliz/prompts/`
+- `.esperta-code/config.yml`
+- `.esperta-code/pipeline.yml`
+- `.esperta-code/prompts/`
 - `WORKFLOW.md`
 
 These files are scaffolded by `esperta-code project add` and are documented in [Repo Workflow Assets](pipelines.md).

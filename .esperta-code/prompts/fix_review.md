@@ -8,7 +8,7 @@ Address the review feedback for this issue.
 
 ## Context
 
-Run `feliz thread read` to see the full thread jobs, including review feedback.
+Run `esperta-code thread read` to see the full thread jobs, including review feedback.
 
 ## Instructions
 

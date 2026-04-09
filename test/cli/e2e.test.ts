@@ -44,7 +44,7 @@ describe("runE2ECommand", () => {
     const ok = runE2ECommand(
       {
         subcommand: "doctor",
-        configPath: "/tmp/feliz-e2e/feliz.yml",
+        configPath: "/tmp/esperta-code-e2e/esperta-code.yml",
         flags: {},
       },
       deps
@@ -59,7 +59,7 @@ describe("runE2ECommand", () => {
     const ok = runE2ECommand(
       {
         subcommand: "unknown",
-        configPath: "/tmp/feliz-e2e/feliz.yml",
+        configPath: "/tmp/esperta-code-e2e/esperta-code.yml",
         flags: {},
       },
       deps

@@ -4,7 +4,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { AUTH_CODE_FILE, clearAuthCode } from "../src/cli/auth.ts";
 
-const TEST_ROOT = "/tmp/feliz-server-test";
+const TEST_ROOT = "/tmp/esperta-code-server-test";
 
 function makeConfig() {
   return {
@@ -36,7 +36,7 @@ function makeConfig() {
   };
 }
 
-describe("FelizServer", () => {
+describe("EspertaCodeServer", () => {
   beforeEach(() => {
     rmSync(TEST_ROOT, { recursive: true, force: true });
     clearAuthCode();
@@ -122,7 +122,7 @@ describe("FelizServer", () => {
     anyServer.workspace = {
       getRepoPath: () => repoPath,
       createWorktree: async () => repoPath,
-      getBranchName: (identifier: string) => `feliz/${identifier}`,
+      getBranchName: (identifier: string) => `esperta-code/${identifier}`,
     };
 
     await anyServer.tickCycle();

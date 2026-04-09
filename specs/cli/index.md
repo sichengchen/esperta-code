@@ -35,8 +35,10 @@ The legacy `feliz` CLI alias remains supported for compatibility, but `esperta-c
 
 These commands are intended for use during active thread execution. They rely on:
 
-- `FELIZ_DATA_DIR`
-- `FELIZ_THREAD_ID`
+- `ESPERTA_CODE_DATA_DIR`
+- `ESPERTA_CODE_THREAD_ID`
+
+Legacy `FELIZ_DATA_DIR` and `FELIZ_THREAD_ID` aliases remain accepted for compatibility.
 
 ## `esperta-code thread read`
 

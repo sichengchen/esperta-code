@@ -15,12 +15,12 @@ phases:
     steps:
       - name: review
         agent: codex
-        prompt: .feliz/prompts/review.md
+        prompt: .esperta-code/prompts/review.md
         success:
           agent_verdict: approved
       - name: fix_review
         agent: codex
-        prompt: .feliz/prompts/fix_review.md
+        prompt: .esperta-code/prompts/fix_review.md
         success:
           command: bun test
 
@@ -28,4 +28,4 @@ phases:
     steps:
       - name: create_pr
         agent: claude-code
-        prompt: .feliz/prompts/publish.md
+        prompt: .esperta-code/prompts/publish.md

@@ -4,7 +4,7 @@ import { ContextAssembler } from "../../src/context/assembler.ts";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_ROOT = "/tmp/feliz-context-assembler-test";
+const TEST_ROOT = "/tmp/esperta-code-context-assembler-test";
 
 describe("ContextAssembler", () => {
   let db: Database;
@@ -13,11 +13,11 @@ describe("ContextAssembler", () => {
   beforeEach(() => {
     rmSync(TEST_ROOT, { recursive: true, force: true });
     worktree = join(TEST_ROOT, "backend", "worktrees", "BAC-1");
-    mkdirSync(join(worktree, ".feliz", "context", "memory"), { recursive: true });
+    mkdirSync(join(worktree, ".esperta-code", "context", "memory"), { recursive: true });
     mkdirSync(join(worktree, "specs"), { recursive: true });
 
     writeFileSync(
-      join(worktree, ".feliz", "context", "memory", "conventions.md"),
+      join(worktree, ".esperta-code", "context", "memory", "conventions.md"),
       "# Conventions\n\nPrefer explicit types.\n"
     );
     writeFileSync(join(worktree, "specs", "index.md"), "# Specs\n\nLogin rules.\n");
@@ -43,7 +43,7 @@ describe("ContextAssembler", () => {
       labels: ["bug"],
       blocker_ids: [],
       worktree_path: worktree,
-      branch_name: "feliz/BAC-1",
+      branch_name: "esperta-code/BAC-1",
       status: "pending",
     });
     db.appendJob({

@@ -1,6 +1,6 @@
 import { existsSync as fsExistsSync, readFileSync as fsReadFileSync } from "fs";
-import { join } from "path";
 import { loadFelizConfig } from "../config/loader.ts";
+import { resolveDbPath } from "../paths.ts";
 
 export type E2ECheckStatus = "pass" | "fail" | "warn";
 export type E2EScenarioStatus = "pending" | "blocked";
@@ -276,7 +276,7 @@ export function runE2ESmoke(
 
   try {
     const config = loadFelizConfig(deps.readFileSync(params.configPath));
-    const dbPath = join(config.storage.data_dir, "db", "feliz.db");
+    const dbPath = resolveDbPath(config.storage.data_dir);
     if (!deps.existsSync(dbPath)) {
       checks.push({
         id: "db.exists",

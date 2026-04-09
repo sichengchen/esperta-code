@@ -12,7 +12,7 @@ You are working on {{ project.name }}.
 
 Run `esperta-code thread read` to see project memory, specs, and thread jobs.
 Run `esperta-code thread write <message>` to append new jobs to the current thread.
-Project memory is in `.feliz/context/memory/` — read and write files there directly.
+Project memory is in `.esperta-code/context/memory/` — read and write files there directly.
 Specs are in `specs/`.
 
 ## Instructions

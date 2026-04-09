@@ -10,7 +10,7 @@ Review the changes made for this issue.
 
 ## Context
 
-Run `feliz thread read` to see the current thread jobs, memory, and specs.
+Run `esperta-code thread read` to see the current thread jobs, memory, and specs.
 
 ## Instructions
 
@@ -19,4 +19,4 @@ Run `feliz thread read` to see the current thread jobs, memory, and specs.
 - Look for bugs, edge cases, and security issues
 - Check code style: simple, explicit, no unnecessary abstractions
 - If everything looks good, respond with "approved"
-- If there are issues, run `feliz thread write` with your findings for the next pass
+- If there are issues, run `esperta-code thread write` with your findings for the next pass

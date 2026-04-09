@@ -4,7 +4,7 @@ import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { threadRead, threadWrite } from "../../src/cli/thread-agent.ts";
 
-const SCRATCH = "/tmp/feliz-thread-agent-test";
+const SCRATCH = "/tmp/esperta-code-thread-agent-test";
 
 describe("thread agent CLI helpers", () => {
   let db: Database;
@@ -23,10 +23,10 @@ describe("thread agent CLI helpers", () => {
     });
 
     const worktree = join(SCRATCH, "backend", "worktrees", "BAC-1");
-    mkdirSync(join(worktree, ".feliz", "context", "memory"), { recursive: true });
+    mkdirSync(join(worktree, ".esperta-code", "context", "memory"), { recursive: true });
     mkdirSync(join(worktree, "specs"), { recursive: true });
     writeFileSync(
-      join(worktree, ".feliz", "context", "memory", "conventions.md"),
+      join(worktree, ".esperta-code", "context", "memory", "conventions.md"),
       "# Conventions\n\nPrefer explicit types.\n"
     );
     writeFileSync(
@@ -47,7 +47,7 @@ describe("thread agent CLI helpers", () => {
       labels: ["bug"],
       blocker_ids: [],
       worktree_path: worktree,
-      branch_name: "feliz/BAC-1",
+      branch_name: "esperta-code/BAC-1",
       status: "pending",
     });
   });

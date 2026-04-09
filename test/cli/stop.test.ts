@@ -3,8 +3,8 @@ import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } from "
 import { join } from "path";
 import { tmpdir } from "os";
 
-const TEST_DIR = join(tmpdir(), "feliz-stop-test");
-const PID_FILE = join(TEST_DIR, "feliz.pid");
+const TEST_DIR = join(tmpdir(), "esperta-code-stop-test");
+const PID_FILE = join(TEST_DIR, "esperta-code.pid");
 
 describe("stop command", () => {
   beforeEach(() => {

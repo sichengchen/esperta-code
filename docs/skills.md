@@ -12,7 +12,7 @@ Use it to:
 
 - install prerequisites
 - install and build Esperta Code from a checkout
-- write or validate the central `feliz.yml`
+- write or validate the central `esperta-code.yml`
 - set up the optional Linear connector
 - add the first project
 - start the service cleanly

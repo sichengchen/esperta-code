@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { Database } from "../../src/db/database.ts";
 import { unlinkSync } from "fs";
 
-const TEST_DB = "/tmp/feliz-db-test.sqlite";
+const TEST_DB = "/tmp/esperta-code-db-test.sqlite";
 
 describe("Database", () => {
   let db: Database;
@@ -97,8 +97,8 @@ describe("Database", () => {
     db.updateThreadStatus("thread-1", "running");
     db.updateThreadWorkspace(
       "thread-1",
-      "/tmp/feliz/backend/worktrees/BAC-1",
-      "feliz/BAC-1"
+      "/tmp/esperta-code/backend/worktrees/BAC-1",
+      "esperta-code/BAC-1"
     );
 
     const thread = db.getThread("thread-1");
@@ -106,7 +106,7 @@ describe("Database", () => {
     expect(thread!.linear_session_id).toBe("session-2");
     expect(thread!.status).toBe("running");
     expect(thread!.worktree_path).toContain("BAC-1");
-    expect(thread!.branch_name).toBe("feliz/BAC-1");
+    expect(thread!.branch_name).toBe("esperta-code/BAC-1");
   });
 
   test("lists pending threads by project and counts running threads", () => {

@@ -2,10 +2,10 @@
 
 ## 1. Install and Configure
 
-1. Run `esperta-code init` or write `feliz.yml`.
+1. Run `esperta-code init` or write `esperta-code.yml`.
 2. Authenticate Linear with `esperta-code auth linear`.
 3. Add a project with `esperta-code project add`.
-4. Ensure the repo contains `.feliz/config.yml`, `.feliz/pipeline.yml`, prompts, and optional `specs/`.
+4. Ensure the repo contains `.esperta-code/config.yml`, `.esperta-code/pipeline.yml`, prompts, and optional `specs/`.
 
 ## 2. Start Esperta Code
 

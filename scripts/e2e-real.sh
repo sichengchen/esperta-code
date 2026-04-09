@@ -8,24 +8,24 @@ Usage: scripts/e2e-real.sh [options]
 Automates real-environment E2E setup and smoke validation:
   1) Ensures GitHub repo exists (creates if missing)
   2) Clones/updates a sandbox repo and seeds minimal project files
-  3) Writes Feliz config for E2E
+  3) Writes Esperta Code config for E2E
   4) Runs scripts/e2e-smoke.sh
-  5) Optionally starts Feliz daemon
+  5) Optionally starts Esperta Code daemon
 
 Options:
   --env-file <path>         Source env values before execution
-  --work-dir <path>         E2E root directory (default: /tmp/feliz-e2e)
-  --config <path>           Feliz config output path
+  --work-dir <path>         E2E root directory (default: /tmp/esperta-code-e2e)
+  --config <path>           Esperta Code config output path
   --report <path>           Smoke report path
   --repo-owner <owner>      GitHub owner/org (default: E2E_GH_OWNER or gh user)
-  --repo-name <name>        GitHub repo name (default: feliz-e2e-sandbox)
-  --linear-project <name>   Linear project name (default: Feliz E2E Test)
+  --repo-name <name>        GitHub repo name (default: esperta-code-e2e-sandbox)
+  --linear-project <name>   Linear project name (default: Esperta Code E2E Test)
   --agent <name>            Agent adapter (codex|claude-code; default: codex)
   --visibility <value>      Repo visibility (private|public; default: private)
   --skip-repo-create        Fail if repo missing instead of creating it
   --skip-seed               Skip sandbox repo file seeding/commit
   --skip-smoke              Skip scripts/e2e-smoke.sh execution
-  --start                   Start Feliz daemon after setup
+  --start                   Start Esperta Code daemon after setup
   --help, -h                Show help
 
 Environment (can be placed in --env-file):
@@ -46,12 +46,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 ENV_FILE=""
-WORK_DIR="${E2E_WORK_DIR:-/tmp/feliz-e2e}"
+WORK_DIR="${E2E_WORK_DIR:-/tmp/esperta-code-e2e}"
 CONFIG_PATH="${E2E_CONFIG_PATH:-}"
 REPORT_PATH="${E2E_REPORT_PATH:-}"
 GH_OWNER="${E2E_GH_OWNER:-}"
-REPO_NAME="${E2E_REPO_NAME:-feliz-e2e-sandbox}"
-LINEAR_PROJECT="${E2E_LINEAR_PROJECT:-Feliz E2E Test}"
+REPO_NAME="${E2E_REPO_NAME:-esperta-code-e2e-sandbox}"
+LINEAR_PROJECT="${E2E_LINEAR_PROJECT:-Esperta Code E2E Test}"
 AGENT_ADAPTER="${E2E_AGENT_ADAPTER:-codex}"
 REPO_VISIBILITY="${E2E_GH_VISIBILITY:-private}"
 START_SERVER="false"
@@ -136,7 +136,7 @@ if [[ -n "${ENV_FILE}" ]]; then
   set +a
 fi
 
-CONFIG_PATH="${CONFIG_PATH:-${WORK_DIR}/feliz.yml}"
+CONFIG_PATH="${CONFIG_PATH:-${WORK_DIR}/esperta-code.yml}"
 REPORT_PATH="${REPORT_PATH:-${WORK_DIR}/e2e-smoke-report.json}"
 
 for cmd in bun gh git sqlite3; do
@@ -210,12 +210,12 @@ seed_sandbox_repo() {
 
   ensure_main_branch "${repo_dir}"
 
-  mkdir -p "${repo_dir}/src" "${repo_dir}/test" "${repo_dir}/.feliz"
+  mkdir -p "${repo_dir}/src" "${repo_dir}/test" "${repo_dir}/.esperta-code"
 
   if [[ ! -f "${repo_dir}/package.json" ]]; then
     cat > "${repo_dir}/package.json" <<'JSON'
 {
-  "name": "feliz-e2e-sandbox",
+  "name": "esperta-code-e2e-sandbox",
   "type": "module",
   "scripts": {
     "test": "bun test",
@@ -263,8 +263,8 @@ describe("add", () => {
 TS
   fi
 
-  if [[ ! -f "${repo_dir}/.feliz/config.yml" ]]; then
-    cat > "${repo_dir}/.feliz/config.yml" <<EOF
+  if [[ ! -f "${repo_dir}/.esperta-code/config.yml" ]]; then
+    cat > "${repo_dir}/.esperta-code/config.yml" <<EOF
 agent:
   adapter: ${AGENT_ADAPTER}
   approval_policy: auto
@@ -282,8 +282,8 @@ gates:
 EOF
   fi
 
-  if [[ ! -f "${repo_dir}/.feliz/pipeline.yml" ]]; then
-    cat > "${repo_dir}/.feliz/pipeline.yml" <<EOF
+  if [[ ! -f "${repo_dir}/.esperta-code/pipeline.yml" ]]; then
+    cat > "${repo_dir}/.esperta-code/pipeline.yml" <<EOF
 phases:
   - name: execute
     steps:
@@ -293,7 +293,7 @@ phases:
         success:
           command: "bun test && bun run lint"
       - name: create_pr
-        prompt: .feliz/prompts/publish.md
+        prompt: .esperta-code/prompts/publish.md
 EOF
   fi
 
@@ -321,14 +321,14 @@ MD
 
   if [[ -n "$(git -C "${repo_dir}" status --porcelain)" ]]; then
     if ! git -C "${repo_dir}" config user.name >/dev/null; then
-      git -C "${repo_dir}" config user.name "${GIT_AUTHOR_NAME:-Feliz E2E Bot}"
+      git -C "${repo_dir}" config user.name "${GIT_AUTHOR_NAME:-Esperta Code E2E Bot}"
     fi
     if ! git -C "${repo_dir}" config user.email >/dev/null; then
       git -C "${repo_dir}" config user.email "${GIT_AUTHOR_EMAIL:-${GH_OWNER}@users.noreply.github.com}"
     fi
 
     git -C "${repo_dir}" add .
-    git -C "${repo_dir}" commit -m "chore: initialize feliz e2e sandbox" >/dev/null
+    git -C "${repo_dir}" commit -m "chore: initialize Esperta Code e2e sandbox" >/dev/null
     git -C "${repo_dir}" push -u origin main >/dev/null
     echo "[e2e-real] Seeded sandbox repo and pushed main branch"
   else
@@ -432,7 +432,7 @@ else
 fi
 
 if [[ "${START_SERVER}" == "true" ]]; then
-  echo "[e2e-real] Starting Feliz daemon"
+  echo "[e2e-real] Starting Esperta Code daemon"
   (cd "${REPO_ROOT}" && bun run src/cli/index.ts start --config "${CONFIG_PATH}")
 else
   echo "[e2e-real] Setup complete"

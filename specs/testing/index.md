@@ -55,8 +55,8 @@ Validation is complete when all of the following are true:
 ## Harness Commands
 
 ```bash
-bun run src/cli/index.ts e2e doctor --config /tmp/feliz-e2e/feliz.yml
-bun run src/cli/index.ts e2e smoke --config /tmp/feliz-e2e/feliz.yml
+bun run src/cli/index.ts e2e doctor --config /tmp/esperta-code-e2e/esperta-code.yml
+bun run src/cli/index.ts e2e smoke --config /tmp/esperta-code-e2e/esperta-code.yml
 ```
 
 These commands validate prerequisites and projected scenarios, but the core correctness bar remains the thread/job model above.

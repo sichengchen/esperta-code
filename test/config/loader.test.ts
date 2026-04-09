@@ -31,7 +31,7 @@ describe("loadFelizConfig", () => {
   test("parses the new remote-first config shape", () => {
     const yaml = `
 runtime:
-  data_dir: /tmp/feliz
+  data_dir: /tmp/esperta-code
   max_concurrent_jobs: 4
 
 projects:
@@ -47,13 +47,13 @@ projects:
     job_types:
       implement:
         agent: codex
-        system_prompt: .feliz/prompts/implement.md
+        system_prompt: .esperta-code/prompts/implement.md
         verify:
           - bun test
         publish: draft_pr
 `;
     const config = loadFelizConfig(yaml);
-    expect(config.runtime?.data_dir).toBe("/tmp/feliz");
+    expect(config.runtime?.data_dir).toBe("/tmp/esperta-code");
     expect(config.runtime?.max_concurrent_jobs).toBe(4);
     expect(config.projects[0]!.base_branch).toBe("main");
     expect(config.projects[0]!.worktrees?.retain_on_failure_hours).toBe(24);
@@ -63,7 +63,7 @@ projects:
     expect(config.projects[0]!.job_types?.implement?.publish).toBe("draft_pr");
   });
 
-  test("parses valid feliz.yml with defaults", () => {
+  test("parses valid esperta-code.yml with defaults", () => {
     const yaml = `
 linear:
   oauth_token: test-key
@@ -84,15 +84,15 @@ projects:
     expect(config.projects[0]!.branch).toBe("main");
   });
 
-  test("parses full feliz.yml with overrides", () => {
+  test("parses full esperta-code.yml with overrides", () => {
     const yaml = `
 linear:
   oauth_token: sk-123
 tick:
   interval_ms: 60000
 storage:
-  data_dir: /data/feliz
-  workspace_root: /data/feliz/ws
+  data_dir: /data/esperta-code
+  workspace_root: /data/esperta-code/ws
 agent:
   default: codex
   max_concurrent: 10
@@ -104,8 +104,8 @@ projects:
 `;
     const config = loadFelizConfig(yaml);
     expect(config.tick.interval_ms).toBe(60000);
-    expect(config.storage.data_dir).toBe("/data/feliz");
-    expect(config.storage.workspace_root).toBe("/data/feliz/ws");
+    expect(config.storage.data_dir).toBe("/data/esperta-code");
+    expect(config.storage.workspace_root).toBe("/data/esperta-code/ws");
     expect(config.agent.default).toBe("codex");
     expect(config.agent.max_concurrent).toBe(10);
     expect(config.projects[0]!.branch).toBe("develop");
@@ -162,25 +162,25 @@ agent:
   default: codex
 projects: []
 storage:
-  workspace_root: /tmp/feliz-workspaces
+  workspace_root: /tmp/esperta-code-workspaces
 `;
     const config = loadFelizProjectAddConfig(yaml);
     expect(config.linear?.oauth_token).toBe("test-key");
-    expect(config.storage.workspace_root).toBe("/tmp/feliz-workspaces");
+    expect(config.storage.workspace_root).toBe("/tmp/esperta-code-workspaces");
     expect(config.agent.default).toBe("codex");
   });
 
   test("allows missing linear.oauth_token for manual project setup", () => {
     const yaml = `
 runtime:
-  data_dir: /tmp/feliz
+  data_dir: /tmp/esperta-code
   max_concurrent_jobs: 4
 projects: []
 `;
     const config = loadFelizProjectAddConfig(yaml);
     expect(config.linear?.oauth_token).toBeUndefined();
     expect(config.agent.default).toBe("claude-code");
-    expect(config.storage.workspace_root).toBe("/tmp/feliz/workspaces");
+    expect(config.storage.workspace_root).toBe("/tmp/esperta-code/workspaces");
   });
 
   test("uses default scaffold adapter when agent.default is missing", () => {
@@ -196,7 +196,7 @@ projects: []
 });
 
 describe("loadRepoConfig", () => {
-  test("parses valid .feliz/config.yml with defaults", () => {
+  test("parses valid .esperta-code/config.yml with defaults", () => {
     const yaml = `
 agent:
   adapter: claude-code
@@ -211,7 +211,7 @@ agent:
     expect(config.specs.approval_required).toBe(true);
   });
 
-  test("parses full .feliz/config.yml", () => {
+  test("parses full .esperta-code/config.yml", () => {
     const yaml = `
 agent:
   adapter: codex
@@ -312,7 +312,7 @@ phases:
     steps:
       - name: write_code
         agent: claude-code
-        prompt: .feliz/prompts/write_code.md
+        prompt: .esperta-code/prompts/write_code.md
         success:
           command: "npm test"
         max_attempts: 3

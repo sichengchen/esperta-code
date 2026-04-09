@@ -77,11 +77,11 @@ export class WorkspaceManager {
   }
 
   getBranchName(identifier: string): string {
-    return `feliz/${identifier}`;
+    return `esperta-code/${identifier}`;
   }
 
   getThreadBranchName(threadId: string): string {
-    return `feliz/thread/${sanitizeIdentifier(threadId)}`;
+    return `esperta-code/thread/${sanitizeIdentifier(threadId)}`;
   }
 
   async cloneRepo(projectName: string, repoUrl: string): Promise<string> {

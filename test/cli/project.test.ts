@@ -4,10 +4,10 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { addProjectToConfig, removeProjectFromConfig, projectNameFromRepoUrl } from "../../src/cli/project.ts";
 
-const TEST_DIR = join(tmpdir(), "feliz-project-test");
-const CONFIG_PATH = join(TEST_DIR, "feliz.yml");
+const TEST_DIR = join(tmpdir(), "esperta-code-project-test");
+const CONFIG_PATH = join(TEST_DIR, "esperta-code.yml");
 
-const SAMPLE_CONFIG = `# Feliz configuration
+const SAMPLE_CONFIG = `# Esperta Code configuration
 linear:
   oauth_token: test-key
 

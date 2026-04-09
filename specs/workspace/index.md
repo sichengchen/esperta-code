@@ -26,7 +26,7 @@ Example shape:
 Default branch name:
 
 ```text
-feliz/{linear_identifier}
+esperta-code/{linear_identifier}
 ```
 
 ## Hooks

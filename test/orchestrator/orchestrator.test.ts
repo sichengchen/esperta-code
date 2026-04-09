@@ -6,7 +6,7 @@ import type { RepoConfig } from "../../src/config/types.ts";
 import { mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_ROOT = "/tmp/feliz-orchestrator-test";
+const TEST_ROOT = "/tmp/esperta-code-orchestrator-test";
 
 function makeRepoConfig(): RepoConfig {
   return {
@@ -96,7 +96,7 @@ describe("Orchestrator", () => {
         writeFileSync(join(worktreePath, "WORKFLOW.md"), "Fix {{ issue.title }}");
         return worktreePath;
       }),
-      getBranchName: mock((identifier: string) => `feliz/${identifier}`),
+      getBranchName: mock((identifier: string) => `esperta-code/${identifier}`),
     };
 
     const orchestrator = new Orchestrator(
@@ -125,7 +125,7 @@ describe("Orchestrator", () => {
     expect(workspace.createWorktree).toHaveBeenCalledTimes(1);
     expect(thread!.status).toBe("completed");
     expect(thread!.worktree_path).toBe(worktreePath);
-    expect(thread!.branch_name).toBe("feliz/BAC-1");
+    expect(thread!.branch_name).toBe("esperta-code/BAC-1");
   });
 
   test("does not dispatch a pending thread with non-terminal blockers", async () => {
@@ -178,12 +178,12 @@ describe("Orchestrator", () => {
   test("appends a review job when the review step is not approved", async () => {
     insertThread("1");
     const worktreePath = join(TEST_ROOT, "backend", "worktrees", "BAC-1");
-    mkdirSync(join(worktreePath, ".feliz", "prompts"), { recursive: true });
-    writeFileSync(join(worktreePath, ".feliz", "prompts", "review.md"), "Review");
+    mkdirSync(join(worktreePath, ".esperta-code", "prompts"), { recursive: true });
+    writeFileSync(join(worktreePath, ".esperta-code", "prompts", "review.md"), "Review");
     const repoPath = join(TEST_ROOT, "backend", "repo");
     mkdirSync(repoPath, { recursive: true });
 
-    db.updateThreadWorkspace("1", worktreePath, "feliz/BAC-1");
+    db.updateThreadWorkspace("1", worktreePath, "esperta-code/BAC-1");
 
     const orchestrator = new Orchestrator(
       db,

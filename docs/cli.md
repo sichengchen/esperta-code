@@ -4,7 +4,7 @@
 
 | Flag | Description |
 |---|---|
-| `--config <path>` | Path to `feliz.yml` (default: `~/.feliz/feliz.yml`) |
+| `--config <path>` | Path to `esperta-code.yml` (default: `~/.esperta-code/esperta-code.yml`) |
 | `--json` | JSON output for E2E commands |
 | `--out <path>` | Write E2E JSON output to a file |
 | `--help`, `-h` | Show help |

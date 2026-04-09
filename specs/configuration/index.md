@@ -1,6 +1,6 @@
 # Configuration
 
-## Central Server Config (`feliz.yml`)
+## Central Server Config (`esperta-code.yml`)
 
 The central config defines Linear auth, storage locations, global concurrency, and project mappings.
 
@@ -16,8 +16,8 @@ tick:
   interval_ms: 5000
 
 storage:
-  data_dir: /data/feliz
-  workspace_root: /data/feliz/workspaces
+  data_dir: /data/esperta-code
+  workspace_root: /data/esperta-code/workspaces
 
 agent:
   default: claude-code
@@ -44,7 +44,7 @@ projects:
 | `agent.max_concurrent` | number | Max concurrently running threads |
 | `projects[]` | array | Repo-to-Linear project mappings |
 
-## Repo Config (`.feliz/config.yml`)
+## Repo Config (`.esperta-code/config.yml`)
 
 Repo config controls agent defaults, hooks, optional specs, gates, and concurrency by Linear issue state.
 
@@ -93,7 +93,7 @@ concurrency:
 | `gates.*` | string | Conventional test/lint commands |
 | `concurrency.max_per_state` | map | Limit concurrent threads by Linear issue state |
 
-## Pipeline Definition (`.feliz/pipeline.yml`)
+## Pipeline Definition (`.esperta-code/pipeline.yml`)
 
 Pipelines are phase/step sequences executed against a thread worktree.
 
@@ -103,7 +103,7 @@ phases:
     steps:
       - name: write_code
         agent: claude-code
-        prompt: .feliz/prompts/write_code.md
+        prompt: .esperta-code/prompts/write_code.md
         success:
           command: "bun test"
         max_attempts: 3
@@ -115,18 +115,18 @@ phases:
     steps:
       - name: review
         agent: codex
-        prompt: .feliz/prompts/review.md
+        prompt: .esperta-code/prompts/review.md
         success:
           agent_verdict: approved
       - name: fix_review
         agent: claude-code
-        prompt: .feliz/prompts/fix_review.md
+        prompt: .esperta-code/prompts/fix_review.md
 
   - name: publish
     steps:
       - name: create_pr
         agent: claude-code
-        prompt: .feliz/prompts/publish.md
+        prompt: .esperta-code/prompts/publish.md
 ```
 
 ### Pipeline Schema

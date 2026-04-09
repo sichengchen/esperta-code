@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { validateAllConfigs } from "../../src/cli/validate.ts";
 
-const TEST_ROOT = "/tmp/feliz-cli-validate";
+const TEST_ROOT = "/tmp/esperta-code-cli-validate";
 
 describe("CLI config validation", () => {
   beforeEach(() => {
@@ -19,11 +19,11 @@ describe("CLI config validation", () => {
     }
   });
 
-  test("validates repo-level .feliz config and pipeline files", () => {
-    const configPath = join(TEST_ROOT, "feliz.yml");
+  test("validates repo-level .esperta-code config and pipeline files", () => {
+    const configPath = join(TEST_ROOT, "esperta-code.yml");
     const workspaceRoot = join(TEST_ROOT, "workspaces");
     const repoPath = join(workspaceRoot, "backend", "repo");
-    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
+    mkdirSync(join(repoPath, ".esperta-code"), { recursive: true });
 
     writeFileSync(
       configPath,
@@ -32,12 +32,12 @@ describe("CLI config validation", () => {
     );
 
     writeFileSync(
-      join(repoPath, ".feliz", "config.yml"),
+      join(repoPath, ".esperta-code", "config.yml"),
       `agent:\n  adapter: claude-code\n`,
       "utf-8"
     );
     writeFileSync(
-      join(repoPath, ".feliz", "pipeline.yml"),
+      join(repoPath, ".esperta-code", "pipeline.yml"),
       `phases:\n  - name: execute\n    steps:\n      - name: run\n        prompt: WORKFLOW.md\n`,
       "utf-8"
     );
@@ -46,10 +46,10 @@ describe("CLI config validation", () => {
   });
 
   test("fails validation when repo-level pipeline config is invalid", () => {
-    const configPath = join(TEST_ROOT, "feliz.yml");
+    const configPath = join(TEST_ROOT, "esperta-code.yml");
     const workspaceRoot = join(TEST_ROOT, "workspaces");
     const repoPath = join(workspaceRoot, "backend", "repo");
-    mkdirSync(join(repoPath, ".feliz"), { recursive: true });
+    mkdirSync(join(repoPath, ".esperta-code"), { recursive: true });
 
     writeFileSync(
       configPath,
@@ -58,12 +58,12 @@ describe("CLI config validation", () => {
     );
 
     writeFileSync(
-      join(repoPath, ".feliz", "config.yml"),
+      join(repoPath, ".esperta-code", "config.yml"),
       `agent:\n  adapter: claude-code\n`,
       "utf-8"
     );
     writeFileSync(
-      join(repoPath, ".feliz", "pipeline.yml"),
+      join(repoPath, ".esperta-code", "pipeline.yml"),
       `phases: [`,
       "utf-8"
     );

@@ -1,6 +1,6 @@
 ---
 name: esperta-code-setup
-description: Use this skill when installing or setting up Esperta Code on a machine, container, or dev environment. Covers prerequisites, bun install, central config at `~/.feliz/feliz.yml`, optional Linear connector authentication, project registration, validation, and service startup.
+description: Use this skill when installing or setting up Esperta Code on a machine, container, or dev environment. Covers prerequisites, bun install, central config at `~/.esperta-code/esperta-code.yml`, optional Linear connector authentication, project registration, validation, and service startup.
 ---
 
 # Esperta Code Setup
@@ -10,7 +10,7 @@ Use this skill for fresh installs, reconfiguration, or setup troubleshooting.
 ## When to use
 
 - Installing Esperta Code from a repo checkout
-- Creating or repairing `~/.feliz/feliz.yml`
+- Creating or repairing `~/.esperta-code/esperta-code.yml`
 - Enabling the Linear connector
 - Adding the first project
 - Validating startup, storage paths, or agent availability
@@ -57,7 +57,7 @@ bun run build
 Default path:
 
 ```text
-~/.feliz/feliz.yml
+~/.esperta-code/esperta-code.yml
 ```
 
 Prefer `esperta-code init` for an initial config. If the user needs a hand-written config, use the current runtime/project schema from `docs/configuration.md`.
@@ -66,7 +66,7 @@ Minimum shape:
 
 ```yaml
 runtime:
-  data_dir: ~/.feliz
+  data_dir: ~/.esperta-code
   max_concurrent_jobs: 4
 
 projects: []
@@ -98,7 +98,7 @@ Use:
 esperta-code project add
 ```
 
-This can register the project and scaffold repo-local `.feliz/` assets when appropriate.
+This can register the project and scaffold repo-local `.esperta-code/` assets when appropriate.
 
 ### 5. Validate and start
 
@@ -125,7 +125,7 @@ Before calling setup complete, confirm:
 
 ## Guardrails
 
-- Do not overwrite an existing `feliz.yml` without checking first.
+- Do not overwrite an existing `esperta-code.yml` without checking first.
 - Do not assume the Linear connector is required.
 - Do not use old Feliz product wording in newly written setup instructions.
 - Do not edit SQLite state directly for setup tasks; use the CLI.

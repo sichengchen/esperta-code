@@ -6,8 +6,8 @@ usage() {
 Usage: scripts/e2e-smoke.sh [--env-file <path>] [--config <path>] [--report <path>]
 
 Runs:
-  1) feliz e2e doctor
-  2) feliz e2e smoke (with JSON report output)
+  1) esperta-code e2e doctor
+  2) esperta-code e2e smoke (with JSON report output)
 
 Environment:
   LINEAR_OAUTH_TOKEN   Required when config uses $LINEAR_OAUTH_TOKEN
@@ -18,8 +18,8 @@ EOF
 }
 
 ENV_FILE=""
-CONFIG_PATH="${E2E_CONFIG_PATH:-/tmp/feliz-e2e/feliz.yml}"
-REPORT_PATH="${E2E_REPORT_PATH:-/tmp/feliz-e2e-smoke-report.json}"
+CONFIG_PATH="${E2E_CONFIG_PATH:-/tmp/esperta-code-e2e/esperta-code.yml}"
+REPORT_PATH="${E2E_REPORT_PATH:-/tmp/esperta-code-e2e-smoke-report.json}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in

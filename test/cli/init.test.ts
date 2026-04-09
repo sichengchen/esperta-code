@@ -2,7 +2,7 @@ import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { existsSync, readFileSync, mkdirSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 
-const TEST_DIR = "/tmp/feliz-init-test";
+const TEST_DIR = "/tmp/esperta-code-init-test";
 
 function makePromptFn(answers: (string | null)[]) {
   let i = 0;
@@ -23,7 +23,7 @@ describe("runInit", () => {
     const origEnv = process.env.LINEAR_OAUTH_TOKEN;
     process.env.LINEAR_OAUTH_TOKEN = "lin_test_key";
     try {
-      const configPath = join(TEST_DIR, "feliz.yml");
+      const configPath = join(TEST_DIR, "esperta-code.yml");
       const promptFn = makePromptFn(["Y"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
@@ -47,7 +47,7 @@ describe("runInit", () => {
     const origEnv = process.env.LINEAR_OAUTH_TOKEN;
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
-      const configPath = join(TEST_DIR, "feliz.yml");
+      const configPath = join(TEST_DIR, "esperta-code.yml");
       const promptFn = makePromptFn(["y", "lin_api_abc123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
@@ -70,7 +70,7 @@ describe("runInit", () => {
     const origEnv = process.env.LINEAR_OAUTH_TOKEN;
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
-      const configPath = join(TEST_DIR, "feliz.yml");
+      const configPath = join(TEST_DIR, "esperta-code.yml");
       const promptFn = makePromptFn(["n"]);
 
       const { runInit } = await import("../../src/cli/init.ts");
@@ -90,7 +90,7 @@ describe("runInit", () => {
   });
 
   test("skips when config already exists", async () => {
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
     writeFileSync(configPath, "existing: config");
 
     const logs: string[] = [];
@@ -111,7 +111,7 @@ describe("runInit", () => {
     const origEnv = process.env.LINEAR_OAUTH_TOKEN;
     delete process.env.LINEAR_OAUTH_TOKEN;
     try {
-      const configPath = join(TEST_DIR, "a", "b", "feliz.yml");
+      const configPath = join(TEST_DIR, "a", "b", "esperta-code.yml");
       const promptFn = makePromptFn(["y", "lin_key_123"]);
 
       const { runInit } = await import("../../src/cli/init.ts");

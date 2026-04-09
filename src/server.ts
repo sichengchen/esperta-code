@@ -20,7 +20,7 @@ import { writePidFile, removePidFile } from "./pid.ts";
 import type { AgentSessionEvent } from "./connectors/linear/webhook.ts";
 import { writeAuthCode, AUTH_CALLBACK_HTML } from "./cli/auth.ts";
 import { PRODUCT_NAME } from "./branding.ts";
-import { resolveRepoAssetPath } from "./paths.ts";
+import { resolveDbPath, resolveRepoAssetPath } from "./paths.ts";
 
 export class FelizServer {
   private config: FelizConfig;
@@ -41,7 +41,7 @@ export class FelizServer {
     mkdirSync(dbDir, { recursive: true });
     mkdirSync(config.storage.workspace_root, { recursive: true });
 
-    this.db = new Database(join(dbDir, "feliz.db"));
+    this.db = new Database(resolveDbPath(config.storage.data_dir));
     this.linearClient = new LinearClient(config.linear.oauth_token);
     this.webhookHandler = new WebhookHandler(this.db, this.linearClient);
     this.workspace = new WorkspaceManager(config.storage.workspace_root);

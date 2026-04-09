@@ -13,7 +13,7 @@ import {
 } from "../../src/config/writer.ts";
 import { loadFelizConfig, loadRepoConfig, loadPipelineConfig } from "../../src/config/loader.ts";
 
-const TEST_DIR = "/tmp/feliz-writer-test";
+const TEST_DIR = "/tmp/esperta-code-writer-test";
 
 describe("CONFIG_TEMPLATE", () => {
   test("uses the local home directory for storage by default", () => {
@@ -87,14 +87,14 @@ describe("writeConfigFile", () => {
   });
 
   test("creates directory and writes template file", () => {
-    const configPath = join(TEST_DIR, "feliz.yml");
+    const configPath = join(TEST_DIR, "esperta-code.yml");
     writeConfigFile(configPath, CONFIG_TEMPLATE);
     expect(existsSync(configPath)).toBe(true);
     expect(readFileSync(configPath, "utf-8")).toBe(CONFIG_TEMPLATE);
   });
 
   test("handles deeply nested directories", () => {
-    const configPath = join(TEST_DIR, "a", "b", "c", "feliz.yml");
+    const configPath = join(TEST_DIR, "a", "b", "c", "esperta-code.yml");
     writeConfigFile(configPath, CONFIG_TEMPLATE);
     expect(existsSync(configPath)).toBe(true);
     expect(readFileSync(configPath, "utf-8")).toBe(CONFIG_TEMPLATE);

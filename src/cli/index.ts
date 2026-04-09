@@ -5,10 +5,16 @@ import { Database } from "../db/database.ts";
 import { createLogger } from "../logger/index.ts";
 import { existsSync, readFileSync } from "fs";
 import { homedir } from "os";
-import { join } from "path";
 import { validateAllConfigs } from "./validate.ts";
 import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../branding.ts";
-import { getPrimaryConfigPath, resolveDefaultConfigPath } from "../paths.ts";
+import {
+  LEGACY_DATA_DIR_ENV,
+  LEGACY_THREAD_ID_ENV,
+  PRIMARY_DATA_DIR_ENV,
+  PRIMARY_THREAD_ID_ENV,
+  resolveDbPath,
+  resolveDefaultConfigPath,
+} from "../paths.ts";
 
 const HELP_TEXT = `
 ${PRODUCT_NAME} - Cloud agents platform
@@ -59,7 +65,7 @@ function loadProjectAddConfig(configPath: string) {
 
 function openDb(configPath: string) {
   const config = loadConfig(configPath);
-  const dbPath = join(config.storage.data_dir, "db", "feliz.db");
+  const dbPath = resolveDbPath(config.storage.data_dir);
   if (!existsSync(dbPath)) {
     return { config, db: null, dbPath };
   }
@@ -108,7 +114,7 @@ async function main() {
         return;
       }
       const config = loadConfig(configPath);
-      const dbPath = join(config.storage.data_dir, "db", "feliz.db");
+      const dbPath = resolveDbPath(config.storage.data_dir);
       if (!existsSync(dbPath)) {
         console.log(
           `${PRODUCT_NAME} is configured but not running. ${config.projects.length} project(s) configured.`
@@ -146,17 +152,18 @@ async function main() {
   }
 
   if (cmd.command === "thread" && cmd.subcommand === "read") {
-    const dataDir = process.env.FELIZ_DATA_DIR;
-    const threadId = process.env.FELIZ_THREAD_ID;
+    const dataDir = process.env[PRIMARY_DATA_DIR_ENV] ?? process.env[LEGACY_DATA_DIR_ENV];
+    const threadId = process.env[PRIMARY_THREAD_ID_ENV] ?? process.env[LEGACY_THREAD_ID_ENV];
 
     if (!dataDir || !threadId) {
       console.error("Missing environment variables. This command is for use by agents during execution.");
-      console.error("Required: FELIZ_DATA_DIR, FELIZ_THREAD_ID");
+      console.error(`Required: ${PRIMARY_DATA_DIR_ENV}, ${PRIMARY_THREAD_ID_ENV}`);
+      console.error(`Legacy aliases still accepted: ${LEGACY_DATA_DIR_ENV}, ${LEGACY_THREAD_ID_ENV}`);
       process.exit(1);
     }
 
     try {
-      const db = new Database(join(dataDir, "db", "feliz.db"));
+      const db = new Database(resolveDbPath(dataDir));
       const { threadRead } = await import("./thread-agent.ts");
       console.log(threadRead(db, threadId));
       db.close();
@@ -168,12 +175,13 @@ async function main() {
   }
 
   if (cmd.command === "thread" && cmd.subcommand === "write") {
-    const dataDir = process.env.FELIZ_DATA_DIR;
-    const threadId = process.env.FELIZ_THREAD_ID;
+    const dataDir = process.env[PRIMARY_DATA_DIR_ENV] ?? process.env[LEGACY_DATA_DIR_ENV];
+    const threadId = process.env[PRIMARY_THREAD_ID_ENV] ?? process.env[LEGACY_THREAD_ID_ENV];
 
     if (!dataDir || !threadId) {
       console.error("Missing environment variables. This command is for use by agents during execution.");
-      console.error("Required: FELIZ_DATA_DIR, FELIZ_THREAD_ID");
+      console.error(`Required: ${PRIMARY_DATA_DIR_ENV}, ${PRIMARY_THREAD_ID_ENV}`);
+      console.error(`Legacy aliases still accepted: ${LEGACY_DATA_DIR_ENV}, ${LEGACY_THREAD_ID_ENV}`);
       process.exit(1);
     }
 
@@ -188,7 +196,7 @@ async function main() {
     }
 
     try {
-      const db = new Database(join(dataDir, "db", "feliz.db"));
+      const db = new Database(resolveDbPath(dataDir));
       const { threadWrite } = await import("./thread-agent.ts");
       threadWrite(db, threadId, message.trim(), "agent");
       db.close();
