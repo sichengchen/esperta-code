@@ -25,8 +25,8 @@ import { resolveDbPath, resolveRepoAssetPath } from "./paths.ts";
 export class FelizServer {
   private config: FelizConfig;
   private db: Database;
-  private linearClient: LinearClient;
-  private webhookHandler: WebhookHandler;
+  private linearClient?: LinearClient;
+  private webhookHandler?: WebhookHandler;
   private workspace: WorkspaceManager;
   private adapters: Record<string, AgentAdapter>;
   private logger = createLogger("server");
@@ -42,8 +42,10 @@ export class FelizServer {
     mkdirSync(config.storage.workspace_root, { recursive: true });
 
     this.db = new Database(resolveDbPath(config.storage.data_dir));
-    this.linearClient = new LinearClient(config.linear.oauth_token);
-    this.webhookHandler = new WebhookHandler(this.db, this.linearClient);
+    if (config.linear.oauth_token) {
+      this.linearClient = new LinearClient(config.linear.oauth_token);
+      this.webhookHandler = new WebhookHandler(this.db, this.linearClient);
+    }
     this.workspace = new WorkspaceManager(config.storage.workspace_root);
 
     // Register adapters
@@ -137,6 +139,10 @@ export class FelizServer {
     }
 
     if (req.method === "POST" && url.pathname === "/webhook/linear") {
+      if (!this.webhookHandler) {
+        return new Response("linear integration disabled", { status: 503 });
+      }
+
       try {
         const rawBody = await req.text();
         this.logger.info("Webhook payload", { body: rawBody.slice(0, 2000) });
@@ -174,7 +180,7 @@ export class FelizServer {
         if (result.signal === "stop") {
           orchestrator.stopThread(result.threadId);
           const thread = this.db.getThread(result.threadId);
-          if (thread?.linear_session_id) {
+          if (thread?.linear_session_id && this.linearClient) {
             try {
               await this.linearClient.emitError(
                 thread.linear_session_id,

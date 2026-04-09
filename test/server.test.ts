@@ -50,6 +50,50 @@ describe("EspertaCodeServer", () => {
     expect(anyServer.workspace).toBeDefined();
   });
 
+  test("starts without Linear when oauth_token is empty", async () => {
+    const server = new FelizServer({
+      ...makeConfig(),
+      linear: {
+        oauth_token: "",
+      },
+    } as any);
+    const anyServer = server as any;
+
+    expect(anyServer.db).toBeDefined();
+    expect(anyServer.linearClient).toBeUndefined();
+    expect(anyServer.webhookHandler).toBeUndefined();
+
+    const response = await server.handleRequest(
+      new Request("http://localhost/webhook/linear", {
+        method: "POST",
+        body: JSON.stringify({
+          type: "AgentSession",
+          action: "created",
+          agentSession: {
+            id: "session-1",
+            issueId: "lin-1",
+            issue: {
+              id: "lin-1",
+              identifier: "BAC-1",
+              title: "Fix auth flow",
+              description: "",
+              priority: 1,
+              state: { name: "Todo" },
+              labels: { nodes: [] },
+              project: { name: "Backend" },
+              team: { name: "Backend", key: "BAC" },
+              url: "https://linear.app/acme/issue/BAC-1",
+            },
+            promptContext: "",
+          },
+        }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("linear integration disabled");
+  });
+
   test("handles /auth/callback by writing the code file", async () => {
     const server = new FelizServer(makeConfig() as any);
     const response = await server.handleRequest(
