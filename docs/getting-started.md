@@ -115,15 +115,32 @@ $EC thread list
 
 ```bash
 cp .env.example .env
+```
+
+Set the values you need in `.env`:
+
+- `GITHUB_TOKEN` for PR creation
+- `GIT_AUTHOR_NAME` and `GIT_AUTHOR_EMAIL` for commits
+- `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` if your chosen agent uses API keys
+- `LINEAR_OAUTH_TOKEN` only if you want Linear integration from the start
+
+If your project uses SSH git remotes, make sure `SSH_AUTH_SOCK` is exported on the host before starting Docker so the container can reuse your SSH agent.
+
+Then start the container:
+
+```bash
 docker compose up -d --build
 ```
 
 Inside the container:
 
 ```bash
+docker compose exec feliz bash
+npm install -g @openai/codex
+exit
 docker compose exec feliz bun run src/cli/index.ts status
+docker compose exec feliz bun run src/cli/index.ts auth linear   # optional
 docker compose exec feliz bun run src/cli/index.ts project add
-docker compose exec feliz bun run src/cli/index.ts auth linear
 ```
 
 ## Next Steps
