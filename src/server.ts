@@ -20,6 +20,7 @@ import { writePidFile, removePidFile } from "./pid.ts";
 import type { AgentSessionEvent } from "./connectors/linear/webhook.ts";
 import { writeAuthCode, AUTH_CALLBACK_HTML } from "./cli/auth.ts";
 import { PRODUCT_NAME } from "./branding.ts";
+import { resolveRepoAssetPath } from "./paths.ts";
 
 export class FelizServer {
   private config: FelizConfig;
@@ -256,7 +257,7 @@ export class FelizServer {
 
   private loadRepoConfigForProject(projectName: string): ReturnType<typeof loadRepoConfig> {
     const repoPath = this.workspace.getRepoPath(projectName);
-    const configPath = join(repoPath, ".feliz", "config.yml");
+    const configPath = resolveRepoAssetPath(repoPath, "config.yml");
     if (existsSync(configPath)) {
       return loadRepoConfig(readFileSync(configPath, "utf-8"));
     }
@@ -268,7 +269,7 @@ export class FelizServer {
     repoConfig: ReturnType<typeof loadRepoConfig>
   ) {
     const repoPath = this.workspace.getRepoPath(projectName);
-    const pipelinePath = join(repoPath, ".feliz", "pipeline.yml");
+    const pipelinePath = resolveRepoAssetPath(repoPath, "pipeline.yml");
     if (existsSync(pipelinePath)) {
       return loadPipelineConfig(readFileSync(pipelinePath, "utf-8"));
     }

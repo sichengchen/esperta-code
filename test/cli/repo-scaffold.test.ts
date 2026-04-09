@@ -21,14 +21,14 @@ describe("repoHasFelizConfig", () => {
     if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
   });
 
-  test("returns false when .feliz/config.yml does not exist", () => {
+  test("returns false when .esperta-code/config.yml does not exist", () => {
     expect(repoHasFelizConfig(TEST_DIR)).toBe(false);
   });
 
-  test("returns true when .feliz/config.yml exists", () => {
+  test("returns true when .esperta-code/config.yml exists", () => {
     const { mkdirSync, writeFileSync } = require("fs");
-    mkdirSync(join(TEST_DIR, ".feliz"), { recursive: true });
-    writeFileSync(join(TEST_DIR, ".feliz", "config.yml"), "agent:\n  adapter: claude-code\n");
+    mkdirSync(join(TEST_DIR, ".esperta-code"), { recursive: true });
+    writeFileSync(join(TEST_DIR, ".esperta-code", "config.yml"), "agent:\n  adapter: claude-code\n");
     expect(repoHasFelizConfig(TEST_DIR)).toBe(true);
   });
 });
@@ -42,22 +42,22 @@ describe("writeRepoScaffold", () => {
     if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
   });
 
-  test("creates .feliz/config.yml, .feliz/pipeline.yml, .feliz/prompts/, WORKFLOW.md", () => {
+  test("creates .esperta-code/config.yml, .esperta-code/pipeline.yml, .esperta-code/prompts/, WORKFLOW.md", () => {
     writeRepoScaffold(TEST_DIR, {
       agentAdapter: "claude-code",
       specsEnabled: false,
       testCommand: "bun test",
     });
 
-    expect(existsSync(join(TEST_DIR, ".feliz", "config.yml"))).toBe(true);
-    expect(existsSync(join(TEST_DIR, ".feliz", "pipeline.yml"))).toBe(true);
-    expect(existsSync(join(TEST_DIR, ".feliz", "prompts"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".esperta-code", "config.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".esperta-code", "pipeline.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".esperta-code", "prompts"))).toBe(true);
     expect(existsSync(join(TEST_DIR, "WORKFLOW.md"))).toBe(true);
 
-    const configYml = readFileSync(join(TEST_DIR, ".feliz", "config.yml"), "utf-8");
+    const configYml = readFileSync(join(TEST_DIR, ".esperta-code", "config.yml"), "utf-8");
     expect(configYml).toContain("claude-code");
 
-    const pipelineYml = readFileSync(join(TEST_DIR, ".feliz", "pipeline.yml"), "utf-8");
+    const pipelineYml = readFileSync(join(TEST_DIR, ".esperta-code", "pipeline.yml"), "utf-8");
     expect(pipelineYml).toContain("execute");
     expect(pipelineYml).toContain("bun test");
     expect(pipelineYml).toContain("agent: claude-code");
@@ -89,7 +89,7 @@ describe("gitCommitAndPush", () => {
     if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true });
   });
 
-  test("commits and pushes .feliz/ and WORKFLOW.md", () => {
+  test("commits and pushes .esperta-code/ and WORKFLOW.md", () => {
     writeRepoScaffold(CLONE_DIR, {
       agentAdapter: "claude-code",
       specsEnabled: false,
@@ -242,7 +242,7 @@ describe("writeRepoScaffoldWithAgent", () => {
           exitCode: 0,
           stdout: "ok",
           stderr: "",
-          filesChanged: [".feliz/config.yml", ".feliz/pipeline.yml", "WORKFLOW.md"],
+          filesChanged: [".esperta-code/config.yml", ".esperta-code/pipeline.yml", "WORKFLOW.md"],
         };
       },
       cancel: async () => {},
@@ -260,8 +260,8 @@ describe("writeRepoScaffoldWithAgent", () => {
     );
 
     expect(result.success).toBe(true);
-    expect(existsSync(join(TEST_DIR, ".feliz", "config.yml"))).toBe(true);
-    expect(existsSync(join(TEST_DIR, ".feliz", "pipeline.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".esperta-code", "config.yml"))).toBe(true);
+    expect(existsSync(join(TEST_DIR, ".esperta-code", "pipeline.yml"))).toBe(true);
     expect(existsSync(join(TEST_DIR, "WORKFLOW.md"))).toBe(true);
   });
 });

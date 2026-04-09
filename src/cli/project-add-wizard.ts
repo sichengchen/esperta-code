@@ -68,7 +68,7 @@ export async function runProjectAddWizard(deps: WizardDeps): Promise<void> {
   const repoPath = await deps.cloneRepo(projectName, repoUrl);
 
   if (deps.repoHasFelizConfig(repoPath)) {
-    console.log("Found existing .feliz/ config, skipping scaffold.");
+    console.log("Found existing .esperta-code/ config, skipping scaffold.");
   } else {
     const scaffoldAdapter =
       deps.prompt(`Scaffold adapter (${deps.defaultScaffoldAdapter}):`) ||
@@ -91,16 +91,16 @@ export async function runProjectAddWizard(deps: WizardDeps): Promise<void> {
       scaffoldAnswers
     );
     if (scaffoldResult.success) {
-      console.log(`Generated .feliz/ with ${scaffoldAdapter}.`);
+      console.log(`Generated .esperta-code/ with ${scaffoldAdapter}.`);
     } else {
       console.log(
         `Agent scaffold unavailable (${scaffoldResult.reason ?? "unknown error"}); using template scaffold.`
       );
       deps.writeRepoScaffold(repoPath, scaffoldAnswers);
-      console.log("Created .feliz/ config and WORKFLOW.md");
+      console.log("Created .esperta-code/ config and WORKFLOW.md");
     }
 
-    const pushInput = deps.prompt("Commit and push .feliz/ config? [Y/n]:");
+    const pushInput = deps.prompt("Commit and push .esperta-code/ config? [Y/n]:");
     if (pushInput?.toLowerCase() !== "n") {
       try {
         deps.gitCommitAndPush(repoPath, branch);

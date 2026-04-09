@@ -3,13 +3,18 @@ import { dirname, join } from "path";
 import { tmpdir } from "os";
 import { parse, stringify } from "yaml";
 import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../branding.ts";
+import {
+  LEGACY_AUTH_CODE_FILENAME,
+  PRIMARY_AUTH_CODE_FILENAME,
+} from "../paths.ts";
 
 const SCOPES = "app:mentionable,app:assignable,read,write,issues:create";
 export const DEFAULT_PORT = 3421;
 const TIMEOUT_MS = 5 * 60 * 1000;
 const POLL_INTERVAL_MS = 500;
 
-export const AUTH_CODE_FILE = join(tmpdir(), "feliz-auth-code");
+export const AUTH_CODE_FILE = join(tmpdir(), PRIMARY_AUTH_CODE_FILENAME);
+const LEGACY_AUTH_CODE_FILE = join(tmpdir(), LEGACY_AUTH_CODE_FILENAME);
 
 export function writeAuthCode(code: string): void {
   writeFileSync(AUTH_CODE_FILE, code, "utf-8");
@@ -17,6 +22,7 @@ export function writeAuthCode(code: string): void {
 
 export function clearAuthCode(): void {
   if (existsSync(AUTH_CODE_FILE)) unlinkSync(AUTH_CODE_FILE);
+  if (existsSync(LEGACY_AUTH_CODE_FILE)) unlinkSync(LEGACY_AUTH_CODE_FILE);
 }
 
 export const AUTH_CALLBACK_HTML = `<!DOCTYPE html>

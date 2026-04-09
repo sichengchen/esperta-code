@@ -1,7 +1,12 @@
 #!/bin/sh
 set -e
 
-CONFIG_PATH="${FELIZ_CONFIG_PATH:-/home/feliz/.feliz/feliz.yml}"
+PRIMARY_CONFIG_PATH="${ESPERTA_CODE_CONFIG_PATH:-/home/feliz/.esperta-code/esperta-code.yml}"
+LEGACY_CONFIG_PATH="${FELIZ_CONFIG_PATH:-/home/feliz/.feliz/feliz.yml}"
+CONFIG_PATH="$PRIMARY_CONFIG_PATH"
+if [ ! -f "$CONFIG_PATH" ] && [ -f "$LEGACY_CONFIG_PATH" ]; then
+  CONFIG_PATH="$LEGACY_CONFIG_PATH"
+fi
 
 # --- Preflight checks ---
 echo "Esperta Code preflight checks..."
@@ -85,15 +90,15 @@ YAML
 $LINEAR_CONFIG
 
 runtime:
-  data_dir: /data/feliz
+  data_dir: /data/esperta-code
   max_concurrent_jobs: 4
 
 webhook:
   port: 3421
 
 storage:
-  data_dir: /data/feliz
-  workspace_root: /data/feliz/workspaces
+  data_dir: /data/esperta-code
+  workspace_root: /data/esperta-code/workspaces
 
 agent:
   default: claude-code

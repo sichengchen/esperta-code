@@ -16,25 +16,35 @@ import {
   PRIMARY_CLI_NAME,
 } from "../branding.ts";
 import { injectGitHubToken } from "../workspace/manager.ts";
+import {
+  PRIMARY_MEMORY_DIR_PATH,
+  PRIMARY_PUBLISH_PROMPT_PATH,
+  getPrimaryRepoMetadataDir,
+  getLegacyRepoMetadataDir,
+  resolveRepoAssetPath,
+} from "../paths.ts";
 
 export function repoHasFelizConfig(repoPath: string): boolean {
-  return existsSync(join(repoPath, ".feliz", "config.yml"));
+  return (
+    existsSync(join(getPrimaryRepoMetadataDir(repoPath), "config.yml")) ||
+    existsSync(join(getLegacyRepoMetadataDir(repoPath), "config.yml"))
+  );
 }
 
 export function writeRepoScaffold(
   repoPath: string,
   answers: RepoScaffoldAnswers
 ): void {
-  const felizDir = join(repoPath, ".feliz");
-  mkdirSync(join(felizDir, "prompts"), { recursive: true });
+  const metadataDir = getPrimaryRepoMetadataDir(repoPath);
+  mkdirSync(join(metadataDir, "prompts"), { recursive: true });
 
   writeFileSync(
-    join(felizDir, "config.yml"),
+    join(metadataDir, "config.yml"),
     generateRepoConfig(answers),
     "utf-8"
   );
   writeFileSync(
-    join(felizDir, "pipeline.yml"),
+    join(metadataDir, "pipeline.yml"),
     generatePipelineYml(answers.agentAdapter, answers.testCommand),
     "utf-8"
   );
@@ -51,14 +61,14 @@ function buildAgentScaffoldPrompt(answers: RepoScaffoldAnswers): string {
   sections.push(`Create ${PRODUCT_NAME} starter config files for this repository.
 
 You must create these paths:
-- .feliz/config.yml
-- .feliz/pipeline.yml
-- .feliz/prompts/ (directory)
+- .esperta-code/config.yml
+- .esperta-code/pipeline.yml
+- .esperta-code/prompts/ (directory)
 - WORKFLOW.md`);
 
   sections.push(`Requirements:
-- .feliz/config.yml must set agent.adapter to "${answers.agentAdapter}".
-- .feliz/config.yml must set specs.enabled to ${answers.specsEnabled ? "true" : "false"}.
+- .esperta-code/config.yml must set agent.adapter to "${answers.agentAdapter}".
+- .esperta-code/config.yml must set specs.enabled to ${answers.specsEnabled ? "true" : "false"}.
 - If specs.enabled is true, set specs.directory to "specs".`);
 
   if (answers.testCommand || answers.lintCommand) {
@@ -68,11 +78,11 @@ You must create these paths:
     sections.push(`Gate settings:\n${gateLines.join("\n")}`);
   }
 
-  sections.push(`.feliz/pipeline.yml must define the default pipeline:
+  sections.push(`.esperta-code/pipeline.yml must define the default pipeline:
 - single phase named "execute"
 - step "run" with agent "${answers.agentAdapter}" and prompt WORKFLOW.md
 - include success.command only when a test command is provided
-- step "create_pr" with agent "${answers.agentAdapter}" and prompt .feliz/prompts/publish.md
+- step "create_pr" with agent "${answers.agentAdapter}" and prompt ${PRIMARY_PUBLISH_PROMPT_PATH}
 - IMPORTANT: every step MUST have an "agent" field set to "${answers.agentAdapter}"
 
 WORKFLOW.md MUST contain these exact template variables:
@@ -84,7 +94,7 @@ WORKFLOW.md MUST contain these exact template variables:
 WORKFLOW.md MUST contain a "Context" section with these instructions:
 - Run \`${PRIMARY_CLI_NAME} thread read\` to see project memory, specs, and thread jobs.
 - Run \`${PRIMARY_CLI_NAME} thread write <message>\` to append new jobs to the current thread.
-- Project memory is in \`.feliz/context/memory/\` — read and write files there directly.
+- Project memory is in \`${PRIMARY_MEMORY_DIR_PATH}/\` — read and write files there directly.
 - Specs are in \`specs/\`.
 
 Do NOT use template variables like {{ specs }}, {{ previous_failure }}, or {{ previous_review }}.
@@ -96,19 +106,19 @@ Only modify the listed scaffold files/directories.`);
 }
 
 function validateAgentScaffold(repoPath: string): void {
-  const configPath = join(repoPath, ".feliz", "config.yml");
-  const pipelinePath = join(repoPath, ".feliz", "pipeline.yml");
-  const promptsDir = join(repoPath, ".feliz", "prompts");
+  const configPath = resolveRepoAssetPath(repoPath, "config.yml");
+  const pipelinePath = resolveRepoAssetPath(repoPath, "pipeline.yml");
+  const promptsDir = resolveRepoAssetPath(repoPath, "prompts");
   const workflowPath = join(repoPath, "WORKFLOW.md");
 
   if (!existsSync(configPath)) {
-    throw new Error("missing .feliz/config.yml");
+    throw new Error("missing .esperta-code/config.yml");
   }
   if (!existsSync(pipelinePath)) {
-    throw new Error("missing .feliz/pipeline.yml");
+    throw new Error("missing .esperta-code/pipeline.yml");
   }
   if (!existsSync(promptsDir)) {
-    throw new Error("missing .feliz/prompts/");
+    throw new Error("missing .esperta-code/prompts/");
   }
   if (!existsSync(workflowPath)) {
     throw new Error("missing WORKFLOW.md");
@@ -172,7 +182,7 @@ export function gitCommitAndPush(repoPath: string, branch: string): void {
     GIT_CONFIG_KEY_0: "commit.gpgsign",
     GIT_CONFIG_VALUE_0: "false",
   };
-  Bun.spawnSync(["git", "add", ".feliz/", "WORKFLOW.md"], { cwd: repoPath });
+  Bun.spawnSync(["git", "add", ".esperta-code/", "WORKFLOW.md"], { cwd: repoPath });
   const commit = Bun.spawnSync(
     ["git", "commit", "-m", "chore: add esperta code configuration"],
     { cwd: repoPath, env: { ...process.env, ...gitEnv } }

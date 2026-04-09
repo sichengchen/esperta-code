@@ -8,6 +8,7 @@ import { homedir } from "os";
 import { join } from "path";
 import { validateAllConfigs } from "./validate.ts";
 import { PRIMARY_CLI_NAME, PRODUCT_NAME } from "../branding.ts";
+import { getPrimaryConfigPath, resolveDefaultConfigPath } from "../paths.ts";
 
 const HELP_TEXT = `
 ${PRODUCT_NAME} - Cloud agents platform
@@ -32,7 +33,7 @@ Commands:
   e2e smoke                Run automated E2E smoke checks
 
 Options:
-  --config <path>          Path to config file (default: ~/.feliz/feliz.yml)
+  --config <path>          Path to config file (default: ~/.esperta-code/esperta-code.yml)
   --json                   Print report as JSON (for e2e commands)
   --out <path>             Write report JSON to file (for e2e commands)
   --help                   Show this help
@@ -75,7 +76,7 @@ async function main() {
   }
 
   const configPath =
-    cmd.flags.config ?? join(homedir(), ".feliz", "feliz.yml");
+    cmd.flags.config ?? resolveDefaultConfigPath(homedir());
 
   if (cmd.command === "config" && cmd.subcommand === "validate") {
     try {

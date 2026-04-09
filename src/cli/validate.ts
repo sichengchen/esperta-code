@@ -6,6 +6,7 @@ import {
   loadPipelineConfig,
 } from "../config/loader.ts";
 import { WorkspaceManager } from "../workspace/manager.ts";
+import { resolveRepoAssetPath } from "../paths.ts";
 
 export interface ConfigValidationResult {
   validated_projects: number;
@@ -30,7 +31,7 @@ export function validateAllConfigs(configPath: string): ConfigValidationResult {
       continue;
     }
 
-    const repoConfigPath = join(repoPath, ".feliz", "config.yml");
+    const repoConfigPath = resolveRepoAssetPath(repoPath, "config.yml");
     if (existsSync(repoConfigPath)) {
       try {
         loadRepoConfig(readFileSync(repoConfigPath, "utf-8"));
@@ -42,7 +43,7 @@ export function validateAllConfigs(configPath: string): ConfigValidationResult {
       }
     }
 
-    const pipelinePath = join(repoPath, ".feliz", "pipeline.yml");
+    const pipelinePath = resolveRepoAssetPath(repoPath, "pipeline.yml");
     if (existsSync(pipelinePath)) {
       try {
         loadPipelineConfig(readFileSync(pipelinePath, "utf-8"));

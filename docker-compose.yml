@@ -9,12 +9,12 @@ services:
     volumes:
       - ${SSH_AUTH_SOCK}:/ssh-agent:ro
       - ~/.ssh/known_hosts:/home/feliz/.ssh/known_hosts:ro
-      - feliz-data:/data/feliz
-      - feliz-config:/home/feliz/.feliz
-      - feliz-agent-local:/home/feliz/.local
-      - feliz-npm-global:/home/feliz/.npm-global
-      - feliz-claude-config:/home/feliz/.claude
-      - feliz-codex-config:/home/feliz/.codex
+      - esperta-code-data:/data/esperta-code
+      - esperta-code-config:/home/feliz/.esperta-code
+      - esperta-code-agent-local:/home/feliz/.local
+      - esperta-code-npm-global:/home/feliz/.npm-global
+      - esperta-code-claude-config:/home/feliz/.claude
+      - esperta-code-codex-config:/home/feliz/.codex
     environment:
       - SSH_AUTH_SOCK=/ssh-agent
       - LINEAR_OAUTH_TOKEN
@@ -27,9 +27,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  feliz-data:
-  feliz-config:
-  feliz-agent-local:
-  feliz-npm-global:
-  feliz-claude-config:
-  feliz-codex-config:
+  esperta-code-data:
+  esperta-code-config:
+  esperta-code-agent-local:
+  esperta-code-npm-global:
+  esperta-code-claude-config:
+  esperta-code-codex-config:

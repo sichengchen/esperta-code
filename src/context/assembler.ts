@@ -3,6 +3,7 @@ import type { Job, Thread } from "../domain/types.ts";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { join, relative } from "path";
 import { loadRepoConfig } from "../config/loader.ts";
+import { resolveRepoAssetPath } from "../paths.ts";
 
 export interface MemoryItem {
   path: string;
@@ -56,7 +57,7 @@ export class ContextAssembler {
   }
 
   private readMemory(worktreePath: string): MemoryItem[] {
-    const memoryDir = join(worktreePath, ".feliz", "context", "memory");
+    const memoryDir = resolveRepoAssetPath(worktreePath, join("context", "memory"));
     if (!existsSync(memoryDir)) return [];
 
     const items: MemoryItem[] = [];
@@ -70,7 +71,7 @@ export class ContextAssembler {
   }
 
   private resolveSpecDir(worktreePath: string): string {
-    const configPath = join(worktreePath, ".feliz", "config.yml");
+    const configPath = resolveRepoAssetPath(worktreePath, "config.yml");
     if (!existsSync(configPath)) return "specs";
 
     try {

@@ -1,5 +1,4 @@
 import { parse } from "yaml";
-import { homedir } from "os";
 import { join } from "path";
 import type {
   FelizConfig,
@@ -8,6 +7,10 @@ import type {
   RepoConfig,
   PipelineDefinition,
 } from "./types.ts";
+import {
+  PRIMARY_PUBLISH_PROMPT_PATH,
+  resolveDefaultDataDir,
+} from "../paths.ts";
 
 export function resolveEnvVars(value: string): string {
   if (!value.startsWith("$")) return value;
@@ -27,7 +30,7 @@ export function loadFelizConfig(yamlContent: string): FelizConfig {
   const tick = (raw.tick as Record<string, unknown>) || {};
   const storage = (raw.storage as Record<string, unknown>) || {};
   const agent = (raw.agent as Record<string, unknown>) || {};
-  const defaultDataDir = join(homedir(), ".feliz");
+  const defaultDataDir = resolveDefaultDataDir();
   const dataDir =
     (runtime.data_dir as string) ||
     (storage.data_dir as string) ||
@@ -122,7 +125,7 @@ export function loadFelizProjectAddConfig(yamlContent: string): ProjectAddConfig
   const agent = (raw.agent as Record<string, unknown>) || {};
   const storage = (raw.storage as Record<string, unknown>) || {};
   const runtime = (raw.runtime as Record<string, unknown>) || {};
-  const defaultDataDir = join(homedir(), ".feliz");
+  const defaultDataDir = resolveDefaultDataDir();
 
   return {
     ...(linear?.oauth_token
@@ -207,7 +210,7 @@ export function getDefaultPipeline(agentAdapter: string, testCommand?: string): 
           {
             name: "create_pr",
             agent: agentAdapter,
-            prompt: ".feliz/prompts/publish.md",
+            prompt: PRIMARY_PUBLISH_PROMPT_PATH,
           },
         ],
       },

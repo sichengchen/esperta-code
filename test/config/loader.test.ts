@@ -75,7 +75,7 @@ projects:
     const config = loadFelizConfig(yaml);
     expect(config.linear.oauth_token).toBe("test-key");
     expect(config.tick.interval_ms).toBe(5000);
-    expect(config.storage.data_dir).toContain(".feliz");
+    expect(config.storage.data_dir).toContain(".esperta-code");
     expect(config.agent.default).toBe("claude-code");
     expect(config.webhook.port).toBe(3421);
     expect(config.agent.max_concurrent).toBe(5);
@@ -319,7 +319,7 @@ phases:
   - name: publish
     steps:
       - name: create_pr
-        prompt: .feliz/prompts/publish.md
+        prompt: .esperta-code/prompts/publish.md
 `;
     const pipeline = loadPipelineConfig(yaml);
     expect(pipeline.phases).toHaveLength(2);
@@ -328,7 +328,7 @@ phases:
     expect(pipeline.phases[0]!.steps[0]!.agent).toBe("claude-code");
     expect(pipeline.phases[0]!.steps[0]!.success?.command).toBe("npm test");
     expect(pipeline.phases[0]!.steps[0]!.max_attempts).toBe(3);
-    expect(pipeline.phases[1]!.steps[0]!.prompt).toBe(".feliz/prompts/publish.md");
+    expect(pipeline.phases[1]!.steps[0]!.prompt).toBe(".esperta-code/prompts/publish.md");
   });
 
   test("parses pipeline with repeat phases", () => {
@@ -360,7 +360,7 @@ describe("getDefaultPipeline", () => {
     expect(pipeline.phases[0]!.steps).toHaveLength(2);
     expect(pipeline.phases[0]!.steps[0]!.name).toBe("run");
     expect(pipeline.phases[0]!.steps[0]!.prompt).toBe("WORKFLOW.md");
-    expect(pipeline.phases[0]!.steps[1]!.prompt).toBe(".feliz/prompts/publish.md");
+    expect(pipeline.phases[0]!.steps[1]!.prompt).toBe(".esperta-code/prompts/publish.md");
   });
 
   test("includes test command in success condition when provided", () => {

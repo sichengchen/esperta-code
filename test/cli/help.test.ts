@@ -20,5 +20,6 @@ describe("CLI help output", () => {
     expect(output).not.toContain("Start the Feliz daemon");
     expect(output).toContain("Usage: esperta-code <command> [options]");
     expect(output).not.toContain("Usage: feliz <command> [options]");
+    expect(output).toContain("default: ~/.esperta-code/esperta-code.yml");
   });
 });

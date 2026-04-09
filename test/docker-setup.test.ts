@@ -30,6 +30,7 @@ describe("Docker setup assets", () => {
     expect(existsSync(entrypointPath)).toBe(true);
 
     const content = readFileSync(entrypointPath, "utf-8");
+    expect(content).toContain('/home/feliz/.esperta-code/esperta-code.yml');
     expect(content).toContain('if [ -n "$LINEAR_OAUTH_TOKEN" ]; then');
     expect(content).toContain("# Optional: enable the Linear connector later");
     expect(content).toContain("# linear:");
@@ -41,7 +42,7 @@ describe("Docker setup assets", () => {
 
     const content = readFileSync(entrypointPath, "utf-8");
     expect(content).toContain("runtime:");
-    expect(content).toContain("data_dir: /data/feliz");
+    expect(content).toContain("data_dir: /data/esperta-code");
     expect(content).toContain("max_concurrent_jobs: 4");
   });
 

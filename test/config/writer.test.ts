@@ -17,8 +17,8 @@ const TEST_DIR = "/tmp/feliz-writer-test";
 
 describe("CONFIG_TEMPLATE", () => {
   test("uses the local home directory for storage by default", () => {
-    expect(CONFIG_TEMPLATE).toContain(`data_dir: ${join(homedir(), ".feliz")}`);
-    expect(CONFIG_TEMPLATE).not.toContain("data_dir: /data/feliz");
+    expect(CONFIG_TEMPLATE).toContain(`data_dir: ${join(homedir(), ".esperta-code")}`);
+    expect(CONFIG_TEMPLATE).not.toContain("data_dir: /data/esperta-code");
   });
 
   test("contains empty projects list", () => {
@@ -139,7 +139,7 @@ describe("generatePipelineYml", () => {
     expect(pipeline.phases[0]!.steps[0]!.name).toBe("run");
     expect(pipeline.phases[0]!.steps[0]!.agent).toBe("claude-code");
     expect(pipeline.phases[0]!.steps[0]!.success!.command).toBe("npm test");
-    expect(pipeline.phases[0]!.steps[1]!.prompt).toBe(".feliz/prompts/publish.md");
+    expect(pipeline.phases[0]!.steps[1]!.prompt).toBe(".esperta-code/prompts/publish.md");
     expect(pipeline.phases[0]!.steps[1]!.agent).toBe("claude-code");
   });
 
@@ -163,6 +163,7 @@ describe("generateWorkflowMd", () => {
     const md = generateWorkflowMd();
     expect(md).toContain(`${PRIMARY_CLI_NAME} thread read`);
     expect(md).toContain(`${PRIMARY_CLI_NAME} thread write`);
+    expect(md).toContain(".esperta-code/context/memory/");
   });
 
   test("does not contain old template variables", () => {

@@ -1,7 +1,5 @@
 import { mkdirSync, writeFileSync } from "fs";
 import { dirname } from "path";
-import { homedir } from "os";
-import { join } from "path";
 import { stringify } from "yaml";
 import {
   DOCS_REPOSITORY_URL,
@@ -9,8 +7,12 @@ import {
   PRODUCT_NAME,
 } from "../branding.ts";
 import { getDefaultPipeline } from "./loader.ts";
+import {
+  PRIMARY_MEMORY_DIR_PATH,
+  getPrimaryConfigDir,
+} from "../paths.ts";
 
-const DEFAULT_DATA_DIR = join(homedir(), ".feliz");
+const DEFAULT_DATA_DIR = getPrimaryConfigDir();
 
 function renderLinearConfig(oauthToken?: string): string {
   if (!oauthToken) {
@@ -109,7 +111,7 @@ You are working on {{ project.name }}.
 
 Run \`${PRIMARY_CLI_NAME} thread read\` to see project memory, specs, and thread jobs.
 Run \`${PRIMARY_CLI_NAME} thread write <message>\` to append new jobs to the current thread.
-Project memory is in \`.feliz/context/memory/\` — read and write files there directly.
+Project memory is in \`${PRIMARY_MEMORY_DIR_PATH}/\` — read and write files there directly.
 Specs are in \`specs/\`.
 
 ## Instructions

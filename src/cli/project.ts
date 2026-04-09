@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, rmSync } from "fs";
-import { homedir } from "os";
 import { join, resolve, sep } from "path";
 import { parse, stringify } from "yaml";
+import { resolveDefaultDataDir } from "../paths.ts";
 
 export function projectNameFromRepoUrl(url: string): string {
   if (!url) return "";
@@ -20,10 +20,16 @@ interface ProjectEntry {
 
 function resolveWorkspaceRoot(doc: Record<string, unknown>): string {
   const storage = (doc.storage as Record<string, unknown>) || {};
-  const defaultDataDir = join(homedir(), ".feliz");
+  const runtime = (doc.runtime as Record<string, unknown>) || {};
+  const defaultDataDir = resolveDefaultDataDir();
   return (
     (storage.workspace_root as string) ||
-    join((storage.data_dir as string) || defaultDataDir, "workspaces")
+    join(
+      (storage.data_dir as string) ||
+        (runtime.data_dir as string) ||
+        defaultDataDir,
+      "workspaces"
+    )
   );
 }
 
