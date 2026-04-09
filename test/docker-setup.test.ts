@@ -35,6 +35,16 @@ describe("Docker setup assets", () => {
     expect(content).toContain("# linear:");
   });
 
+  test("docker entrypoint generates a valid non-Linear runtime config", () => {
+    const entrypointPath = join(ROOT, "docker-entrypoint.sh");
+    expect(existsSync(entrypointPath)).toBe(true);
+
+    const content = readFileSync(entrypointPath, "utf-8");
+    expect(content).toContain("runtime:");
+    expect(content).toContain("data_dir: /data/feliz");
+    expect(content).toContain("max_concurrent_jobs: 4");
+  });
+
   test("docker-facing docs and prompts use the Esperta Code service name", () => {
     const docsPath = join(ROOT, "docs", "getting-started.md");
     const entrypointPath = join(ROOT, "docker-entrypoint.sh");
