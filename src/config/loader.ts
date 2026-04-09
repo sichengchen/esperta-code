@@ -118,27 +118,32 @@ export function loadFelizConfig(yamlContent: string): FelizConfig {
 
 export function loadFelizProjectAddConfig(yamlContent: string): ProjectAddConfig {
   const raw = parse(yamlContent) as Record<string, unknown>;
-
-  if (!raw?.linear || !(raw.linear as Record<string, unknown>)?.oauth_token) {
-    throw new Error("linear.oauth_token is required");
-  }
-
-  const linear = raw.linear as Record<string, unknown>;
+  const linear = (raw.linear as Record<string, unknown> | undefined) || undefined;
   const agent = (raw.agent as Record<string, unknown>) || {};
   const storage = (raw.storage as Record<string, unknown>) || {};
+  const runtime = (raw.runtime as Record<string, unknown>) || {};
   const defaultDataDir = join(homedir(), ".feliz");
 
   return {
-    linear: {
-      oauth_token: resolveEnvVars(linear.oauth_token as string),
-    },
+    ...(linear?.oauth_token
+      ? {
+          linear: {
+            oauth_token: resolveEnvVars(linear.oauth_token as string),
+          },
+        }
+      : {}),
     agent: {
       default: (agent.default as string) || "claude-code",
     },
     storage: {
       workspace_root:
         (storage.workspace_root as string) ||
-        join((storage.data_dir as string) || defaultDataDir, "workspaces"),
+        join(
+          (storage.data_dir as string) ||
+            (runtime.data_dir as string) ||
+            defaultDataDir,
+          "workspaces"
+        ),
     },
   };
 }

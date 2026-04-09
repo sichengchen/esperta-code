@@ -165,9 +165,22 @@ storage:
   workspace_root: /tmp/feliz-workspaces
 `;
     const config = loadFelizProjectAddConfig(yaml);
-    expect(config.linear.oauth_token).toBe("test-key");
+    expect(config.linear?.oauth_token).toBe("test-key");
     expect(config.storage.workspace_root).toBe("/tmp/feliz-workspaces");
     expect(config.agent.default).toBe("codex");
+  });
+
+  test("allows missing linear.oauth_token for manual project setup", () => {
+    const yaml = `
+runtime:
+  data_dir: /tmp/feliz
+  max_concurrent_jobs: 4
+projects: []
+`;
+    const config = loadFelizProjectAddConfig(yaml);
+    expect(config.linear?.oauth_token).toBeUndefined();
+    expect(config.agent.default).toBe("claude-code");
+    expect(config.storage.workspace_root).toBe("/tmp/feliz/workspaces");
   });
 
   test("uses default scaffold adapter when agent.default is missing", () => {
@@ -180,14 +193,6 @@ projects: []
     expect(config.agent.default).toBe("claude-code");
   });
 
-  test("throws when linear.oauth_token is missing", () => {
-    const yaml = `
-projects: []
-`;
-    expect(() => loadFelizProjectAddConfig(yaml)).toThrow(
-      "linear.oauth_token is required"
-    );
-  });
 });
 
 describe("loadRepoConfig", () => {

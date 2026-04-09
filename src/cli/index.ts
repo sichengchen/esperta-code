@@ -233,7 +233,6 @@ async function main() {
       const { OpenCodeAdapter } = await import("../agents/opencode.ts");
       const { runProjectAddWizard } = await import("./project-add-wizard.ts");
 
-      const linearClient = new LinearClient(config.linear.oauth_token);
       const workspace = new WorkspaceManager(config.storage.workspace_root);
       const adapters = {
         "claude-code": new ClaudeCodeAdapter(),
@@ -243,7 +242,12 @@ async function main() {
 
       await runProjectAddWizard({
         prompt: globalThis.prompt,
-        fetchProjects: () => linearClient.fetchProjects(),
+        ...(config.linear?.oauth_token
+          ? {
+              fetchProjects: () =>
+                new LinearClient(config.linear!.oauth_token).fetchProjects(),
+            }
+          : {}),
         cloneRepo: (name, url) => workspace.cloneRepo(name, url),
         repoHasFelizConfig,
         writeRepoScaffoldWithAgent: async (repoPath, adapterName, answers) => {

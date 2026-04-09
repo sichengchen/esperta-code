@@ -6,7 +6,7 @@ type PromptFn = (msg: string) => string | null;
 
 export interface WizardDeps {
   prompt: PromptFn;
-  fetchProjects: () => Promise<LinearProject[]>;
+  fetchProjects?: () => Promise<LinearProject[]>;
   cloneRepo: (projectName: string, repoUrl: string) => Promise<string>;
   repoHasFelizConfig: (repoPath: string) => boolean;
   writeRepoScaffoldWithAgent: (
@@ -21,7 +21,7 @@ export interface WizardDeps {
     project: {
       name: string;
       repo: string;
-      linear_project: string;
+      linear_project?: string;
       branch: string;
     }
   ) => void;
@@ -30,26 +30,31 @@ export interface WizardDeps {
 }
 
 export async function runProjectAddWizard(deps: WizardDeps): Promise<void> {
-  console.log("Fetching Linear projects...");
-  const projects = await deps.fetchProjects();
+  let linearProjectName: string | undefined;
+  if (deps.fetchProjects) {
+    console.log("Fetching Linear projects...");
+    const projects = await deps.fetchProjects();
 
-  if (projects.length === 0) {
-    throw new Error("No projects found in Linear.");
+    if (projects.length === 0) {
+      throw new Error("No projects found in Linear.");
+    }
+
+    console.log("");
+    for (let i = 0; i < projects.length; i++) {
+      console.log(`  ${i + 1}. ${projects[i]!.name}`);
+    }
+    console.log("");
+
+    const selectionStr = deps.prompt("Select a project (number):");
+    const selection = parseInt(selectionStr || "", 10);
+    if (isNaN(selection) || selection < 1 || selection > projects.length) {
+      throw new Error("Invalid selection");
+    }
+
+    linearProjectName = projects[selection - 1]!.name;
+  } else {
+    console.log("Linear is not configured. Adding a local/manual project.");
   }
-
-  console.log("");
-  for (let i = 0; i < projects.length; i++) {
-    console.log(`  ${i + 1}. ${projects[i]!.name}`);
-  }
-  console.log("");
-
-  const selectionStr = deps.prompt("Select a project (number):");
-  const selection = parseInt(selectionStr || "", 10);
-  if (isNaN(selection) || selection < 1 || selection > projects.length) {
-    throw new Error("Invalid selection");
-  }
-
-  const linearProject = projects[selection - 1]!;
 
   const repoUrl = deps.prompt("Git repo URL:");
   if (!repoUrl) throw new Error("Repo URL is required");
@@ -110,7 +115,7 @@ export async function runProjectAddWizard(deps: WizardDeps): Promise<void> {
   deps.addProjectToConfig(deps.configPath, {
     name: projectName,
     repo: repoUrl,
-    linear_project: linearProject.name,
+    ...(linearProjectName ? { linear_project: linearProjectName } : {}),
     branch,
   });
 

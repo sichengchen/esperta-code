@@ -42,6 +42,17 @@ describe("project add/remove", () => {
     expect(content).toContain("backend");
   });
 
+  test("addProjectToConfig supports projects without linear_project", () => {
+    addProjectToConfig(CONFIG_PATH, {
+      name: "frontend",
+      repo: "git@github.com:org/frontend.git",
+      branch: "main",
+    } as any);
+    const content = readFileSync(CONFIG_PATH, "utf-8");
+    expect(content).toContain("frontend");
+    expect(content).not.toContain("linear_project: undefined");
+  });
+
   test("removeProjectFromConfig removes a project", () => {
     removeProjectFromConfig(CONFIG_PATH, "backend");
     const content = readFileSync(CONFIG_PATH, "utf-8");

@@ -14,7 +14,7 @@ export function projectNameFromRepoUrl(url: string): string {
 interface ProjectEntry {
   name: string;
   repo: string;
-  linear_project: string;
+  linear_project?: string;
   branch: string;
 }
 
@@ -54,8 +54,10 @@ export function addProjectToConfig(
   const entry: Record<string, string> = {
     name: project.name,
     repo: project.repo,
-    linear_project: project.linear_project,
   };
+  if (project.linear_project) {
+    entry.linear_project = project.linear_project;
+  }
   if (project.branch !== "main") {
     entry.branch = project.branch;
   }

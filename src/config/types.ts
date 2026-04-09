@@ -53,7 +53,7 @@ export interface FelizConfig {
 }
 
 export interface ProjectAddConfig {
-  linear: {
+  linear?: {
     oauth_token: string;
   };
   agent: {

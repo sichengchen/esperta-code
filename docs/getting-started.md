@@ -85,11 +85,13 @@ $EC project add
 
 The wizard:
 
-1. Lists available Linear projects.
+1. Lists available Linear projects when Linear is configured.
 2. Asks for the repository URL and base branch.
 3. Clones the repo into the configured workspace root.
 4. Optionally scaffolds repo-local workflow assets under `.feliz/`.
 5. Appends the project entry to `feliz.yml`.
+
+If Linear is not configured, `project add` falls back to a local/manual flow and skips Linear project selection.
 
 ## Start the Daemon
 

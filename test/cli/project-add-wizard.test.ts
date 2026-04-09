@@ -203,4 +203,31 @@ describe("runProjectAddWizard", () => {
     const addCall = (deps.addProjectToConfig as any).mock.calls[0];
     expect(addCall[1].branch).toBe("main");
   });
+
+  test("supports manual project setup when Linear is not configured", async () => {
+    let promptIdx = 0;
+    const answers = [
+      "git@github.com:org/backend-api.git",
+      "",
+      "claude-code",
+      "n",
+      "",
+      "",
+      "n",
+    ];
+    const promptFn = mock((_msg: string) => answers[promptIdx++] ?? null);
+
+    const deps = makeDeps({
+      prompt: promptFn as any,
+      fetchProjects: undefined,
+    });
+
+    await runProjectAddWizard(deps);
+
+    expect(deps.cloneRepo).toHaveBeenCalledWith("backend-api", "git@github.com:org/backend-api.git");
+    const addCall = (deps.addProjectToConfig as any).mock.calls[0];
+    expect(addCall[1].name).toBe("backend-api");
+    expect(addCall[1].repo).toBe("git@github.com:org/backend-api.git");
+    expect(addCall[1].linear_project).toBeUndefined();
+  });
 });
